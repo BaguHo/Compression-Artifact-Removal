@@ -54,82 +54,42 @@ def makedir(path):
 # CNN model
 
 
-# class CNN(nn.Module):
-#     def __init__(self):
-#         super(CNN, self).__init__()
-#         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
-#         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-#         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-#         self.fc1 = nn.Linear(64 * 7 * 7, 128)
-#         self.fc2 = nn.Linear(128, 10)
-
-#     def forward(self, x):
-#         x = self.pool(torch.relu(self.conv1(x)))
-#         x = self.pool(torch.relu(self.conv2(x)))
-#         x = x.view(-1, 64 * 7 * 7)  # Flatten the tensor
-#         x = torch.relu(self.fc1(x))
-#         x = self.fc2(x)
-#         return x
-
-#  VGG16 model
-class VGG16(nn.Module):
+class CNN(nn.Module):
     def __init__(self):
-        super(VGG16, self).__init__()
-        self.features = nn.Sequential(
-            # Conv 1
-            nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
-            # Conv 2
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
-            # Conv 3
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
-            # Conv 4
-            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
-            # Conv 5
-            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
-        )
-
-        self.classifier = nn.Sequential(
-            nn.Flatten(),
-            nn.Dropout(0.5),
-            nn.Linear(512 * 4 * 4, 512),  # Adjusted for input size
-            nn.ReLU(True),
-            nn.Linear(512, 10)
-        )
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.fc1 = nn.Linear(64 * 7 * 7, 128)
+        self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x):
-        x = self.features(x)
-        x = self.classifier(x)
+        x = self.pool(torch.relu(self.conv1(x)))
+        x = self.pool(torch.relu(self.conv2(x)))
+        x = x.view(-1, 64 * 7 * 7)  # Flatten the tensor
+        x = torch.relu(self.fc1(x))
+        x = self.fc2(x)
         return x
 
+# #  VGG16 model
+# class VGG16(nn.Module):
+#     def __init__(self):
+#         super(VGG16, self).__init__()
+#         vgg16 = models.vgg16(pretrained=False)
+
+#         vgg16.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
+
+#         self.features = vgg16.features
+#         self.classifier = vgg16.classifier
+
+#     def forward(self, x):
+#         x = self.features(x)
+#         x = torch.flatten(x, 1)
+#         x = self.classifier(x)
+#         return x
+
+
 # 모델 학습 함수
-
-
 def train(model, train_loader, criterion, optimizer):
     model.train()
     for epoch in range(epochs):
@@ -272,7 +232,7 @@ def show_images(dataset, length=5):
 
 if __name__ == "__main__":
     # JPEG QF 90 dataset 생성
-    # make_jpeg_datasets(90)
+    make_jpeg_datasets(90)
 
     # transform 정의
     transform = transforms.Compose([
@@ -282,7 +242,7 @@ if __name__ == "__main__":
     ])
 
     # MNIST model 정의
-    MNIST_model = VGG16().to(device)
+    MNIST_model = CNN().to(device)
 
     # 손실 함수 및 옵티마이저 정의
     criterion = nn.CrossEntropyLoss()
@@ -311,19 +271,19 @@ if __name__ == "__main__":
 
     # test with MNIST test dataset
     accuracy, precision = test(MNIST_model, mnist_test_loader)
-    save_result("VGG16", "MNIST",  "MNIST", accuracy, precision)
+    save_result("CNN", "MNIST",  "MNIST", accuracy, precision)
 
     #  test with JPEG 90 test dataset
     accuracy, precision = test(MNIST_model, jpeg_90_test_loader)
-    save_result("VGG16", "MNIST", "JPEG 90", accuracy, precision)
+    save_result("CNN", "MNIST", "JPEG 90", accuracy, precision)
 
     # Tarining with JPEG 90 dataset
-    jpeg_90_model = VGG16().to(device)
+    jpeg_90_model = CNN().to(device)
 
     # Test with JPEG 90 test dataset
     accuracy, precision = test(jpeg_90_model, jpeg_90_test_loader)
-    save_result("VGG16", "JPEG 90", "JPEG 90", accuracy, precision)
+    save_result("CNN", "JPEG 90", "JPEG 90", accuracy, precision)
 
     # test with MNIST test dataset
     accuracy, precision = test(jpeg_90_model, mnist_test_loader)
-    save_result("VGG16", "JPEG 90", "MNIST", accuracy, precision)
+    save_result("CNN", "JPEG 90", "MNIST", accuracy, precision)
