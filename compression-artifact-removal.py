@@ -177,12 +177,12 @@ def make_jpeg_datasets(QF):
 
     for idx, (image, label) in enumerate(mnist_dataset_train):
         file_name = f"image_{idx}_label_{label}.jpg"
-        output_file_path = os.path.join(train_output_dir, "class", str(label), file_name)
+        output_file_path = os.path.join(train_output_dir, "class" + str(label), file_name)
         image.convert('RGB').save(output_file_path, 'JPEG', quality=QF)
 
     for idx, (image, label) in enumerate(mnist_dataset_test):
         file_name = f"image_{idx}_label_{label}.jpg"
-        output_file_path = os.path.join(test_output_dir, "class", str(label), file_name)
+        output_file_path = os.path.join(test_output_dir, "class"+ str(label), file_name)
         image.convert('RGB').save(output_file_path, 'JPEG', quality=QF)
 
 # JPEG 데이터셋 로드
