@@ -279,7 +279,8 @@ if __name__ == "__main__":
 
     # Tarining with JPEG 90 dataset
     jpeg_90_model = CNN().to(device)
-
+    train(jpeg_90_model, jpeg_90_train_loader, criterion, optimizer)
+    
     # Test with JPEG 90 test dataset
     accuracy, precision = test(jpeg_90_model, jpeg_90_test_loader)
     save_result("CNN", "JPEG 90", "JPEG 90", accuracy, precision)
