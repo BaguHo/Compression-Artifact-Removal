@@ -161,15 +161,15 @@ def save_result(model_name="CNN", train_dataset=None, test_dataset=None, accurac
 
 # jpeg 이미지 생성
 def make_jpeg_datasets(QF):
-    train_output_dir = f'./datasets/MNIST/jpeg{QF}/train/'
-    test_output_dir = f'./datasets/MNIST/jpeg{QF}/test/'
+    train_output_dir = f'./datasets/CIFAR10/jpeg{QF}/train/'
+    test_output_dir = f'./datasets/CIFAR10/jpeg{QF}/test/'
 
     makedir(train_output_dir)
     makedir(test_output_dir)
 
     # MNIST 데이터셋 로드
-    mnist_dataset_train = datasets.MNIST(root="./datasets/", train=True, download=True)
-    mnist_dataset_test = datasets.MNIST(root="./datasets/", train=False, download=True)
+    mnist_dataset_train = datasets.CIFAR10(root="./datasets/", train=True, download=True)
+    mnist_dataset_test = datasets.CIFAR10(root="./datasets/", train=False, download=True)
 
     for i in range(10):
         makedir(os.path.join(train_output_dir, "class" + str(i)))
@@ -189,8 +189,8 @@ def make_jpeg_datasets(QF):
 
 
 def load_jpeg_datasets(QF, transform):
-    jpeg_train_dir = './datasets/MNIST/jpeg90/train'
-    jpeg_test_dir = './datasets/MNIST/jpeg90/test'
+    jpeg_train_dir = './datasets/CIFAR10/jpeg90/train'
+    jpeg_test_dir = './datasets/CIFAR10/jpeg90/test'
 
     train_dataset = datasets.ImageFolder(jpeg_train_dir, transform=transform)
     test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
@@ -248,13 +248,13 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(MNIST_model.parameters(), lr=learning_rate)
 
-    mnist_train = datasets.MNIST(root="./datasets/", train=True, transform=transforms.ToTensor(),
+    cifar10_train = datasets.CIFAR10(root="./datasets/", train=True, transform=transforms.ToTensor(),
                                  target_transform=None, download=True)
-    mnist_test = datasets.MNIST(root="./datasets/", train=False, transform=transforms.ToTensor(),
+    cifar10_test = datasets.CIFAR10(root="./datasets/", train=False, transform=transforms.ToTensor(),
                                 target_transform=None, download=True)
 
-    mnist_train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
-    mnist_test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=False, num_workers=2, drop_last=True)
+    cifar10_train_loader = DataLoader(cifar10_train, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
+    cifar10_test_loader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=False, num_workers=2, drop_last=True)
 
     # load JPEG 90 datasets
     jpeg_90_train_dataset, jpeg_90_test_dataset, jpeg_90_train_loader, jpeg_90_test_loader = load_jpeg_datasets(
@@ -271,11 +271,11 @@ if __name__ == "__main__":
 
     # test with MNIST test dataset
     accuracy, precision = test(MNIST_model, mnist_test_loader)
-    save_result("CNN", "MNIST",  "MNIST", accuracy, precision)
+    save_result("CNN", "cifar10",  "cifar10", accuracy, precision)
 
     #  test with JPEG 90 test dataset
     accuracy, precision = test(MNIST_model, jpeg_90_test_loader)
-    save_result("CNN", "MNIST", "JPEG 90", accuracy, precision)
+    save_result("CNN", "cifar10", "JPEG 90", accuracy, precision)
 
     # Tarining with JPEG 90 dataset
     jpeg_90_model = CNN().to(device)
@@ -287,4 +287,4 @@ if __name__ == "__main__":
 
     # test with MNIST test dataset
     accuracy, precision = test(jpeg_90_model, mnist_test_loader)
-    save_result("CNN", "JPEG 90", "MNIST", accuracy, precision)
+    save_result("CNN", "JPEG 90", "cifar10", accuracy, precision)
