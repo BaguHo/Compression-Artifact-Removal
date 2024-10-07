@@ -75,40 +75,61 @@ def makedir(path):
 class VGG16(nn.Module):
     def __init__(self):
         super(VGG16, self).__init__()
-        vgg16 = models.vgg16(pretrained=False)
+        self.features = nn.Sequential(
+            # Conv 1
+            nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
+            # Conv 2
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
+            # Conv 3
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
+            # Conv 4
+            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=1),
+            # Conv 5
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
+        )
 
-        vgg16.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
-
-        self.features = vgg16.features
-        self.classifier = vgg16.classifier
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Dropout(0.5),
+            nn.Linear(512 * 4 * 4, 512),  # Adjusted for input size
+            nn.ReLU(True),
+            nn.Linear(512, 10)
+        )
 
     def forward(self, x):
         x = self.features(x)
-        x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
-
-# VGG19 model
-
-
-class VGG19(nn.Module):
-    def __init__(self):
-        super(VGG19, self).__init__()
-        vgg19 = models.vgg19(pretrained=False)
-
-        vgg19.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
-
-        self.features = vgg19.features
-        self.classifier = vgg19.classifier
-
-    def forward(self, x):
-        x = self.features(x)
-        x = torch.flatten(x, 1)
-        x = self.classifier(x)
-        return x
-
 
 # 모델 학습 함수
+
+
 def train(model, train_loader, criterion, optimizer):
     model.train()
     for epoch in range(epochs):
@@ -283,7 +304,7 @@ if __name__ == "__main__":
     # show_images(jpeg_90_train_dataset, 10)
 
     # JPEG 90 testing dataset 확인
-    show_images(jpeg_90_test_dataset, 5)
+    # show_images(jpeg_90_test_dataset, 5)
 
     # MNIST model tarining
     train(MNIST_model, mnist_train_loader, criterion, optimizer)

@@ -1,2 +1,1 @@
 Model Name,Training Dataset,Test Dataset,Accuracy,Precision
-CNN,MNIST,JPEG 90,9.63,0.08608031301182117
