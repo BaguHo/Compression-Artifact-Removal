@@ -21,8 +21,10 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(device)
 
 learning_rate = 0.001
-epochs = 15
+epochs = 10
 batch_size = 64
+QF = 60
+dataset_name = "CIFAR10"
 
 # dataloader 생성 함수
 
@@ -57,39 +59,26 @@ def makedir(path):
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
+        # Change input channels from 1 to 3 for RGB images
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.fc1 = nn.Linear(64 * 7 * 7, 128)
+
+        # Calculate the new size after pooling:
+        # Original size is 32x32, after two poolings it becomes 8x8
+        self.fc1 = nn.Linear(64 * 8 * 8, 128)
         self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x):
         x = self.pool(torch.relu(self.conv1(x)))
         x = self.pool(torch.relu(self.conv2(x)))
-        x = x.view(-1, 64 * 7 * 7)  # Flatten the tensor
+        x = x.view(-1, 64 * 8 * 8)  # Flatten the tensor
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x
-
-# #  VGG16 model
-# class VGG16(nn.Module):
-#     def __init__(self):
-#         super(VGG16, self).__init__()
-#         vgg16 = models.vgg16(pretrained=False)
-
-#         vgg16.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
-
-#         self.features = vgg16.features
-#         self.classifier = vgg16.classifier
-
-#     def forward(self, x):
-#         x = self.features(x)
-#         x = torch.flatten(x, 1)
-#         x = self.classifier(x)
-#         return x
-
-
 # 모델 학습 함수
+
+
 def train(model, train_loader, criterion, optimizer):
     model.train()
     for epoch in range(epochs):
@@ -111,7 +100,7 @@ def train(model, train_loader, criterion, optimizer):
 
 
 # 모델 평가
-def test(model, test_loader):
+def test(model, test_loader, msg):
     model.eval()
     correct = 0
     total = 0
@@ -134,7 +123,7 @@ def test(model, test_loader):
     precision_per_class = precision_score(all_targets, all_predictions, average=None)
     precision_avg = precision_score(all_targets, all_predictions, average='macro')
 
-    print(f'Accuracy of the model on the test images: {accuracy:.2f}%')
+    print(f'Accuracy of the model on the test images -- {msg}: {accuracy:.2f}%')
 
     return accuracy, precision_avg
 
@@ -161,8 +150,8 @@ def save_result(model_name="CNN", train_dataset=None, test_dataset=None, accurac
 
 # jpeg 이미지 생성
 def make_jpeg_datasets(QF):
-    train_output_dir = f'./datasets/CIFAR10/jpeg{QF}/train/'
-    test_output_dir = f'./datasets/CIFAR10/jpeg{QF}/test/'
+    train_output_dir = f'./datasets/{dataset_name}/jpeg{QF}/train/'
+    test_output_dir = f'./datasets/{dataset_name}/jpeg{QF}/test/'
 
     makedir(train_output_dir)
     makedir(test_output_dir)
@@ -189,14 +178,14 @@ def make_jpeg_datasets(QF):
 
 
 def load_jpeg_datasets(QF, transform):
-    jpeg_train_dir = './datasets/CIFAR10/jpeg90/train'
-    jpeg_test_dir = './datasets/CIFAR10/jpeg90/test'
+    jpeg_train_dir = f'./datasets/CIFAR10/jpeg{QF}/train'
+    jpeg_test_dir = f'./datasets/CIFAR10/jpeg{QF}/test'
 
     train_dataset = datasets.ImageFolder(jpeg_train_dir, transform=transform)
     test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_dataset, test_dataset, train_dataloader, test_dataloader
 
@@ -231,8 +220,8 @@ def show_images(dataset, length=5):
 
 
 if __name__ == "__main__":
-    # JPEG QF 90 dataset 생성
-    make_jpeg_datasets(90)
+    # JPEG QF dataset 생성
+    make_jpeg_datasets(QF)
 
     # transform 정의
     transform = transforms.Compose([
@@ -242,49 +231,50 @@ if __name__ == "__main__":
     ])
 
     # MNIST model 정의
-    MNIST_model = CNN().to(device)
+    original_model = CNN().to(device)
 
     # 손실 함수 및 옵티마이저 정의
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(MNIST_model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
 
     cifar10_train = datasets.CIFAR10(root="./datasets/", train=True, transform=transforms.ToTensor(),
-                                 target_transform=None, download=True)
+                                     target_transform=None, download=True)
     cifar10_test = datasets.CIFAR10(root="./datasets/", train=False, transform=transforms.ToTensor(),
-                                target_transform=None, download=True)
+                                    target_transform=None, download=True)
 
     cifar10_train_loader = DataLoader(cifar10_train, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
     cifar10_test_loader = DataLoader(cifar10_test, batch_size=batch_size, shuffle=False, num_workers=2, drop_last=True)
 
     # load JPEG 90 datasets
-    jpeg_90_train_dataset, jpeg_90_test_dataset, jpeg_90_train_loader, jpeg_90_test_loader = load_jpeg_datasets(
+    jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
         90, transform)
 
-    # JPEG 90 training dataset 확인
-    # show_images(jpeg_90_train_dataset, 10)
+    # JPEG 90 training dataset 출력해서 확인
+    # show_images(jpeg_train_dataset, 10)
 
-    # JPEG 90 testing dataset 확인
-    # show_images(jpeg_90_test_dataset, 5)
+    # JPEG 90 testing dataset 출력해서 확인
+    # show_images(jpeg_test_dataset, 5)
 
     # MNIST model tarining
-    train(MNIST_model, mnist_train_loader, criterion, optimizer)
+    train(original_model, cifar10_train_loader, criterion, optimizer)
 
     # test with MNIST test dataset
-    accuracy, precision = test(MNIST_model, mnist_test_loader)
+    accuracy, precision = test(original_model, cifar10_test_loader)
     save_result("CNN", "cifar10",  "cifar10", accuracy, precision)
 
     #  test with JPEG 90 test dataset
-    accuracy, precision = test(MNIST_model, jpeg_90_test_loader)
+    accuracy, precision = test(original_model, jpeg_test_loader)
     save_result("CNN", "cifar10", "JPEG 90", accuracy, precision)
 
-    # Tarining with JPEG 90 dataset
-    jpeg_90_model = CNN().to(device)
-    train(jpeg_90_model, jpeg_90_train_loader, criterion, optimizer)
-    
-    # Test with JPEG 90 test dataset
-    accuracy, precision = test(jpeg_90_model, jpeg_90_test_loader)
-    save_result("CNN", "JPEG 90", "JPEG 90", accuracy, precision)
+   # Tarining with JPEG 60 dataset
+    jpeg_model = CNN().to(device)
+    optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
+    train(jpeg_model, jpeg_train_loader, criterion, optimizer)
+
+    # Test with JPEG 60 test dataset
+    accuracy, precision = test(jpeg_model, jpeg_test_loader, 'jpeg 60 - jpeg 60')
+    save_result("CNN", "JPEG 60", "JPEG 60", accuracy, precision)
 
     # test with MNIST test dataset
-    accuracy, precision = test(jpeg_90_model, mnist_test_loader)
-    save_result("CNN", "JPEG 90", "cifar10", accuracy, precision)
+    accuracy, precision = test(jpeg_model, cifar10_test_loader, 'jpeg 60 - original')
+    save_result("CNN", "JPEG 60", "MNIST", accuracy, precision)
