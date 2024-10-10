@@ -1,4 +1,3 @@
-from torchvision.models.vgg import model_urls
 import torchvision
 from torch.autograd import Variable
 import torch
