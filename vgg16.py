@@ -134,7 +134,7 @@ def test(model, test_loader, msg):
 # 결과 저장
 
 
-def save_result(model_name="CNN",  train_dataset=None, test_dataset=None, accuracy=None, precision=None, QF=QF):
+def save_result(model_name=model_name,  train_dataset=None, test_dataset=None, accuracy=None, precision=None, QF=QF):
     results_df = pd.DataFrame({
         'Model Name': [model_name],
         "Channel": [channels],
@@ -144,14 +144,14 @@ def save_result(model_name="CNN",  train_dataset=None, test_dataset=None, accura
         'Precision': [precision],
         'QF': [QF]
     })
-    file_path = './result.csv'
+    file_path = './results.csv'
 
     if os.path.isfile(file_path):
         results_df.to_csv(file_path, mode='a', index=False, header=False)
     else:
         results_df.to_csv(file_path, mode='w', index=False)
 
-    print("Results saved to './result.csv'")
+    print("Results saved to './results.csv'")
 
 
 # jpeg 이미지 생성
@@ -186,17 +186,17 @@ def make_jpeg_datasets(QF):
 # JPEG 데이터셋 로드
 
 
-def load_jpeg_datasets(QF, transform):
+def load_jpeg_datasets(QF, train_transform, test_trainform):
     jpeg_train_dir = f'./datasets/CIFAR10/jpeg{QF}/train'
     jpeg_test_dir = f'./datasets/CIFAR10/jpeg{QF}/test'
 
-    train_dataset = datasets.ImageFolder(jpeg_train_dir, transform=transform)
-    test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
+    train_dataset = datasets.ImageFolder(jpeg_train_dir, transform=train_transform)
+    test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=test_trainform)
 
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
-                                  num_workers=num_workers, drop_last=True)
+                                  num_workers=num_workers, pin_memory=True)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,
-                                 num_workers=num_workers, drop_last=True)
+                                 num_workers=num_workers, pin_memory=True)
 
     return train_dataset, test_dataset, train_dataloader, test_dataloader
 
@@ -237,15 +237,20 @@ def training_testing_four_cases():
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
-    transform = transforms.Compose([
+    train_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(32, 4),
         transforms.ToTensor(),
         normalize,
     ])
 
+    test_trainform = transforms.Compose([
+        transforms.ToTensor(),
+        normalize,
+    ])
+
     original_train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root='./data', train=True, transform=transforms.Compose([
+        datasets.CIFAR10(root='./datasets', train=True, transform=transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(32, 4),
             transforms.ToTensor(),
@@ -260,7 +265,7 @@ def training_testing_four_cases():
                                 weight_decay=0)
 
     original_test_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root='./data', train=False, transform=transforms.Compose([
+        datasets.CIFAR10(root='./datasets', train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             normalize,
         ])),
@@ -273,11 +278,11 @@ def training_testing_four_cases():
 
     for QF in QFs:
         # JPEG dataset 생성
-        # make_jpeg_datasets(QF)
+        make_jpeg_datasets(QF)
 
         # load JPEG  datasets
         jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
-            QF, transform)
+            QF, train_transform, test_trainform)
 
         # test with original dataset test dataset
         accuracy, precision = test(vgg16_model, original_test_loader, 'original - original')
