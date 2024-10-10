@@ -20,8 +20,8 @@ import random
 import numpy as np
 
 # TODO: GPU에 따라 다르게 설정
-# device = 'cuda' if torch.cuda.is_available() else 'cpu'
-device = torch.device('mps')
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# device = torch.device('mps')
 print(device)
 
 channels = 3
