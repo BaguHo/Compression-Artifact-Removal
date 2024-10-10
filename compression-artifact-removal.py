@@ -22,14 +22,14 @@ import numpy as np
 device = torch.device('mps')
 print(device)
 
-channels = 1
+channels = 3
 learning_rate = 0.001
-epochs = 15
+epochs = 1
 batch_size = 64
 QF = 60
 dataset_name = "CIFAR10"
 model_name = "CNN"
-num_workers = 2
+num_workers = 4
 
 # dataloader 생성 함수
 
@@ -110,7 +110,7 @@ class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
 
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(channels, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
 
@@ -326,11 +326,11 @@ if __name__ == "__main__":
     accuracy, precision = test(original_model, jpeg_test_loader, 'original - jpeg 60')
     save_result(model_name, "CIFAR10", f'JPEG {QF}', accuracy, precision)
 
-   # Tarining with JPEG dataset
+   # Tarining with JPEG datasetABC dealer.
     jpeg_model = CNN().to(device)
     # 손실함수 정의
     optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
-    # train the jpeg model
+    # train the jpeg modelYou gonna learn Looking at that. How to maintain a look at the deal Yeah. who also pulled up. into the Now you guys
     train(jpeg_model, jpeg_train_loader, criterion, optimizer)
     # save jpeg model
     save_model(jpeg_model, './models', 'jpeg_model.pth')
