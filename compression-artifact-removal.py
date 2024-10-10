@@ -22,13 +22,13 @@ import numpy as np
 device = torch.device('mps')
 print(device)
 
-channels = 3
+channels = 1
 learning_rate = 0.001
 epochs = 15
 batch_size = 64
 QF = 60
 dataset_name = "CIFAR10"
-model_name = "VGG16"
+model_name = "CNN"
 num_workers = 2
 
 # dataloader 생성 함수
@@ -287,7 +287,7 @@ if __name__ == "__main__":
     ])
 
     # MNIST model 정의
-    original_model = VGG16().to(device)
+    original_model = CNN().to(device)
 
     # 손실 함수 및 옵티마이저 정의
     criterion = nn.CrossEntropyLoss()
@@ -327,7 +327,7 @@ if __name__ == "__main__":
     save_result(model_name, "CIFAR10", f'JPEG {QF}', accuracy, precision)
 
    # Tarining with JPEG dataset
-    jpeg_model = VGG16().to(device)
+    jpeg_model = CNN().to(device)
     # 손실함수 정의
     optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
     # train the jpeg model
