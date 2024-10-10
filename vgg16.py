@@ -26,7 +26,7 @@ print(device)
 
 channels = 3
 learning_rate = 0.001
-epochs = 1
+epochs = 10
 batch_size = 64
 QF = 60
 dataset_name = "CIFAR10"
