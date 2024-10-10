@@ -254,9 +254,7 @@ def training_testing_four_cases():
         num_workers=num_workers, pin_memory=True)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(vgg16_model.parameters(), learning_rate,
-                                momentum=0,
-                                weight_decay=0)
+    optimizer = torch.optim.SGD(vgg16_model.parameters(), learning_rate, momentum=0, weight_decay=0)
 
     original_test_loader = torch.utils.data.DataLoader(
         datasets.CIFAR10(root='./datasets', train=False, transform=test_transform),
@@ -285,6 +283,8 @@ def training_testing_four_cases():
 
         # Tarining with JPEG datasetABC dealer.
         jpeg_model = models.vgg16(pretrained=True).to(device)
+
+        optimizer = torch.optim.SGD(jpeg_model.parameters(), learning_rate, momentum=0, weight_decay=0)
 
         train(jpeg_model, jpeg_train_loader, criterion, optimizer)
 
