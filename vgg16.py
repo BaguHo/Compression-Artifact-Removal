@@ -237,24 +237,19 @@ def training_testing_four_cases():
                                      std=[0.229, 0.224, 0.225])
 
     train_transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(32, 4),
+        # transforms.RandomHorizontalFlip(),
+        # transforms.RandomCrop(32, 4),
         transforms.ToTensor(),
         normalize,
     ])
 
-    test_trainform = transforms.Compose([
+    test_transform = transforms.Compose([
         transforms.ToTensor(),
         normalize,
     ])
 
     original_train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root='./datasets', train=True, transform=transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, 4),
-            transforms.ToTensor(),
-            normalize,
-        ]), download=True),
+        datasets.CIFAR10(root='./datasets', train=True, transform=train_transform, download=True),
         batch_size=batch_size, shuffle=True,
         num_workers=num_workers, pin_memory=True)
 
@@ -264,10 +259,7 @@ def training_testing_four_cases():
                                 weight_decay=0)
 
     original_test_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root='./datasets', train=False, transform=transforms.Compose([
-            transforms.ToTensor(),
-            normalize,
-        ])),
+        datasets.CIFAR10(root='./datasets', train=False, transform=test_transform),
         batch_size=batch_size, shuffle=False,
         num_workers=num_workers, pin_memory=True)
 
@@ -281,7 +273,7 @@ def training_testing_four_cases():
 
         # load JPEG  datasets
         jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
-            QF, train_transform, test_trainform)
+            QF, train_transform, test_transform)
 
         # test with original dataset test dataset
         accuracy, precision = test(vgg16_model, original_test_loader, 'original - original')
