@@ -24,7 +24,7 @@ print(device)
 
 channels = 3
 learning_rate = 0.001
-epochs = 1
+epochs = 15
 batch_size = 64
 QF = 60
 dataset_name = "CIFAR10"
@@ -270,28 +270,11 @@ def show_images(dataset, length=5):
     plt.tight_layout()
     plt.show()
 
-################################################################################################################
-################################################################################################################
+# 4가지 케이스 training & testing
 
 
-if __name__ == "__main__":
-    # TODO: 처음에 데이터 다운 받아서 JPEG 이미지 생성
-    # JPEG QF dataset 생성
-    make_jpeg_datasets(QF)
-
-    # transform 정의
-    transform = transforms.Compose([
-        transforms.Grayscale(num_output_channels=channels),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
-    ])
-
-    # MNIST model 정의
-    original_model = CNN().to(device)
-
-    # 손실 함수 및 옵티마이저 정의
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
+def training_testing_four_cases():
+    QFs = [20, 40, 60, 80]
 
     # original dataset load
     original_dataset_train = datasets.CIFAR10(root="./datasets/", train=True, transform=transforms.ToTensor(),
@@ -304,41 +287,125 @@ if __name__ == "__main__":
     original_dataset_test_loader = DataLoader(
         original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers, drop_last=True)
 
-    # load JPEG 90 datasets
-    jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
-        60, transform)
+    transform = transforms.Compose([
+        transforms.Grayscale(num_output_channels=channels),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,))
+    ])
 
-    # JPEG training dataset 출력해서 확인
-    # show_images(jpeg_train_dataset, 10)
-
-    # JPEG 90 testing dataset 출력해서 확인
-    # show_images(jpeg_test_dataset, 5)
+    # original model
+    original_model = CNN().to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
 
     # original dataset model tarining
     train(original_model, original_dataset_train_loader, criterion, optimizer)
     # save original model
     save_model(original_model, './models', 'original_model.pth')
-    # test with original dataset test dataset
-    accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
-    save_result(model_name, "CIFAR10",  "CIFAR10", accuracy, precision)
 
-    #  test with JPEG test dataset
-    accuracy, precision = test(original_model, jpeg_test_loader, 'original - jpeg 60')
-    save_result(model_name, "CIFAR10", f'JPEG {QF}', accuracy, precision)
+    for QF in QFs:
+        # JPEG dataset 생성
+        make_jpeg_datasets(QF)
 
-   # Tarining with JPEG datasetABC dealer.
-    jpeg_model = CNN().to(device)
-    # 손실함수 정의
-    optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
-    # train the jpeg modelYou gonna learn Looking at that. How to maintain a look at the deal Yeah. who also pulled up. into the Now you guys
-    train(jpeg_model, jpeg_train_loader, criterion, optimizer)
-    # save jpeg model
-    save_model(jpeg_model, './models', 'jpeg_model.pth')
+        # load JPEG  datasets
+        jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
+            QF, transform)
 
-    # Test with JPEG test dataset
-    accuracy, precision = test(jpeg_model, jpeg_test_loader, 'jpeg 60 - jpeg 60')
-    save_result(model_name, f'JPEG {QF}', f'JPEG {QF}', accuracy, precision)
+        # test with original dataset test dataset
+        accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
+        save_result(model_name, "CIFAR10",  "CIFAR10", accuracy, precision)
 
-    # test with original  test dataset
-    accuracy, precision = test(jpeg_model, original_dataset_test_loader, 'jpeg 60 - original')
-    save_result(model_name, f'JPEG {QF}', "CIFAR10", accuracy, precision)
+        #  test with JPEG test dataset
+        accuracy, precision = test(original_model, jpeg_test_loader, f'original - jpeg {QF}')
+        save_result(model_name, "CIFAR10", f'JPEG {QF}', accuracy, precision)
+
+    # Tarining with JPEG datasetABC dealer.
+        jpeg_model = CNN().to(device)
+        # 손실함수 정의
+        optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
+        # train the jpeg modelYou gonna learn Looking at that. How to maintain a look at the deal Yeah. who also pulled up. into the Now you guys
+        train(jpeg_model, jpeg_train_loader, criterion, optimizer)
+        # save jpeg model
+        save_model(jpeg_model, './models', 'jpeg_model.pth')
+
+        # Test with JPEG test dataset
+        accuracy, precision = test(jpeg_model, jpeg_test_loader, f'jpeg {QF} - jpeg {QF}')
+        save_result(model_name, f'JPEG {QF}', f'JPEG {QF}', accuracy, precision)
+
+        # test with original  test dataset
+        accuracy, precision = test(jpeg_model, original_dataset_test_loader, f'jpeg {QF} - original')
+        save_result(model_name, f'JPEG {QF}', "CIFAR10", accuracy, precision)
+
+
+################################################################################################################
+################################################################################################################
+
+if __name__ == "__main__":
+    training_testing_four_cases()
+    #     # TODO: 처음에 데이터 다운 받아서 JPEG 이미지 생성
+    #     # JPEG QF dataset 생성
+    #     make_jpeg_datasets(QF)
+
+    #     # transform 정의
+    #     transform = transforms.Compose([
+    #         transforms.Grayscale(num_output_channels=channels),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize((0.5,), (0.5,))
+    #     ])
+
+    #     # MNIST model 정의
+    #     original_model = CNN().to(device)
+
+    #     # 손실 함수 및 옵티마이저 정의
+    #     criterion = nn.CrossEntropyLoss()
+    #     optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
+
+    #     # original dataset load
+    #     original_dataset_train = datasets.CIFAR10(root="./datasets/", train=True, transform=transforms.ToTensor(),
+    #                                               target_transform=None, download=True)
+    #     original_dataset_test = datasets.CIFAR10(root="./datasets/", train=False, transform=transforms.ToTensor(),
+    #                                              target_transform=None, download=True)
+
+    #     original_dataset_train_loader = DataLoader(
+    #         original_dataset_train, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=True)
+    #     original_dataset_test_loader = DataLoader(
+    #         original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers, drop_last=True)
+
+    #     # load JPEG 90 datasets
+    #     jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
+    #         60, transform)
+
+    #     # JPEG training dataset 출력해서 확인
+    #     # show_images(jpeg_train_dataset, 10)
+
+    #     # JPEG 90 testing dataset 출력해서 확인
+    #     # show_images(jpeg_test_dataset, 5)
+
+    #     # original dataset model tarining
+    #     train(original_model, original_dataset_train_loader, criterion, optimizer)
+    #     # save original model
+    #     save_model(original_model, './models', 'original_model.pth')
+    #     # test with original dataset test dataset
+    #     accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
+    #     save_result(model_name, "CIFAR10",  "CIFAR10", accuracy, precision)
+
+    #     #  test with JPEG test dataset
+    #     accuracy, precision = test(original_model, jpeg_test_loader, 'original - jpeg 60')
+    #     save_result(model_name, "CIFAR10", f'JPEG {QF}', accuracy, precision)
+
+    #    # Tarining with JPEG datasetABC dealer.
+    #     jpeg_model = CNN().to(device)
+    #     # 손실함수 정의
+    #     optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
+    #     # train the jpeg modelYou gonna learn Looking at that. How to maintain a look at the deal Yeah. who also pulled up. into the Now you guys
+    #     train(jpeg_model, jpeg_train_loader, criterion, optimizer)
+    #     # save jpeg model
+    #     save_model(jpeg_model, './models', 'jpeg_model.pth')
+
+    #     # Test with JPEG test dataset
+    #     accuracy, precision = test(jpeg_model, jpeg_test_loader, 'jpeg 60 - jpeg 60')
+    #     save_result(model_name, f'JPEG {QF}', f'JPEG {QF}', accuracy, precision)
+
+    #     # test with original  test dataset
+    #     accuracy, precision = test(jpeg_model, original_dataset_test_loader, 'jpeg 60 - original')
+    #     save_result(model_name, f'JPEG {QF}', "CIFAR10", accuracy, precision)
