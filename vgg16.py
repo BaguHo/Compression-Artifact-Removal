@@ -26,7 +26,7 @@ print(device)
 
 channels = 3
 learning_rate = 0.001
-epochs = 10
+epochs = 15
 batch_size = 64
 QF = 60
 dataset_name = "CIFAR10"
@@ -279,7 +279,7 @@ def training_testing_four_cases():
 
         #  test with JPEG test dataset
         accuracy, precision = test(vgg16_model, jpeg_test_loader, f'original - jpeg {QF}')
-        save_result(model_name, "CIFAR10", f'JPEG', accuracy, precision)
+        save_result(model_name, "CIFAR10", f'JPEG', accuracy, precision, QF)
 
         # Tarining with JPEG datasetABC dealer.
         jpeg_model = models.vgg16(pretrained=True).to(device)
@@ -293,11 +293,11 @@ def training_testing_four_cases():
 
         # Test with JPEG test dataset
         accuracy, precision = test(jpeg_model, jpeg_test_loader, f'jpeg {QF} - jpeg {QF}')
-        save_result(model_name, f'JPEG', f'JPEG', accuracy, precision)
+        save_result(model_name, f'JPEG', f'JPEG', accuracy, precision, QF)
 
         # test with original  test dataset
         accuracy, precision = test(jpeg_model, original_test_loader, f'jpeg {QF} - original')
-        save_result(model_name, f'JPEG', "CIFAR10", accuracy, precision)
+        save_result(model_name, f'JPEG', "CIFAR10", accuracy, precision, QF)
 
 
 ################################################################################################################
