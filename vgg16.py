@@ -31,29 +31,12 @@ epochs = 1
 batch_size = 64
 QF = 60
 dataset_name = "CIFAR10"
-model_name = "CNN"
+model_name = "VGG16"
 num_workers = 4
 
-# dataloader 생성 함수
-
-
-# def set_dataloader(train_dataset_path, test_dataset_path):
-#     transform = transforms.Compose([
-#         transforms.Grayscale(num_output_channels=3),
-#         transforms.ToTensor(),
-#         transforms.Normalize((0.5,), (0.5,))
-#     ])
-
-#     train_dataset = datasets.ImageFolder(train_dataset_path, transform=transform)
-#     test_dataset = datasets.ImageFolder(test_dataset_path, transform=transform)
-
-#     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-#     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-#     return train_loader, test_loader
-
-
 # 디렉토리 생성
+
+
 def makedir(path):
     if not os.path.exists(path):
         os.makedirs(path)
@@ -73,31 +56,6 @@ def save_model(model, path, filename):
 
 def set_vgg16():
     vgg16_model = models.vgg16(pretrained=True).to(device)
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-    train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root='./data', train=True, transform=transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, 4),
-            transforms.ToTensor(),
-            normalize,
-        ]), download=True),
-        batch_size=batch_size, shuffle=True,
-        num_workers=num_workers, pin_memory=True)
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(vgg16_model.parameters(), learning_rate,
-                                momentum=0,
-                                weight_decay=0)
-    test_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root='./data', train=False, transform=transforms.Compose([
-            transforms.ToTensor(),
-            normalize,
-        ])),
-        batch_size=batch_size, shuffle=False,
-        num_workers=num_workers, pin_memory=True)
-
-    return vgg16_model, train_loader, test_loader, criterion, optimizer
 
 
 # CNN model
@@ -274,55 +232,66 @@ def show_images(dataset, length=5):
 def training_testing_four_cases():
     QFs = [20, 40, 60, 80]
 
-    # original dataset load
-    original_dataset_train = datasets.CIFAR10(root="./datasets/", train=True, transform=transforms.ToTensor(),
-                                              target_transform=None, download=True)
-    original_dataset_test = datasets.CIFAR10(root="./datasets/", train=False, transform=transforms.ToTensor(),
-                                             target_transform=None, download=True)
+    vgg16_model = models.vgg16(pretrained=True).to(device)
 
-    original_dataset_train_loader = DataLoader(
-        original_dataset_train, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=True)
-    original_dataset_test_loader = DataLoader(
-        original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers, drop_last=True)
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
 
     transform = transforms.Compose([
-        transforms.Grayscale(num_output_channels=channels),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(32, 4),
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
+        normalize,
     ])
 
-    # original model
-    original_model = CNN().to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
+    original_train_loader = torch.utils.data.DataLoader(
+        datasets.CIFAR10(root='./data', train=True, transform=transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(32, 4),
+            transforms.ToTensor(),
+            normalize,
+        ]), download=True),
+        batch_size=batch_size, shuffle=True,
+        num_workers=num_workers, pin_memory=True)
 
-    # original dataset model tarining
-    train(original_model, original_dataset_train_loader, criterion, optimizer)
-    # save original model
-    save_model(original_model, './models', 'original_model.pth')
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(vgg16_model.parameters(), learning_rate,
+                                momentum=0,
+                                weight_decay=0)
+
+    original_test_loader = torch.utils.data.DataLoader(
+        datasets.CIFAR10(root='./data', train=False, transform=transforms.Compose([
+            transforms.ToTensor(),
+            normalize,
+        ])),
+        batch_size=batch_size, shuffle=False,
+        num_workers=num_workers, pin_memory=True)
+
+    train(vgg16_model, original_train_loader, criterion, optimizer)
+
+    save_model(vgg16_model, './models', 'vgg16_original_model.pth')
 
     for QF in QFs:
         # JPEG dataset 생성
-        make_jpeg_datasets(QF)
+        # make_jpeg_datasets(QF)
 
         # load JPEG  datasets
         jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
             QF, transform)
 
         # test with original dataset test dataset
-        accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
+        accuracy, precision = test(vgg16_model, original_test_loader, 'original - original')
         save_result(model_name, "CIFAR10",  "CIFAR10", accuracy, precision, QF)
 
         #  test with JPEG test dataset
-        accuracy, precision = test(original_model, jpeg_test_loader, f'original - jpeg {QF}')
+        accuracy, precision = test(vgg16_model, jpeg_test_loader, f'original - jpeg {QF}')
         save_result(model_name, "CIFAR10", f'JPEG', accuracy, precision)
 
-    # Tarining with JPEG datasetABC dealer.
-        jpeg_model = CNN().to(device)
-        # 손실함수 정의
-        optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
-        # train the jpeg modelYou gonna learn Looking at that. How to maintain a look at the deal Yeah. who also pulled up. into the Now you guys
+        # Tarining with JPEG datasetABC dealer.
+        jpeg_model = models.vgg16(pretrained=True).to(device)
+
         train(jpeg_model, jpeg_train_loader, criterion, optimizer)
+
         # save jpeg model
         save_model(jpeg_model, './models', 'jpeg_model.pth')
 
@@ -331,7 +300,7 @@ def training_testing_four_cases():
         save_result(model_name, f'JPEG', f'JPEG', accuracy, precision)
 
         # test with original  test dataset
-        accuracy, precision = test(jpeg_model, original_dataset_test_loader, f'jpeg {QF} - original')
+        accuracy, precision = test(jpeg_model, original_test_loader, f'jpeg {QF} - original')
         save_result(model_name, f'JPEG', "CIFAR10", accuracy, precision)
 
 
@@ -339,78 +308,4 @@ def training_testing_four_cases():
 ################################################################################################################
 
 if __name__ == "__main__":
-    # training_testing_four_cases()
-    # make_jpeg_datasets(100)
-    # make_jpeg_datasets(20)
-    # make_jpeg_datasets(40)
-    # make_jpeg_datasets(60)
-    # make_jpeg_datasets(80)
-
-    #     # TODO: 처음에 데이터 다운 받아서 JPEG 이미지 생성
-    #     # JPEG QF dataset 생성
-    #     make_jpeg_datasets(QF)
-
-    # transform 정의
-    transform = transforms.Compose([
-        transforms.Grayscale(num_output_channels=channels),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
-    ])
-
-    # original model 정의
-    # original_model = CNN().to(device)
-    origina_model = Custom_VGG(ipt_size=(32, 32), pretrained=False, vgg_type='vgg16_bn', num_classes=10).to(device)
-
-    # 손실 함수 및 옵티마이저 정의
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
-
-    # original dataset load
-    original_dataset_train = datasets.CIFAR10(root="./datasets/", train=True, transform=transforms.ToTensor(),
-                                              target_transform=None, download=True)
-    original_dataset_test = datasets.CIFAR10(root="./datasets/", train=False, transform=transforms.ToTensor(),
-                                             target_transform=None, download=True)
-
-    original_dataset_train_loader = DataLoader(
-        original_dataset_train, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=True)
-    original_dataset_test_loader = DataLoader(
-        original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers, drop_last=True)
-
-    # # load JPEG 90 datasets
-    # jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
-    #     QF, transform)
-
-    # JPEG training dataset 출력해서 확인
-    # show_images(jpeg_train_dataset, 10)
-
-    # JPEG 90 testing dataset 출력해서 확인
-    # show_images(jpeg_test_dataset, 5)
-
-    # original dataset model tarining
-    train(original_model, original_dataset_train_loader, criterion, optimizer)
-    # save original model
-    save_model(original_model, './models', 'original_model.pth')
-    # test with original dataset test dataset
-    accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
-    save_result(model_name, "CIFAR10",  "CIFAR10", accuracy, precision)
-
-    #     #  test with JPEG test dataset
-    #     accuracy, precision = test(original_model, jpeg_test_loader, 'original - jpeg 60')
-    #     save_result(model_name, "CIFAR10", f'JPEG {QF}', accuracy, precision)
-
-    #    # Tarining with JPEG datasetABC dealer.
-    #     jpeg_model = CNN().to(device)
-    #     # 손실함수 정의
-    #     optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
-    #     # train the jpeg modelYou gonna learn Looking at that. How to maintain a look at the deal Yeah. who also pulled up. into the Now you guys
-    #     train(jpeg_model, jpeg_train_loader, criterion, optimizer)
-    #     # save jpeg model
-    #     save_model(jpeg_model, './models', 'jpeg_model.pth')
-
-    #     # Test with JPEG test dataset
-    #     accuracy, precision = test(jpeg_model, jpeg_test_loader, 'jpeg 60 - jpeg 60')
-    #     save_result(model_name, f'JPEG {QF}', f'JPEG {QF}', accuracy, precision)
-
-    #     # test with original  test dataset
-    #     accuracy, precision = test(jpeg_model, original_dataset_test_loader, 'jpeg 60 - original')
-    #     save_result(model_name, f'JPEG {QF}', "CIFAR10", accuracy, precision)
+    training_testing_four_cases()
