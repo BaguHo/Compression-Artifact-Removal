@@ -229,7 +229,7 @@ def show_images(dataset, length=5):
 
 
 def training_testing_four_cases():
-    QFs = [20, 40, 60, 80]
+    QFs = [20, 40, 60, 80, 100]
 
     vgg16_model = models.vgg16(pretrained=True).to(device)
 
