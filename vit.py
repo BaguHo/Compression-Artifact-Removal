@@ -1,4 +1,3 @@
-from torchvision.models.vgg import model_urls
 import torchvision
 from torch.autograd import Variable
 import torch
@@ -20,16 +19,17 @@ import cv2
 import random
 import numpy as np
 import time
-from sklearn import train_test_split
+from sklearn.model_selection import train_test_split
+from timm import create_model
 
 # TODO: GPU에 따라 다르게 설정
-# device = 'cuda' if torch.cuda.is_available() else 'cpu'
-device = torch.device('mps')
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# device = torch.device('mps')
 print(device)
 
 channels = 1
 learning_rate = 0.001
-epochs = 5
+epochs = 1
 batch_size = 64
 QF = 60
 dataset_name = "Tufts Face Database"
@@ -63,7 +63,8 @@ def train(model, train_loader, criterion, optimizer):
     for epoch in range(epochs):
         running_loss = 0.0
         for images, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False):
-            images, labels = images.to(device), labels.to(device)
+            # if len(images.shape) == 3:
+            #     images = images.unsqueeze(0)
 
             optimizer.zero_grad()
 
@@ -109,7 +110,7 @@ def test(model, test_loader, msg):
 # 결과 저장
 
 
-def save_result(model_name="CNN",  train_dataset=None, test_dataset=None, accuracy=None, precision=None, QF=QF):
+def save_result(model_name=model_name,  train_dataset=None, test_dataset=None, accuracy=None, precision=None, QF=QF):
     results_df = pd.DataFrame({
         'Model Name': [model_name],
         "Channel": [channels],
@@ -140,7 +141,13 @@ def make_jpeg_datasets(QF):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,))
+        # transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
+
+    # transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+    # ])
 
     # original dataset load
     original_dataset_path = './datasets/thermal_cropped_images'
@@ -231,7 +238,7 @@ class Encoder(nn.Module):
 
 
 class ViT(nn.Module):
-    def __init__(self, in_channels=1, num_encoders=6, embed_size=768, img_size=(128, 128), patch_size=16, num_classes=10, num_heads=4):
+    def __init__(self, in_channels=3, num_encoders=6, embed_size=768, img_size=(128, 128), patch_size=16, num_classes=10, num_heads=4):
         super().__init__()
         self.img_size = img_size
         self.patch_size = patch_size
@@ -269,20 +276,40 @@ def training_testing():
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,))
+        # transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
+
+    # transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+    # ])
 
     # original dataset load
     original_dataset_path = './datasets/thermal_cropped_images'
     original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
     original_dataset_train, original_dataset_test = train_test_split(original_dataset, test_size=0.2, random_state=42)
 
+    original_dataset_train_loader = DataLoader(
+        original_dataset_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    original_dataset_test_loader = DataLoader(
+        original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+    train_sample, _ = next(iter(original_dataset_train_loader))
+    print(f'train_shape: {train_sample.shape}')
+
+    test_sample, _ = next(iter(original_dataset_test_loader))
+    print(f'test_shape: {test_sample.shape}')
+
     # original model
     original_model = ViT().to(device)
+    # original_model = create_model('vit_base_patch16_224', pretrained=False, num_classes=5, img_size=[128, 128])
+    # original_model.patch_embed.proj = nn.Conv2d(3, original_model.embed_dim, kernel_size=(16, 16), stride=(8, 8))
+
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
 
     # original dataset model tarining
-    train(original_model, original_dataset_train, criterion, optimizer)
+    train(original_model, original_dataset_train_loader, criterion, optimizer)
 
     # save original model
     save_model(original_model, './models', 'original_model.pth')
@@ -295,15 +322,18 @@ def training_testing():
         _, _,  jpeg_train, jpeg_test = load_jpeg_datasets(QF, transform)
 
         # test with original dataset test dataset
-        accuracy, precision = test(original_model, original_dataset_test, 'original - original')
+        accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
         save_result(model_name, dataset_name,  dataset_name, accuracy, precision, QF)
 
         #  test with JPEG test dataset
         accuracy, precision = test(original_model, jpeg_test, f'original - jpeg {QF}')
         save_result(model_name, dataset_name, f'JPEG', accuracy, precision)
 
-        # Tarining with JPEG datasetABC dealer.
+        # Tarining with JPEG dataset.
         jpeg_model = ViT().to(device)
+        # jpeg_model = create_model('vit_base_patch16_224', pretrained=False, num_classes=5, img_size=[128, 128])
+
+        # jpeg_model.patch_embed.proj = nn.Conv2d(3, jpeg_model.embed_dim, kernel_size=(16, 16), stride=(8, 8))
 
         # 손실함수 정의
         optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
