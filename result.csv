@@ -1,0 +1,5 @@
+Model Name,Channel,Train Dataset,Test Dataset,Accuracy,Precision,QF
+resnet18,1,Tufts Face Database,Tufts Face Database,72.97297297297297,0.7512063492063492,100
+resnet18,1,Tufts Face Database,JPEG,72.22222222222223,0.7537053795877325,
+resnet50.a1_in1k,1,Tufts Face Database,Tufts Face Database,65.76576576576576,0.6918257105213627,100
+resnet50.a1_in1k,1,Tufts Face Database,JPEG,64.81481481481481,0.6900610046390098,

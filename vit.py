@@ -21,10 +21,10 @@ import timm
 
 channels = 1
 learning_rate = 0.001
-epochs = 5
-batch_size = 64
+epochs = 200
+batch_size = 16
 dataset_name = "Tufts Face Database"
-model_name = "ViT"
+model_name = "resnet50.a1_in1k"
 num_workers = 2
 image_type = 'RGB'
 
@@ -300,7 +300,7 @@ def training_testing():
 
     # original model
     # original_model = ViT().to(device)
-    original_model = timm.create_model('resnet18', pretrained=True, num_classes=5).to(device)
+    original_model = timm.create_model('resnet50.a1_in1k', pretrained=True, num_classes=5).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
@@ -333,7 +333,7 @@ def training_testing():
 
         # Tarining with JPEG dataset.
         # jpeg_model = ViT().to(device)
-        jpeg_model = timm.create_model('resnet18', pretrained=True, num_classes=5).to(device)
+        jpeg_model = timm.create_model('resnet50.a1_in1k', pretrained=True, num_classes=5).to(device)
 
         # jpeg_model = create_model('vit_base_patch16_224', pretrained=False, num_classes=5, img_size=[128, 128])
 
@@ -377,9 +377,9 @@ if __name__ == "__main__":
     # make_jpeg_datasets(100)
 
     # gpu 설정
-    # device = 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
+    device = 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
     # print(device)
-    device = 'cpu'
+    # device = 'cpu'
     print(device)
 
     training_testing()
