@@ -17,11 +17,11 @@ import os
 import numpy as np
 import time
 from sklearn.model_selection import train_test_split
-
+import timm
 
 channels = 1
 learning_rate = 0.001
-epochs = 1
+epochs = 5
 batch_size = 64
 dataset_name = "Tufts Face Database"
 model_name = "ViT"
@@ -110,7 +110,7 @@ def save_result(model_name=model_name,  train_dataset=None, test_dataset=None, a
         'Precision': [precision],
         'QF': [QF]
     })
-    file_path = './result.csv'
+    file_path = os.path.join(os.getcwd(), 'result.csv')
 
     if os.path.isfile(file_path):
         results_df.to_csv(file_path, mode='a', index=False, header=False)
@@ -122,14 +122,14 @@ def save_result(model_name=model_name,  train_dataset=None, test_dataset=None, a
 
 # jpeg 이미지 생성
 def make_jpeg_datasets(QF):
-    train_output_dir = f'./datasets/{dataset_name}/jpeg{QF}/train/'
-    test_output_dir = f'./datasets/{dataset_name}/jpeg{QF}/test/'
+    train_output_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'train')
+    test_output_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'test')
 
     makedir(train_output_dir)
     makedir(test_output_dir)
 
     # original dataset load
-    original_dataset_path = './datasets/thermal_cropped_images'
+    original_dataset_path = os.path.join(os.getcwd(), 'datasets', 'thermal_cropped_images')
     original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
     original_dataset_train, original_dataset_test = train_test_split(original_dataset, test_size=0.2, random_state=42)
 
@@ -172,8 +172,8 @@ def make_jpeg_datasets(QF):
 
 
 def load_jpeg_datasets(QF, transform):
-    jpeg_train_dir = f'./datasets/{dataset_name}/jpeg{QF}/train'
-    jpeg_test_dir = f'./datasets/{dataset_name}/jpeg{QF}/test'
+    jpeg_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'train')
+    jpeg_test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'test')
 
     train_dataset = datasets.ImageFolder(jpeg_train_dir, transform=transform)
     test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
@@ -281,7 +281,7 @@ def training_testing():
     QFs = [100, 80, 60, 40, 20]
 
     # original dataset load
-    original_dataset_path = './datasets/thermal_cropped_images'
+    original_dataset_path = os.path.join(os.getcwd(), 'datasets', 'thermal_cropped_images')
     original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
     original_dataset_train, original_dataset_test = train_test_split(original_dataset, test_size=0.2, random_state=42)
 
@@ -299,7 +299,8 @@ def training_testing():
     print(f'test labels:  {test_labels}')
 
     # original model
-    original_model = ViT().to(device)
+    # original_model = ViT().to(device)
+    original_model = timm.create_model('resnet18', pretrained=True, num_classes=5).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
@@ -310,7 +311,7 @@ def training_testing():
 
     # save original model
     print('save original model')
-    save_model(original_model, './models', 'original_model.pth')
+    save_model(original_model, os.path.join(os.getcwd(), 'models'), 'original_model.pth')
 
     for QF in QFs:
         # JPEG dataset 생성
@@ -331,7 +332,9 @@ def training_testing():
         save_result(model_name, dataset_name, f'JPEG', accuracy, precision)
 
         # Tarining with JPEG dataset.
-        jpeg_model = ViT().to(device)
+        # jpeg_model = ViT().to(device)
+        jpeg_model = timm.create_model('resnet18', pretrained=True, num_classes=5).to(device)
+
         # jpeg_model = create_model('vit_base_patch16_224', pretrained=False, num_classes=5, img_size=[128, 128])
 
         # jpeg_model.patch_embed.proj = nn.Conv2d(3, jpeg_model.embed_dim, kernel_size=(16, 16), stride=(8, 8))
@@ -345,7 +348,7 @@ def training_testing():
         train(jpeg_model, jpeg_train_loader, criterion, optimizer)
 
         # save jpeg model
-        save_model(jpeg_model, './models', 'jpeg_model.pth')
+        save_model(jpeg_model, os.path.join(os.getcwd(), 'models'), 'jpeg_model.pth')
 
         # Test with JPEG test dataset
         print('test jpeg model with JPEG test dataset')
