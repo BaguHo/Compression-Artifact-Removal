@@ -1,5 +1,10 @@
-Model Name,Channel,Train Dataset,Test Dataset,Accuracy,Precision,QF
-resnet18,1,Tufts Face Database,Tufts Face Database,72.97297297297297,0.7512063492063492,100
-resnet18,1,Tufts Face Database,JPEG,72.22222222222223,0.7537053795877325,
-resnet50.a1_in1k,1,Tufts Face Database,Tufts Face Database,65.76576576576576,0.6918257105213627,100
-resnet50.a1_in1k,1,Tufts Face Database,JPEG,64.81481481481481,0.6900610046390098,
+mobilenetv3_large_100,1,Tufts Face Database,Tufts Face Database,65.76576576576576,0.6720064791838984,220,4,100
+mobilenetv3_large_100,1,Tufts Face Database,JPEG,54.629629629629626,0.5864506523330053,220,4,
+mobilenetv3_large_100,1,Tufts Face Database,Tufts Face Database,67.56756756756756,0.6943988175567123,250,4,100
+mobilenetv3_large_100,1,Tufts Face Database,JPEG,67.5925925925926,0.7032960228625864,250,4,
+resnet50,1,Tufts Face Database,Tufts Face Database,66.66666666666667,0.6797435897435896,250,4,100
+resnet50,1,Tufts Face Database,JPEG,69.44444444444444,0.7329213688871133,250,4,
+resnet50.a1_in1k,1,Tufts Face Database,Tufts Face Database,61.26126126126126,0.6401790450928383,230,2,100
+resnet50.a1_in1k,1,Tufts Face Database,JPEG,56.36363636363637,0.5852978600347021,230,2,
+resnet18.a1_in1k,1,Tufts Face Database,Tufts Face Database,65.76576576576576,0.6803225806451613,200,2,100
+resnet18.a1_in1k,1,Tufts Face Database,JPEG,57.27272727272727,0.631045751633987,200,2,
