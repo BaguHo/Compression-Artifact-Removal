@@ -4,14 +4,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib
+
+matplotlib.use('TKAgg')
+
 
 df = pd.read_csv('./results.csv')
 
-cifar10_cifar10 = df[(df['Train Dataset'] == 'CIFAR10') & (
-    df['Test Dataset'] == 'CIFAR10') & (df['Model Name'] == 'VGG16')]
-jpeg_jpeg = df[(df['Train Dataset'] == 'JPEG') & (df['Test Dataset'] == 'JPEG') & (df['Model Name'] == 'VGG16')]
-cifar10_jpeg = df[(df['Train Dataset'] == 'CIFAR10') & (df['Test Dataset'] == 'JPEG') & (df['Model Name'] == 'VGG16')]
-jpeg_cifar10 = df[(df['Train Dataset'] == 'JPEG') & (df['Test Dataset'] == 'CIFAR10') & (df['Model Name'] == 'VGG16')]
+dataset_name_1 = 'Tufts Face Database'
+dataset_name_2 = 'JPEG'
+model_name = 'resnet50'
+
+cifar10_cifar10 = df[(df['Train Dataset'] == dataset_name_1) & (df['Test Dataset'] == dataset_name_1) & (df['Model Name'] == model_name)]
+jpeg_jpeg = df[(df['Train Dataset'] == dataset_name_2) & (df['Test Dataset'] == dataset_name_2) & (df['Model Name'] == model_name)]
+cifar10_jpeg = df[(df['Train Dataset'] == dataset_name_1) & (df['Test Dataset'] == dataset_name_2) & (df['Model Name'] == model_name)]
+jpeg_cifar10 = df[(df['Train Dataset'] == dataset_name_2) & (df['Test Dataset'] == dataset_name_1) & (df['Model Name'] == model_name)]
 
 plt.figure(figsize=(10, 6))
 a = np.arange(0, 100, 20)

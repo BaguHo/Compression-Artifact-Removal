@@ -21,10 +21,10 @@ import timm
 
 channels = 1
 learning_rate = 0.001
-epochs = 200
-batch_size = 2
-dataset_name = "Tufts Face Database"
-model_name = "resnet18.a1_in1k"
+epochs = 120
+batch_size = 4
+dataset_name = "compressed_video_enhancement"
+model_name = "resnet50"
 num_workers = 2
 image_type = 'RGB'
 
@@ -302,7 +302,7 @@ def training_testing():
 
     # original model
     # original_model = ViT().to(device)
-    original_model = timm.create_model('resnet18.a1_in1k', pretrained=True, num_classes=5).to(device)
+    original_model = timm.create_model('resnet50', pretrained=True, num_classes=5).to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
@@ -326,16 +326,16 @@ def training_testing():
 
         # test with original dataset test dataset
         accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
-        save_result(model_name, dataset_name,  dataset_name, accuracy, precision, QF)
+        save_result(model_name, dataset_name,  dataset_name, accuracy, precision, QF=QF)
 
         #  test with JPEG test dataset
         print('test original model with JPEG test dataset')
         accuracy, precision = test(original_model, jpeg_test_loader, f'original - jpeg {QF}')
-        save_result(model_name, dataset_name, f'JPEG', accuracy, precision)
+        save_result(model_name, dataset_name, f'JPEG', accuracy, precision, QF=QF)
 
         # Tarining with JPEG dataset.
         # jpeg_model = ViT().to(device)
-        jpeg_model = timm.create_model('resnet18.a1_in1k', pretrained=True, num_classes=5).to(device)
+        jpeg_model = timm.create_model('resnet50', pretrained=True, num_classes=5).to(device)
 
         # jpeg_model = create_model('vit_base_patch16_224', pretrained=False, num_classes=5, img_size=[128, 128])
 
@@ -355,12 +355,12 @@ def training_testing():
         # Test with JPEG test dataset
         print('test jpeg model with JPEG test dataset')
         accuracy, precision = test(jpeg_model, jpeg_test_loader, f'jpeg {QF} - jpeg {QF}')
-        save_result(model_name, f'JPEG', f'JPEG', accuracy, precision)
+        save_result(model_name, f'JPEG', f'JPEG', accuracy, precision, QF=QF)
 
         # test with original  test dataset
         print('test jpeg model with original  test dataset')
         accuracy, precision = test(jpeg_model, original_dataset_test_loader, f'jpeg {QF} - original')
-        save_result(model_name, f'JPEG', dataset_name, accuracy, precision)
+        save_result(model_name, f'JPEG', dataset_name, accuracy, precision, QF=QF)
         print('#############################################################################')
 
 
@@ -372,8 +372,8 @@ if __name__ == "__main__":
     # transform 정의
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.RandomRotation([-30, 30]),
-        transforms.RandomHorizontalFlip(),
+        # transforms.RandomRotation([-30, 30]),
+        # transforms.RandomHorizontalFlip(),
     ])
 
     # make_jpeg_datasets(100)
