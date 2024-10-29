@@ -18,37 +18,28 @@ import numpy as np
 import time
 from sklearn.model_selection import train_test_split
 import timm
-import time
-import wget
 
 channels = 1
 learning_rate = 0.001
-epochs = 100
+epochs = 70
 batch_size = 4
-dataset_name = "Tufts_Face_Database"
-model_list = ['efficientnet_b3', 'resent18', 'resnet50', 'resnet101', 'mobilenetv2', 'vgg19', 'resnext50_32x4d', 'resnext101_32x4d', 'inception_v3']
-num_workers = 3
+# TODO: 변경 필요
+dataset_name = "compressed_video_enhancement"
+model_names = ['mobilenetv2_100', 'vgg19', 'efficientnet_b3', 'resnext50_32x4d', 'resnext101_32x4d', 'inception_v3', 'resnet50', 'resnet101', 'resnet18']
+model_name = "efficientnetv2_rw_m.agc_in1k"
+num_workers = 2
 image_type = 'RGB'
 
 # 디렉토리 생성
+
+
 def makedir(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-# Download and unzip the dataset
-def download_dataset():
-    # load the dataset
-    file_name = 'thermal_crroped_images'
-    url = f'wget –no-check-certificate ‘https://docs.google.com/uc?export=download&id=14VBOjguAx_j0TE-X_i0PchCIMymgrM0B’ -O {file_name}'
-    output_path = './datasets'
-
-    if not os.path.exist(os.path.join(output_path, file_name)):
-        wget.download(url, dest_path)
-
-        # unzip the dataset
-        os.system('unzip ' + file_name + '-d '+ output_path)
-
 # save model
+
+
 def save_model(model, path, filename):
     makedir(path)
 
@@ -57,6 +48,8 @@ def save_model(model, path, filename):
     print(f"Model saved to {model_path}")
 
 # model training
+
+
 def train(model, train_loader, criterion, optimizer):
     model.train()
 
@@ -107,7 +100,9 @@ def test(model, test_loader, msg):
     return accuracy, precision_avg
 
 # save result
-def save_result(model_name=None,  train_dataset=None, test_dataset=None, accuracy=None, precision=None, epochs=None, batch_size=None, QF=None):
+
+
+def save_result(model_name=model_name,  train_dataset=None, test_dataset=None, accuracy=None, precision=None, QF=None):
     results_df = pd.DataFrame({
         'Model Name': [model_name],
         "Channel": [channels],
@@ -177,6 +172,9 @@ def make_jpeg_datasets(QF):
     #     image.convert(image_type).save(output_file_path, 'JPEG', quality=QF)
 
 # JPEG 데이터셋 로드
+# TODO: dataset에  따라 변경 필요함
+
+
 def load_jpeg_datasets(QF, transform):
     jpeg_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'train')
     jpeg_test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'test')
@@ -225,7 +223,64 @@ def show_images(dataset, dataloader, length=5):
         imshow(images[i], labels[i].item())
 
 
-# train and test the models for each QF
+# ViT 모델 정의
+
+
+class Encoder(nn.Module):
+    def __init__(self, embed_size=768, num_heads=3, dropout=0.1):
+        super().__init__()
+        self.ln1 = nn.LayerNorm(embed_size)
+        self.attention = nn.MultiheadAttention(embed_size, num_heads, dropout, batch_first=True)
+        self.ln2 = nn.LayerNorm(embed_size)
+        self.ff = nn.Sequential(
+            nn.Linear(embed_size, 4 * embed_size),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(4 * embed_size, embed_size),
+            nn.Dropout(dropout)
+        )
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        x = self.ln1(x)
+        x = x + self.attention(x, x, x)[0]
+        x = x + self.ff(self.ln2(x))
+        return x
+
+
+class ViT(nn.Module):
+    def __init__(self, in_channels=3, num_encoders=6, embed_size=768, img_size=(128, 128), patch_size=16, num_classes=5, num_heads=4):
+        super().__init__()
+        self.img_size = img_size
+        self.patch_size = patch_size
+        num_tokens = (img_size[0]*img_size[1])//(patch_size**2)
+        self.class_token = nn.Parameter(torch.randn((embed_size,)), requires_grad=True)
+        self.patch_embedding = nn.Linear(in_channels*patch_size**2, embed_size)
+        self.pos_embedding = nn.Parameter(torch.randn((num_tokens+1, embed_size)), requires_grad=True)
+        self.encoders = nn.ModuleList([
+            Encoder(embed_size=embed_size, num_heads=num_heads) for _ in range(num_encoders)
+        ])
+        self.mlp_head = nn.Sequential(
+            nn.LayerNorm(embed_size),
+            nn.Linear(embed_size, num_classes)
+        )
+
+    def forward(self, x):
+        batch_size, channel_size = x.shape[:2]
+        patches = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
+        patches = patches.contiguous().view(x.size(0), -1, channel_size*self.patch_size*self.patch_size)
+        x = self.patch_embedding(patches)
+        class_token = self.class_token.unsqueeze(0).repeat(batch_size, 1, 1)
+        x = torch.cat([class_token, x], dim=1)
+        x = x + self.pos_embedding.unsqueeze(0)
+        for encoder in self.encoders:
+            x = encoder(x)
+        x = x[:, 0, :].squeeze()
+        x = self.mlp_head(x)
+        return x
+
+
+# training & testing for each QF
 def training_testing():
     QFs = [100, 80, 60, 40, 20]
 
@@ -239,94 +294,120 @@ def training_testing():
     original_dataset_test_loader = DataLoader(
         original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    # JPEG dataset 생성
-    print('make jpeg dataset')
-    print('#############################################################################')
-    for QF in QFs:
-        make_jpeg_datasets(QF)
+    train_sample, train_labels = next(iter(original_dataset_train_loader))
+    print(f'train_shape: {train_sample.shape}')
+    print(f'train labels:  {train_labels}')
 
-    # check the shape of dataset
-    # train_sample, train_labels = next(iter(original_dataset_train_loader))
-    # print(f'train_shape: {train_sample.shape}')
-    # print(f'train labels:  {train_labels}')
+    test_sample, test_labels = next(iter(original_dataset_test_loader))
+    print(f'test_shape: {test_sample.shape}')
+    print(f'test labels:  {test_labels}')
 
-    # test_sample, test_labels = next(iter(original_dataset_test_loader))
-    # print(f'test_shape: {test_sample.shape}')
-    # print(f'test labels:  {test_labels}')
+    # original model
+    # original_model = ViT().to(device)
 
-    for current_model_name in model_list:
-        print(f'[Current Model: {current_model_name}]')
+    for i in range(len(model_names)):
+        current_model_name = models_names[i]
         original_model = timm.create_model(current_model_name, pretrained=True, num_classes=5).to(device)
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
 
-        accuracies = [0.0] * 4
-        pricisions = [0.0] * 4
+        print(f'[Current Model: {current_model_name}]')
 
-        for _ in range(10):
-            # original dataset model tarining
-            print('[train the original model]')
-            train(original_model, original_dataset_train_loader, criterion, optimizer)
+        # original dataset model tarining
+        print('[train the original model]')
+        train(original_model, original_dataset_train_loader, criterion, optimizer)
+
+        # save original model
+        print('save original model')
+        save_model(original_model, os.path.join(os.getcwd(), 'models'), 'original_model.pth')
+
+        for QF in QFs:
+            # JPEG dataset 생성
+            print('make jpeg dataset')
+            print('#############################################################################')
+            make_jpeg_datasets(QF)
+
+            # load JPEG  datasets
+            jpeg_train_dataset, jpeg_test_dataset,  jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(QF, transform)
+
+            # test with original dataset test dataset
+            accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
+            save_result(model_name, dataset_name,  dataset_name, accuracy, precision, QF=QF)
+
+            #  test with JPEG test dataset
+            print('test original model with JPEG test dataset')
+            accuracy, precision = test(original_model, jpeg_test_loader, f'original - jpeg {QF}')
+            save_result(model_name, dataset_name, f'JPEG', accuracy, precision, QF=QF)
+
+            # Tarining with JPEG dataset.
+            # jpeg_model = ViT().to(device)
+            jpeg_model = timm.create_model('efficientnetv2_rw_m.agc_in1k', pretrained=True, num_classes=5).to(device)
+
+            # jpeg_model = create_model('vit_base_patch16_224', pretrained=False, num_classes=5, img_size=[128, 128])
+
+            # jpeg_model.patch_embed.proj = nn.Conv2d(3, jpeg_model.embed_dim, kernel_size=(16, 16), stride=(8, 8))
+
+            # JPEG model 손실함수 정의
+            criterion = nn.CrossEntropyLoss()
+            optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
+
+            # train the jpeg model
+            print('[train the jpeg model]')
+            train(jpeg_model, jpeg_train_loader, criterion, optimizer)
+
+            # save jpeg model
+            save_model(jpeg_model, os.path.join(os.getcwd(), 'models'), 'jpeg_model.pth')
+
+            # Test with JPEG test dataset
+            print('test jpeg model with JPEG test dataset')
+            accuracy, precision = test(jpeg_model, jpeg_test_loader, f'jpeg {QF} - jpeg {QF}')
+            save_result(model_name, f'JPEG', f'JPEG', accuracy, precision, QF=QF)
+
+            # test with original  test dataset
+            print('test jpeg model with original  test dataset')
+            accuracy, precision = test(jpeg_model, original_dataset_test_loader, f'jpeg {QF} - original')
+            save_result(model_name, f'JPEG', dataset_name, accuracy, precision, QF=QF)
             print('#############################################################################')
 
-            for QF in QFs:
-                # load JPEG  datasets
-                jpeg_train_dataset, jpeg_test_dataset,  jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(QF, transform)
-
-                # test with original dataset test dataset
-                accuracies[0], pricisions[0] += test(original_model, original_dataset_test_loader, 'original - original')
-                # save_result(current_model_name, dataset_name,  dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
-
-                #  test with JPEG test dataset
-                print('test original model with JPEG test dataset')
-                accuracies[1], pricisions[1] += test(original_model, jpeg_test_loader, f'original - jpeg {QF}')
-                # save_result(current_model_name, dataset_name, f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
-
-                # Tarining with JPEG dataset.
-                print(f'[Current Model: {current_model_name}]')
-                jpeg_model = timm.create_model(current_model_name, pretrained=True, num_classes=5).to(device)
-
-                # JPEG model 손실함수 정의
-                criterion = nn.CrossEntropyLoss()
-                optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
-
-                # train the jpeg model
-                print('[train the jpeg model]')
-                train(jpeg_model, jpeg_train_loader, criterion, optimizer)
-
-                # test with original test dataset
-                print('test jpeg model with original  test dataset')
-                accuracies[2], pricisions[2] += test(jpeg_model, original_dataset_test_loader, f'jpeg {QF} - original')
-                # save_result(current_model_name, f'JPEG', dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
-
-                # Test with JPEG test dataset
-                print('test jpeg model with JPEG test dataset')
-                accuracies[3], pricision[3] += test(jpeg_model, jpeg_test_loader, f'jpeg {QF} - jpeg {QF}')
-                # save_result(current_model_name, f'JPEG', f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
-                print('#############################################################################')
-        accuracies = [i / 10 for i in accuracies]
-        pricisions = [i / 10 for i in pricisions]
-
-        save_resule(current_model_name, dataset_name, dataset_name, accuracies[0], pricisions[0], epochs, batch_size, QF)
-        save_resule(current_model_name, dataset_name, JPEG, accuracies[1], pricisions[1], epochs, batch_size, QF)
-        save_resule(current_model_name, JPEG, dataset_name, accuracies[2], pricisions[1], epochs, batch_size, QF)
-        save_resule(current_model_name, JPEG, JPEG, accuracies[3], pricisions[3], epochs, batch_size, QF)
 
 ################################################################################################################
 ################################################################################################################
 
 if __name__ == "__main__":
 
-    download_dataset()
     # transform 정의
     transform = transforms.Compose([
         transforms.ToTensor(),
+        # transforms.RandomRotation([-30, 30]),
+        # transforms.RandomHorizontalFlip(),
     ])
+
+    # make_jpeg_datasets(100)
 
     # gpu 설정
     device = 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
+    # print(device)
+    # device = 'cpu'
     print(device)
 
     training_testing()
 
+    # # original dataset load
+    # original_dataset_path = './datasets/thermal_cropped_images'
+    # original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
+    # original_dataset_train, original_dataset_test = train_test_split(original_dataset, test_size=0.2, random_state=42)
+
+    # original_dataset_train_loader = DataLoader(
+    #     original_dataset_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    # original_dataset_test_loader = DataLoader(
+    #     original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+    # # show_images(original_dataset, original_dataset_train_loader)
+
+    # # show_images(original_dataset, original_dataset_test_loader)
+
+    # jpeg_train, jpeg_test, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(100, transform)
+
+    # show_images(jpeg_train, jpeg_train_loader)
+    # show_images(jpeg_test, jpeg_test_loader)
