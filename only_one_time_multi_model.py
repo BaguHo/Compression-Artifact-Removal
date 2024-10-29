@@ -26,7 +26,7 @@ learning_rate = 0.001
 epochs = 100
 batch_size = 4
 dataset_name = "Tufts_Face_Database"
-model_list = ['efficientnet_b3', 'resent18', 'resnet50', 'resnet101', 'mobilenetv2', 'vgg19', 'resnext50_32x4d', 'resnext101_32x4d', 'inception_v3']
+model_list = ['efficientnet_b3', 'resnet18.a1_in1k', 'resnet50', 'resnet101', 'mobilenetv2', 'vgg19', 'resnext50_32x4d', 'resnext101_32x4d', 'inception_v3']
 num_workers = 3
 image_type = 'RGB'
 
