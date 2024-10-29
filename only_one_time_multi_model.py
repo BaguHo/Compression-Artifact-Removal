@@ -42,8 +42,8 @@ def download_dataset():
     url = f'wget –no-check-certificate ‘https://docs.google.com/uc?export=download&id=14VBOjguAx_j0TE-X_i0PchCIMymgrM0B’ -O {file_name}'
     output_path = './datasets'
 
-    if not os.path.exist(os.path.join(output_path, file_name)):
-        wget.download(url, dest_path)
+    if not os.path.exists(os.path.join(output_path, file_name)):
+        wget.download(url, output_path)
 
         # unzip the dataset
         os.system('unzip ' + file_name + '-d '+ output_path)
@@ -306,8 +306,8 @@ def training_testing():
 ################################################################################################################
 
 if __name__ == "__main__":
+    #download_dataset()
 
-    download_dataset()
     # transform 정의
     transform = transforms.Compose([
         transforms.ToTensor(),
