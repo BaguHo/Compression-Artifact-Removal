@@ -183,8 +183,6 @@ def make_jpeg_datasets(QF):
         image.convert('RGB').save(output_file_path, 'JPEG', quality=QF)
 
 # JPEG 데이터셋 로드
-
-
 def load_jpeg_datasets(QF, train_transform, test_trainform):
     jpeg_train_dir = f'./datasets/CIFAR10/jpeg{QF}/train'
     jpeg_test_dir = f'./datasets/CIFAR10/jpeg{QF}/test'

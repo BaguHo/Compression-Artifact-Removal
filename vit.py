@@ -19,25 +19,22 @@ import time
 from sklearn.model_selection import train_test_split
 import timm
 
-channels = 1
+channels = 3
 learning_rate = 0.001
-epochs = 120
-batch_size = 4
-dataset_name = "compressed_video_enhancement"
-model_name = "resnet50"
-num_workers = 2
+epochs = 100
+batch_size = 256
+dataset_name = "CIFAR100"
+model_name = "ViT"
+num_workers = 4
 image_type = 'RGB'
+num_classes = 5
 
 # 디렉토리 생성
-
-
 def makedir(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
 # save model
-
-
 def save_model(model, path, filename):
     makedir(path)
 
@@ -46,8 +43,6 @@ def save_model(model, path, filename):
     print(f"Model saved to {model_path}")
 
 # model training
-
-
 def train(model, train_loader, criterion, optimizer):
     model.train()
 
@@ -90,7 +85,7 @@ def test(model, test_loader, msg):
             all_predictions.extend(predicted.cpu().numpy())
 
     accuracy = 100 * correct / total
-    precision_per_class = precision_score(all_targets, all_predictions, average=None)
+    # precision_per_class = precision_score(all_targets, all_predictions, average=None)
     precision_avg = precision_score(all_targets, all_predictions, average='macro')
 
     print(f'Accuracy of the model on the test images -- {msg}: {accuracy:.2f}%')
@@ -98,8 +93,6 @@ def test(model, test_loader, msg):
     return accuracy, precision_avg
 
 # save result
-
-
 def save_result(model_name=model_name,  train_dataset=None, test_dataset=None, accuracy=None, precision=None, QF=None):
     results_df = pd.DataFrame({
         'Model Name': [model_name],
@@ -131,48 +124,22 @@ def make_jpeg_datasets(QF):
     makedir(test_output_dir)
 
     # original dataset load
-    original_dataset_path = os.path.join(os.getcwd(), 'datasets', 'thermal_cropped_images')
-    original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
-    original_dataset_train, original_dataset_test = train_test_split(original_dataset, test_size=0.2, random_state=42)
-
-    # make JPEG dataset
-    for i in range(5):
-        makedir(os.path.join(train_output_dir, str(i + 1)))
-        makedir(os.path.join(test_output_dir, str(i + 1)))
-
-    # Define a transform to convert tensors to PIL images
-    to_pil = transforms.ToPILImage()
+    original_train = datasets.CIFAR100(root=os.path.join(os.getcwd(), 'datasets'), train=True, download=True)
+    original_test = datasets.CIFAR100(root=os.path.join(os.getcwd(), 'datasets'), train=False, download=True)
 
     # Save train images as JPEG
     for idx, (image_tensor, label) in enumerate(original_dataset_train):
-        image = to_pil(image_tensor)
-        file_name = f"{idx}_label_{label + 1}.jpg"
-        output_file_path = os.path.join(train_output_dir, str(label + 1), file_name)
-        image.save(output_file_path, 'JPEG', quality=QF)
-        # print(f'saved {output_file_path}')
+        file_name = f"image_{idx}_label_{label}.jpg"
+        output_file_path = os.path.join(train_output_dir, str(label), file_name)
+        image.save(train_output_dir, 'JPEG', quality=QF)
 
     # Save test images as JPEG
     for idx, (image_tensor, label) in enumerate(original_dataset_test):
-        image = to_pil(image_tensor)
-        file_name = f"image_{idx}_label_{label + 1}.jpg"
-        output_file_path = os.path.join(test_output_dir, str(label + 1), file_name)
-        image.save(output_file_path, 'JPEG', quality=QF)
-        # print(f'saved {output_file_path}')
-
-    # for idx, (image, label) in enumerate(original_dataset_train):
-    #     file_name = f"image_{idx}_label_{label}.jpg"
-    #     output_file_path = os.path.join(train_output_dir, str(label), file_name)
-    #     image.convert(image_type).save(output_file_path, 'JPEG', quality=QF)
-
-    # for idx, (image, label) in enumerate(original_dataset_test):
-    #     file_name = f"image_{idx}_label_{label}.jpg"
-    #     output_file_path = os.path.join(test_output_dir, "class_" + str(label), file_name)
-    #     image.convert(image_type).save(output_file_path, 'JPEG', quality=QF)
+        file_name = f"image_{idx}_label_{label}.jpg"
+        output_file_path = os.path.join(test_output_dir, str(label), file_name)
+        image.save(test_output_dir, 'JPEG', quality=QF)
 
 # JPEG 데이터셋 로드
-# TODO: dataset에  따라 변경 필요함
-
-
 def load_jpeg_datasets(QF, transform):
     jpeg_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'train')
     jpeg_test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'test')
@@ -222,8 +189,6 @@ def show_images(dataset, dataloader, length=5):
 
 
 # ViT 모델 정의
-
-
 class Encoder(nn.Module):
     def __init__(self, embed_size=768, num_heads=3, dropout=0.1):
         super().__init__()
@@ -283,26 +248,14 @@ def training_testing():
     QFs = [100, 80, 60, 40, 20]
 
     # original dataset load
-    original_dataset_path = os.path.join(os.getcwd(), 'datasets', 'thermal_cropped_images')
-    original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
-    original_dataset_train, original_dataset_test = train_test_split(original_dataset, test_size=0.2, random_state=42)
+    original_train = datasets.CIFAR100(os.path.join(os.getcwd(), 'datasets'), train=True, download=True)
+    original_test = datasets.CIFAR100(os.path.join(os.getcwd(), 'datasets'), train=False, download=True)
 
-    original_dataset_train_loader = DataLoader(
-        original_dataset_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    original_dataset_test_loader = DataLoader(
-        original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-
-    train_sample, train_labels = next(iter(original_dataset_train_loader))
-    print(f'train_shape: {train_sample.shape}')
-    print(f'train labels:  {train_labels}')
-
-    test_sample, test_labels = next(iter(original_dataset_test_loader))
-    print(f'test_shape: {test_sample.shape}')
-    print(f'test labels:  {test_labels}')
+    original_train_loader = torch.utils.data.DataLoader(datasets.CIFAR100(root=os.path.join(os.getcwd(), 'datasets'), train=True, transform=transform, download=True, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
+    original_test_loader = torch.utils.data.DataLoader(datasets.CIFAR100(root=os.path.join(os.getcwd(), 'datasets'), train=False, transform=transform, download=True, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
 
     # original model
-    # original_model = ViT().to(device)
-    original_model = timm.create_model('resnet50', pretrained=True, num_classes=5).to(device)
+    original_model = ViT().to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
@@ -372,35 +325,11 @@ if __name__ == "__main__":
     # transform 정의
     transform = transforms.Compose([
         transforms.ToTensor(),
-        # transforms.RandomRotation([-30, 30]),
-        # transforms.RandomHorizontalFlip(),
     ])
-
-    # make_jpeg_datasets(100)
 
     # gpu 설정
     device = 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
-    # print(device)
-    # device = 'cpu'
     print(device)
 
-    training_testing()
+    # training_testing()
 
-    # # original dataset load
-    # original_dataset_path = './datasets/thermal_cropped_images'
-    # original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
-    # original_dataset_train, original_dataset_test = train_test_split(original_dataset, test_size=0.2, random_state=42)
-
-    # original_dataset_train_loader = DataLoader(
-    #     original_dataset_train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    # original_dataset_test_loader = DataLoader(
-    #     original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-
-    # # show_images(original_dataset, original_dataset_train_loader)
-
-    # # show_images(original_dataset, original_dataset_test_loader)
-
-    # jpeg_train, jpeg_test, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(100, transform)
-
-    # show_images(jpeg_train, jpeg_train_loader)
-    # show_images(jpeg_test, jpeg_test_loader)
