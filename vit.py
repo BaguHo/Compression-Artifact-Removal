@@ -4,7 +4,7 @@ import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torchvision import models
-from torch.utils.data import DataLoader, ConcatDataset
+from torch.utils.data import DataLoader, ConcatDataset, Dataset
 import torch.nn.init
 import torch.optim as optim
 import matplotlib.pyplot as plt
@@ -19,11 +19,12 @@ import time
 from sklearn.model_selection import train_test_split
 import timm
 from PIL import Image
+import cv2
 
 channels = 3
 learning_rate = 0.001
 epochs = 100
-batch_size = 256
+batch_size = 8
 dataset_name = "CIFAR100"
 model_name = "ViT"
 num_workers = 4
@@ -79,6 +80,8 @@ def test(model, test_loader, msg):
 
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
+            # TODO: [8,8,8]이 나옴 --> [8,3,8,8] 이 나와야 함
+            print(f'predicted: {predicted.shape}')
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
@@ -119,25 +122,25 @@ def save_CIFAR100():
     # CIFAR-100 데이터셋 다운로드 및 변환 설정
     transform = transforms.ToTensor()  # 이미지를 Tensor로 변환
 
-# CIFAR-100 학습 및 테스트 데이터셋 다운로드
+    # CIFAR-100 학습 및 테스트 데이터셋 다운로드
     train_dataset = datasets.CIFAR100(root='./datasets', train=True, download=True, transform=transform)
     test_dataset = datasets.CIFAR100(root='./datasets', train=False, download=True, transform=transform)
 
-# CIFAR-100 클래스 이름 가져오기
+    # CIFAR-100 클래스 이름 가져오기
     class_names = train_dataset.classes
 
-# 이미지를 저장할 루트 디렉토리 설정
+    # 이미지를 저장할 루트 디렉토리 설정
     output_dir = os.path.join(os.getcwd(), 'datasets', 'CIFAR100', '8x8_images', 'original')
     os.makedirs(output_dir, exist_ok=True)
 
-# 각 클래스를 위한 디렉토리 생성 (학습 및 테스트용)
+    # 각 클래스를 위한 디렉토리 생성 (학습 및 테스트용)
     for i in range(len(class_names)):
         train_class_dir = os.path.join(output_dir, 'train', str(i))
         test_class_dir = os.path.join(output_dir, 'test', str(i))
         os.makedirs(train_class_dir, exist_ok=True)
         os.makedirs(test_class_dir, exist_ok=True)
 
-# 학습 데이터 저장하기
+    # 학습 데이터 저장하기
     print("Saving training images...")
     for idx, (image, label) in enumerate(train_dataset):
         # PIL 이미지로 변환 (ToTensor의 반대 작업)
@@ -172,8 +175,8 @@ def save_CIFAR100():
 
 # jpeg 이미지 생성
 def make_jpeg_datasets(QF):
-    train_output_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'train')
-    test_output_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'test')
+    train_output_dir = os.path.join(os.getcwd(), 'datasets', dataset_name,'original_size' , f'jpeg{QF}', 'train')
+    test_output_dir = os.path.join(os.getcwd(), 'datasets', dataset_name,'original_size' , f'jpeg{QF}', 'test')
 
     makedir(train_output_dir)
     makedir(test_output_dir)
@@ -275,18 +278,27 @@ def process_and_save_images(input_dir, output_dir):
         for idx, cropped_img in enumerate(cropped_images):
             cropped_img.save(os.path.join(output_dir, f"{os.path.splitext(img_file)[0]}_crop_{idx}.jpeg"))
 
-def make_8x8_image(train_path, test_path, QF):
-    output_train_length = 0
-    output_test_length = 0
-
+def make_8x8_jpeg_image(QF):
     for i in range(100):
-        #train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}','train', str(i))
-        #test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}','test' , str(i))
-        train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, 'train', str(i))
-        test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name,'test' , str(i))
+        train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name,'original_size', f'jpeg{QF}','train', str(i))
+        test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name,'original_size',  f'jpeg{QF}','test' , str(i))
 
-        output_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, '8x8_images', 'original','train', str(i))
-        output_test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, '8x8_images', 'original','test', str(i))
+        output_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, '8x8_images', f'jpeg{QF}','train',  str(i))
+        output_test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, '8x8_images', f'jpeg{QF}', 'test', str(i))
+
+        os.makedirs(output_train_dir, exist_ok=True)
+        os.makedirs(output_test_dir, exist_ok=True)
+
+        process_and_save_images(train_dir, output_train_dir)
+        process_and_save_images(test_dir, output_test_dir)
+
+def make_8x8_image_from_original_dataset():
+    for i in range(100):
+        train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name,'original_size', 'original','train', str(i))
+        test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name,'original_size',  'original','test' , str(i))
+
+        output_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, '8x8_images', f'original','train',  str(i))
+        output_test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, '8x8_images', f'original', 'test', str(i))
 
         makedir(output_train_dir)
         makedir(output_test_dir)
@@ -294,9 +306,8 @@ def make_8x8_image(train_path, test_path, QF):
         process_and_save_images(train_dir, output_train_dir)
         process_and_save_images(test_dir, output_test_dir)
 
-# ViT 모델 정의
 class Encoder(nn.Module):
-    def __init__(self, embed_size=192, num_heads=3, dropout=0.1):
+    def __init__(self, embed_size=64, num_heads=3, dropout=0.1):
         super().__init__()
         self.ln1 = nn.LayerNorm(embed_size)
         self.attention = nn.MultiheadAttention(embed_size, num_heads, dropout, batch_first=True)
@@ -310,118 +321,316 @@ class Encoder(nn.Module):
         )
         self.dropout = nn.Dropout(dropout)
 
-        def forward(self, x):
-            x = self.ln1(x)
-            x = x + self.attention(x, x, x)[0]
-            x = x + self.ff(self.ln2(x))
-            return x
+    def forward(self, x):
+        x = self.ln1(x)
+        x = x + self.attention(x, x, x)[0]
+        x = x + self.ff(self.ln2(x))
+        return x
 
-        class ViT(nn.Module):
-            def __init__(self, in_channels=3, num_encoders=6, embed_size=192, img_size=(8,8), patch_size=8, num_classes=192, num_heads=4):
-                super().__init__()
-                self.img_size = img_size
-                self.patch_size = patch_size
-                num_tokens = (img_size[0]*img_size[1])//(patch_size**2)
-                self.class_token = nn.Parameter(torch.randn((embed_size,)), requires_grad=True)
-                self.patch_embedding = nn.Linear(in_channels*patch_size**2, embed_size)
-                self.pos_embedding = nn.Parameter(torch.randn((num_tokens+1, embed_size)), requires_grad=True)
-                self.encoders = nn.ModuleList([
-                    Encoder(embed_size=embed_size, num_heads=num_heads) for _ in range(num_encoders)
-                ])
-                self.mlp_head = nn.Sequential(
-                    nn.LayerNorm(embed_size),
-                    nn.Linear(embed_size, num_classes)
-                )
+class ViT(nn.Module):
+    def __init__(self, in_channels=3, num_encoders=6, embed_size=64, img_size=(8,8), patch_size=8, num_heads=4):
+        super().__init__()
+        self.img_size = img_size
+        self.patch_size = patch_size
+        num_tokens = (img_size[0]*img_size[1])//(patch_size**2)
 
-        def forward(self, x):
-            batch_size, channel_size = x.shape[:2]
-            patches = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
-            patches = patches.contiguous().view(x.size(0), -1, channel_size*self.patch_size*self.patch_size)
-            x = self.patch_embedding(patches)
-            class_token = self.class_token.unsqueeze(0).repeat(batch_size, 1, 1)
-            x = torch.cat([class_token, x], dim=1)
-            x = x + self.pos_embedding.unsqueeze(0)
-            for encoder in self.encoders:
-                x = encoder(x)
-                x = x[:, 0, :].squeeze()
-                x = self.mlp_head(x)
-                return x
+        # Class token 제거
+        # 패치 임베딩
+        self.patch_embedding = nn.Linear(in_channels*patch_size**2, embed_size)
 
+        # 위치 임베딩
+        self.pos_embedding = nn.Parameter(torch.randn((num_tokens+1, embed_size)), requires_grad=True)
+
+        # 인코더 블록 생성
+        self.encoders = nn.ModuleList([
+            Encoder(embed_size=embed_size, num_heads=num_heads) for _ in range(num_encoders)
+        ])
+
+        # MLP 헤드 수정: 임베딩을 다시 이미지로 복원하는 구조
+        # 여기서 최종적으로 (in_channels * img_height * img_width) 크기로 변환
+        self.mlp_head = nn.Sequential(
+            nn.LayerNorm(embed_size),
+            nn.Linear(embed_size, in_channels * img_size[0] * img_size[1])
+        )
+
+    def forward(self, x):
+        print(f"Input tensor: {x}")
+        print(f"Input shape: {x.shape}")
+        batch_size, channel_size = x.shape[:2]
+
+        # 이미지를 패치로 나누기
+        patches = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
+        patches = patches.contiguous().view(x.size(0), -1, channel_size*self.patch_size*self.patch_size)
+
+        # 패치 임베딩 적용
+        x = self.patch_embedding(patches)
+
+        # 위치 임베딩 적용
+        pos_embedding = self.pos_embedding.unsqueeze(0).repeat(batch_size, 1, 1)
+        x = x + pos_embedding
+
+        # 인코더 블록 통과
+        for encoder in self.encoders:
+            x = encoder(x)
+
+        # MLP 헤드를 통해 이미지를 복원하는 과정
+        x = self.mlp_head(x[:, 0])
+
+        # 이미지를 (batch size, channels=3, height=8, width=8) 형태로 변환
+        x = x.view(batch_size, channel_size, *self.img_size)
+        
+        # 출력 텐서의 shape을 출력 (추가된 부분)
+        # print(f"Output shape: {x.shape}")
+
+        return x
+
+
+## ViT 모델 정의
+#class Encoder(nn.Module):
+#    def __init__(self, embed_size=64, num_heads=3, dropout=0.1):
+#        super().__init__()
+#        self.ln1 = nn.LayerNorm(embed_size)
+#        self.attention = nn.MultiheadAttention(embed_size, num_heads, dropout, batch_first=True)
+#        self.ln2 = nn.LayerNorm(embed_size)
+#        self.ff = nn.Sequential(
+#            nn.Linear(embed_size, 4 * embed_size),
+#            nn.GELU(),
+#            nn.Dropout(dropout),
+#            nn.Linear(4 * embed_size, embed_size),
+#            nn.Dropout(dropout)
+#        )
+#        self.dropout = nn.Dropout(dropout)
+#
+#        def forward(self, x):
+#            x = self.ln1(x)
+#            x = x + self.attention(x, x, x)[0]
+#            x = x + self.ff(self.ln2(x))
+#            return x
+#
+#class ViT(nn.Module):
+#    def __init__(self, in_channels=3, num_encoders=6, embed_size=64, img_size=(8,8), patch_size=8, num_classes=192, num_heads=4):
+#        super().__init__()
+#        self.img_size = img_size
+#        self.patch_size = patch_size
+#        num_tokens = (img_size[0]*img_size[1])//(patch_size**2)
+#        self.class_token = nn.Parameter(torch.randn((embed_size,)), requires_grad=True)
+#        self.patch_embedding = nn.Linear(in_channels*patch_size**2, embed_size)
+#        self.pos_embedding = nn.Parameter(torch.randn((num_tokens+1, embed_size)), requires_grad=True)
+#        self.encoders = nn.ModuleList([
+#            Encoder(embed_size=embed_size, num_heads=num_heads) for _ in range(num_encoders)
+#        ])
+#        self.mlp_head = nn.Sequential(
+#            nn.LayerNorm(embed_size),
+#            nn.Linear(embed_size, num_classes)
+#        )
+#
+#    def forward(self, x):
+#        batch_size, channel_size = x.shape[:2]
+#        patches = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
+#        patches = patches.contiguous().view(x.size(0), -1, channel_size*self.patch_size*self.patch_size)
+#        x = self.patch_embedding(patches)
+#        class_token = self.class_token.unsqueeze(0).repeat(batch_size, 1, 1)
+#        x = torch.cat([class_token, x], dim=1)
+#        x = x + self.pos_embedding.unsqueeze(0)
+#        for encoder in self.encoders:
+#            x = encoder(x)
+#            x = x[:, 0, :].squeeze()
+#            x = self.mlp_head(x)
+#            return x
+
+#class ViT(nn.Module):
+#    def __init__(self, img_size=8, patch_size=2, in_channels=3, embed_dim=64, num_heads=4, num_layers=6):
+#        super(ViT, self).__init__()
+#
+#        self.img_size = img_size
+#        self.patch_size = patch_size
+#        self.num_patches = (img_size // patch_size) ** 2
+#        self.patch_dim = in_channels * patch_size * patch_size
+#
+#        # Patch Embedding Layer
+#        self.patch_embedding = nn.Linear(self.patch_dim, embed_dim)
+#
+#        # Positional Embedding
+#        self.positional_embedding = nn.Parameter(torch.randn(1, self.num_patches, embed_dim))
+#
+#        # Transformer Layers (Encoder)
+#        encoder_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=num_heads)
+#        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+#
+#        # Output Layer to map back to image patches
+#        self.output_layer = nn.Linear(embed_dim, self.patch_dim)
+#
+#    def forward(self, x):
+#        # Step 1: Divide image into patches
+#        batch_size = x.size(0)
+#        x = x.view(batch_size, 3, self.img_size, self.img_size)  # B x C x H x W
+#
+#        patches = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
+#        patches = patches.contiguous().view(batch_size, -1, self.patch_dim)  # B x num_patches x patch_dim
+#
+#        # Step 2: Patch Embedding + Positional Encoding
+#        patches_embedded = self.patch_embedding(patches) + self.positional_embedding
+#
+#        # Step 3: Transformer Encoder
+#        encoded_patches = self.transformer_encoder(patches_embedded)
+#
+#        # Step 4: Output Layer to reconstruct image patches
+#        output_patches = self.output_layer(encoded_patches)
+#
+#        # Step 5: Reshape back to image format
+#        output_patches = output_patches.view(batch_size, -1, 3, self.patch_size, self.patch_size)
+#
+#        output_img = output_patches.permute(0, 2, 1, 3).contiguous()   # B x C x H/P x W/P -> B x C x H x W
+#
+#        return output_img
+
+class CIFAR100Dataset(Dataset):
+    def __init__(self, input_images, target_images, transform=None):
+        self.input_images = input_images
+        self.target_images = target_images
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.input_images)
+
+    def __getitem__(self, idx):
+        input_image = self.input_images[idx]
+        target_image = self.target_images[idx]
+
+
+        #print(np.array(self.input_images).shape)
+        #print(np.array(self.target_images).shape)
+
+        input_image = Image.fromarray(input_image)
+        target_image = Image.fromarray(target_image)
+
+        # print(f'input image shape: {input_image.shape}')
+        # print(f'target image shape: {target_image.shape}')
+
+        if self.transform:
+            input_image = self.transform(input_image)
+            target_image = self.transform(target_image)
+
+        return input_image, target_image
+
+
+def load_images_from_8x8(QF):
+    dataset_name = 'CIFAR100'
+    cifar100_path = os.path.join(os.getcwd(), 'datasets', dataset_name, '8x8_images')
+
+    # input images
+    train_dir = os.path.join(cifar100_path, f'jpeg{QF}', 'train')
+    test_dir = os.path.join(cifar100_path, f'jpeg{QF}', 'test')
+
+    # target images (original)
+    target_train_dataset_dir = os.path.join(cifar100_path, 'original', 'train')
+    target_test_dataset_dir = os.path.join(cifar100_path, 'original', 'test')
+
+    train_input_dataset = []
+    test_input_dataset = []
+    train_target_dataset = []
+    test_target_dataset = []
+
+    # Load training images and corresponding original images
+    for i in range(100):
+        train_path = os.path.join(train_dir, str(i))
+        target_train_path = os.path.join(target_train_dataset_dir, str(i))
+
+        for image_file in os.listdir(train_path):
+            image_path = os.path.join(train_path, image_file)
+            image = cv2.imread(image_path)
+            train_input_dataset.append(np.array(image))
+
+        for image_file in os.listdir(target_train_path):
+            image_path = os.path.join(target_train_path, image_file)
+            image = cv2.imread(image_path)
+            train_target_dataset.append(np.array(image))
+
+    # Load test images and corresponding original images
+    for i in range(100):
+        test_path = os.path.join(test_dir, str(i))
+        target_test_path = os.path.join(target_test_dataset_dir, str(i))
+
+        for image_file in os.listdir(test_path):
+            image_path = os.path.join(test_path, image_file)
+            image = cv2.imread(image_path)
+            test_input_dataset.append(np.array(image))
+
+        for image_file in os.listdir(target_test_path):
+            image_path = os.path.join(target_test_path, image_file)
+            image = cv2.imread(image_path)
+            test_target_dataset.append(np.array(image))
+
+    train_dataset = CIFAR100Dataset(train_input_dataset, train_target_dataset, transform=transform)
+    test_dataset = CIFAR100Dataset(test_input_dataset, test_target_dataset, transform=transform)
+    
+    print(train_dataset[0])
+    print(train_dataset[0][0])
+    print(train_dataset[0][0][0])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+#    print(np.array(test_loader))
+    #images, labels = next(iter(train_loader))
+    #print('train shape: ', images.shape,'train label shape' ,labels.shape)
+
+    #images, labels = next(iter(test_loader))
+    #print('train shape: ', images.shape,'train label shape' ,labels.shape)
+#    for inputs, targets in train_loader:
+#        print(f'Input batch shape: {inputs.shape}')
+#        print(f'Target batch shape: {targets.shape}')
+#
+#    for inputs, targets in test_loader:
+#        print(f'Input batch shape: {inputs.shape}')
+#        print(f'Target batch shape: {targets.shape}')
+
+    return train_dataset, test_dataset, train_loader, test_loader
 
 # training & testing for each QF
 def training_testing():
-    QFs = [100, 80, 60, 40, 20]
+    QFs = [80, 60, 40, 20]
 
-    # original dataset load
-    original_train = datasets.CIFAR100(os.path.join(os.getcwd(), 'datasets'), train=True, download=True)
-    original_test = datasets.CIFAR100(os.path.join(os.getcwd(), 'datasets'), train=False, download=True)
-
-    original_train_loader = torch.utils.data.DataLoader(datasets.CIFAR100(root=os.path.join(os.getcwd(), 'datasets'), train=True, transform=transform, download=True, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True))
-    original_test_loader = torch.utils.data.DataLoader(datasets.CIFAR100(root=os.path.join(os.getcwd(), 'datasets'), train=False, transform=transform, download=True, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True))
-
-    # original model
-    original_model = ViT().to(device)
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
-
-    # original dataset model tarining
-    print('[train the original model]')
-    train(original_model, original_dataset_train_loader, criterion, optimizer)
-
-    # save original model
-    print('save original model')
-    save_model(original_model, os.path.join(os.getcwd(), 'models'), 'original_model.pth')
+    make_8x8_image_from_original_dataset()
 
     for QF in QFs:
-        # JPEG dataset 생성
-        print('make jpeg dataset')
-        print('#############################################################################')
+        # make jpeg dataset
+        print('making the jpeg dataaset...')
         make_jpeg_datasets(QF)
+        print('Done')
 
-        # load JPEG  datasets
-        jpeg_train_dataset, jpeg_test_dataset,  jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(QF, transform)
+        # jpeg image 8x8로 저장
+        print('making the 8x8 image..')
+        make_8x8_jpeg_image(QF)
+        print('done')
 
-        # test with original dataset test dataset
-        accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
-        save_result(model_name, dataset_name,  dataset_name, accuracy, precision, QF=QF)
+        # load dataset [training, target] = [jpeg, original] as 8x8
+        print('Loading dataset and dataloader...')
+        train_dataset, test_dataset, train_loader, test_loader = load_images_from_8x8(QF)
+        #print(f'train loader: {train_loader}')
+        print(f'test loader: {test_loader}')
 
-        #  test with JPEG test dataset
-        print('test original model with JPEG test dataset')
-        accuracy, precision = test(original_model, jpeg_test_loader, f'original - jpeg {QF}')
-        save_result(model_name, dataset_name, f'JPEG', accuracy, precision, QF=QF)
+        print('Done')
 
-        # Tarining with JPEG dataset.
-        # jpeg_model = ViT().to(device)
-        jpeg_model = timm.create_model('resnet50', pretrained=True, num_classes=5).to(device)
+        # print(f'''train shape: {train_dataset.shape}''')
+        # print(f'''test shape: {test_dataset.shape}''')
 
-        # jpeg_model = create_model('vit_base_patch16_224', pretrained=False, num_classes=5, img_size=[128, 128])
+        removal_model = ViT().to(device)
 
-        # jpeg_model.patch_embed.proj = nn.Conv2d(3, jpeg_model.embed_dim, kernel_size=(16, 16), stride=(8, 8))
-
-        # JPEG model 손실함수 정의
+        # removal  model 손실함수 정의
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
+        optimizer = optim.Adam(removal_model.parameters(), lr=learning_rate)
 
-        # train the jpeg model
-        print('[train the jpeg model]')
-        train(jpeg_model, jpeg_train_loader, criterion, optimizer)
+        # train the removal model
+        print(f'[train removal model QF:{QF}]')
+        train(removal_model, train_loader, criterion, optimizer)
 
-        # save jpeg model
-    save_model(jpeg_model, os.path.join(os.getcwd(), 'models'), 'jpeg_model.pth')
-
-    # Test with JPEG test dataset
-    print('test jpeg model with JPEG test dataset')
-    accuracy, precision = test(jpeg_model, jpeg_test_loader, f'jpeg {QF} - jpeg {QF}')
-    save_result(model_name, f'JPEG', f'JPEG', accuracy, precision, QF=QF)
-
-    # test with original  test dataset
-    print('test jpeg model with original  test dataset')
-    accuracy, precision = test(jpeg_model, original_dataset_test_loader, f'jpeg {QF} - original')
-    save_result(model_name, f'JPEG', dataset_name, accuracy, precision, QF=QF)
-    print('#############################################################################')
-
-
+        print('#############################################################################')
+        print(f'[test removal model]')
+        accuracy, precision = test(removal_model, test_loader, f'Removal {QF}')
+        save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
+        print('#############################################################################')
+  
 ################################################################################################################
 ################################################################################################################
 
@@ -436,19 +645,13 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
     print(device)
 
-    # training_testing()
-
-
-    # original dataset load
-    original_train = datasets.CIFAR100(os.path.join(os.getcwd(), 'datasets'), train=True, download=True)
-    original_test = datasets.CIFAR100(os.path.join(os.getcwd(), 'datasets'), train=False, download=True)
-
-    temp_qf = 60
-
-    # make_jpeg_datasets(temp_qf)
-
+    training_testing()
     # jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(temp_qf, transform)
 
     # make_8x8_image(temp_qf)
 
-    save_CIFAR100()
+    # save_CIFAR100()
+
+    # make jpeg 8x8 images for
+
+
