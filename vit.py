@@ -31,6 +31,7 @@ model_name = "ViT"
 num_workers = 4
 image_type = "RGB"
 num_classes = 5
+QFs = [80, 60, 40, 20]
 
 
 # 디렉토리 생성
@@ -152,53 +153,87 @@ def save_CIFAR100():
 
     # 이미지를 저장할 루트 디렉토리 설정
     output_dir = os.path.join(
-        os.getcwd(), "datasets", "CIFAR100", "8x8_images", "original"
+        os.getcwd(), "datasets", "CIFAR100", "original_size", "original"
     )
+
     os.makedirs(output_dir, exist_ok=True)
 
-    # 각 클래스를 위한 디렉토리 생성 (학습 및 테스트용)
     for i in range(len(class_names)):
         train_class_dir = os.path.join(output_dir, "train", str(i))
         test_class_dir = os.path.join(output_dir, "test", str(i))
         os.makedirs(train_class_dir, exist_ok=True)
         os.makedirs(test_class_dir, exist_ok=True)
 
-    # 학습 데이터 저장하기
     print("Saving training images...")
     for idx, (image, label) in enumerate(train_dataset):
-        # PIL 이미지로 변환 (ToTensor의 반대 작업)
         image = transforms.ToPILImage()(image)
 
         image_filename = os.path.join(
-            output_dir, "train", str(label), f"image_{idx}_laebl{label}.png"
+            output_dir, "train", str(label), f"image_{idx}_laebl_{label}.png"
         )
-
-        print(image_filename)
-        # 이미지 저장
         image.save(image_filename, "PNG")
 
         if idx % 5000 == 0:
             print(f"{idx} training images saved...")
 
-    # 테스트 데이터 저장하기
     print("Saving test images...")
     for idx, (image, label) in enumerate(test_dataset):
-        # PIL 이미지로 변환 (ToTensor의 반대 작업)
         image = transforms.ToPILImage()(image)
 
-        # 이미지 파일 이름 설정 (예: 'class_name_00001.png')
         image_filename = os.path.join(
-            output_dir, "test", str(label), f"image_{idx}_laebl{label}.png"
+            output_dir, "test", str(label), f"image_{idx}_laebl_{label}.png"
         )
-        print(image_filename)
 
-        # 이미지 저장
         image.save(image_filename, "PNG")
 
         if idx % 2000 == 0:
             print(f"{idx} test images saved...")
 
-    print("All images have been saved successfully.")
+    for QF in QFs:
+        jpeg_output_dir = os.path.join(
+            os.getcwd(), "datasets", "CIFAR100", "original_size", f"jpeg{QF}"
+        )
+        os.makedirs(jpeg_output_dir, exist_ok=True)
+
+        for i in range(len(class_names)):
+            train_class_dir = os.path.join(jpeg_output_dir, "train", str(i))
+            test_class_dir = os.path.join(jpeg_output_dir, "test", str(i))
+            os.makedirs(train_class_dir, exist_ok=True)
+            os.makedirs(test_class_dir, exist_ok=True)
+
+        print(f"Saving jpeg{QF} training images...")
+        for idx, (image, label) in enumerate(train_dataset):
+            image = transforms.ToPILImage()(image)
+
+            image_filename = os.path.join(
+                jpeg_output_dir, "train", str(label), f"image_{idx}_laebl_{label}.png"
+            )
+            image.save(image_filename, "PNG")
+
+            if idx % 5000 == 0:
+                print(f"{idx} jpeg training images saved...")
+
+        print(f"Saving jpeg {QF} test images...")
+        for idx, (image, label) in enumerate(test_dataset):
+            image = transforms.ToPILImage()(image)
+
+            image_filename = os.path.join(
+                jpeg_output_dir, "test", str(label), f"image_{idx}_laebl_{label}.png"
+            )
+
+            image.save(image_filename, "PNG")
+
+            if idx % 2000 == 0:
+                print(f"{idx} jpeg test images saved...")
+
+    print("All jpeg images have been saved successfully.")
+
+
+def extract_label(file_name):
+    base_name = os.path.splitext(file_name)[0]
+    parts = base_name.split("_")
+    label = parts[-1]
+    return label
 
 
 # jpeg 이미지 생성
@@ -213,33 +248,46 @@ def make_jpeg_datasets(QF):
     makedir(train_output_dir)
     makedir(test_output_dir)
 
+    train_input_dir = os.path.join(
+        os.getcwd(), "datasets", dataset_name, "original_size", "original", "train"
+    )
+    test_input_dir = os.path.join(
+        os.getcwd(), "datasets", dataset_name, "original_size", "original", "test"
+    )
+
     # original dataset load
-    original_train_dataset = datasets.CIFAR100(
-        root=os.path.join(os.getcwd(), "datasets"), train=True, download=True
-    )
-    original_test_dataset = datasets.CIFAR100(
-        root=os.path.join(os.getcwd(), "datasets"), train=False, download=True
-    )
+    original_train_dataset = datasets.ImageFolder(train_input_dir)
+    original_test_dataset = datasets.ImageFolder(test_input_dir)
 
-    # Save train images as JPEG
-    for idx, (image, label) in enumerate(original_train_dataset):
-        file_name = f"image_{idx}_label_{label}.jpg"
-        output_file_path = os.path.join(train_output_dir, str(label), file_name)
-        temp_path = os.path.join(train_output_dir, str(label))
-        makedir(temp_path)
-        image.save(output_file_path, "JPEG", quality=QF)
+    # original_train_dataset = datasets.CIFAR100(
+    #     root=os.path.join(os.getcwd(), "datasets"), train=True, download=True
+    # )
+    # original_test_dataset = datasets.CIFAR100(
+    #     root=os.path.join(os.getcwd(), "datasets"), train=False, download=True
+    # )
 
-    # Save test images as JPEG
-    for idx, (image, label) in enumerate(original_test_dataset):
-        file_name = f"image_{idx}_label_{label}.jpg"
-        output_file_path = os.path.join(test_output_dir, str(label), file_name)
-        temp_path = os.path.join(test_output_dir, str(label))
-        makedir(temp_path)
-        image.save(output_file_path, "JPEG", quality=QF)
+    for i in range(100):
+        files = os.listdir(os.path.join(train_input_dir, str(i)))
+        for file in files:
+            file_label = extract_label(file)
+            temp_path = os.path.join(train_output_dir, str(file_label))
+            os.makedirs(temp_path, exist_ok=True)
+            file_output_path = os.path.join(train_output_dir, str(file_label), file)
+            image = Image.open(os.path.join(train_input_dir, str(i), file))
+            image.save(file_output_path, "JPEG", qaulity=QF)
+
+        files = os.listdir(os.path.join(test_input_dir, str(i)))
+        for file in files:
+            file_label = extract_label(file)
+            temp_path = os.path.join(test_output_dir, str(file_label))
+            os.makedirs(temp_path, exist_ok=True)
+            file_output_path = os.path.join(test_output_dir, str(file_label), file)
+            image = Image.open(os.path.join(test_input_dir, str(i), file))
+            image.save(file_output_path, "JPEG", qaulity=QF)
 
 
 # JPEG 데이터셋 로드
-def load_jpeg_datasets(QF, transform):
+def load_jpeg_datasets(QF):
     jpeg_train_dir = os.path.join(
         os.getcwd(), "datasets", dataset_name, f"jpeg{QF}", "train"
     )
@@ -668,15 +716,14 @@ def load_images_from_8x8(QF):
 
 # training & testing for each QF
 def training_testing():
-    QFs = [80, 60, 40, 20]
-
+    save_CIFAR100()
     make_8x8_image_from_original_dataset()
 
     for QF in QFs:
         # make jpeg dataset
-        print("making the jpeg dataaset...")
-        make_jpeg_datasets(QF)
-        print("Done")
+        # print("making the jpeg dataaset...")
+        # make_jpeg_datasets(QF)
+        # print("Done")
 
         # jpeg image 8x8로 저장
         print("making the 8x8 image..")
@@ -738,10 +785,3 @@ if __name__ == "__main__":
     print(device)
 
     training_testing()
-    # jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(temp_qf, transform)
-
-    # make_8x8_image(temp_qf)
-
-    # save_CIFAR100()
-
-    # make jpeg 8x8 images for
