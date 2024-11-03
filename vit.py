@@ -21,6 +21,7 @@ import timm
 from PIL import Image
 import cv2
 import re
+from utils import save_CIFAR100
 
 channels = 3
 learning_rate = 0.001
@@ -73,36 +74,61 @@ def train(model, train_loader, criterion, optimizer):
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}")
 
 
+# # evaluate model
+# def test(model, test_loader, msg):
+#     model.eval()
+#     correct = 0
+#     total = 0
+#     all_targets = []
+#     all_predictions = []
+
+#     with torch.no_grad():
+#         for images, labels in tqdm(test_loader, desc="Testing", leave=False):
+#             images, labels = images.to(device), labels.to(device)
+
+#             outputs = model(images)
+#             _, predicted = torch.max(outputs.data, 1)
+
+#             # TODO: [8,8,8]이 나옴 --> [8,3,8,8] 이 나와야 함
+#             print(f"predicted: {predicted.shape}")
+#             total += labels.size(0)
+#             correct += (predicted == labels).sum().item()
+
+#             all_targets.extend(labels.cpu().numpy())
+#             all_predictions.extend(predicted.cpu().numpy())
+
+#     accuracy = 100 * correct / total
+#     # precision_per_class = precision_score(all_targets, all_predictions, average=None)
+#     precision_avg = precision_score(all_targets, all_predictions, average="macro")
+
+#     print(f"Accuracy of the model on the test images -- {msg}: {accuracy:.2f}%")
+
+#     return accuracy, precision_avg
+
+
 # evaluate model
-def test(model, test_loader, msg):
+def test(model, test_loader, criterion, msg):
+    removed_images_path = os.path.join(os.getcwd(), "removed_images")
+    os.makedirs(removed_images_path, exist_ok=True)
+    
     model.eval()
-    correct = 0
-    total = 0
-    all_targets = []
-    all_predictions = []
+    running_loss = 0.0
 
     with torch.no_grad():
         for images, labels in tqdm(test_loader, desc="Testing", leave=False):
             images, labels = images.to(device), labels.to(device)
 
             outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            # TODO: [8,8,8]이 나옴 --> [8,3,8,8] 이 나와야 함
-            print(f"predicted: {predicted.shape}")
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            loss = criterion(outputs, labels)
 
-            all_targets.extend(labels.cpu().numpy())
-            all_predictions.extend(predicted.cpu().numpy())
+            print(f"outputs shape: {outputs.shape}")
+            print(f"labels shape: {labels.shape}")
+            running_loss += loss.item()
 
-    accuracy = 100 * correct / total
-    # precision_per_class = precision_score(all_targets, all_predictions, average=None)
-    precision_avg = precision_score(all_targets, all_predictions, average="macro")
+    avg_loss = running_loss / len(test_loader)
+    print(f"Average loss of the model on the test images -- {msg}: {avg_loss:.4f}")
 
-    print(f"Accuracy of the model on the test images -- {msg}: {accuracy:.2f}%")
-
-    return accuracy, precision_avg
-
+    return avg_loss
 
 # save result
 def save_result(
@@ -134,99 +160,6 @@ def save_result(
         results_df.to_csv(file_path, mode="w", index=False)
 
     print("Results saved to './result.csv'")
-
-
-def save_CIFAR100():
-    # CIFAR-100 데이터셋 다운로드 및 변환 설정
-    transform = transforms.ToTensor()  # 이미지를 Tensor로 변환
-
-    # CIFAR-100 학습 및 테스트 데이터셋 다운로드
-    train_dataset = datasets.CIFAR100(
-        root="./datasets", train=True, download=True, transform=transform
-    )
-    test_dataset = datasets.CIFAR100(
-        root="./datasets", train=False, download=True, transform=transform
-    )
-
-    # CIFAR-100 클래스 이름 가져오기
-    class_names = train_dataset.classes
-
-    # 이미지를 저장할 루트 디렉토리 설정
-    output_dir = os.path.join(
-        os.getcwd(), "datasets", "CIFAR100", "original_size", "original"
-    )
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    for i in range(len(class_names)):
-        train_class_dir = os.path.join(output_dir, "train", str(i))
-        test_class_dir = os.path.join(output_dir, "test", str(i))
-        os.makedirs(train_class_dir, exist_ok=True)
-        os.makedirs(test_class_dir, exist_ok=True)
-
-    print("Saving training images...")
-    for idx, (image, label) in enumerate(train_dataset):
-        image = transforms.ToPILImage()(image)
-
-        image_filename = os.path.join(
-            output_dir, "train", str(label), f"image_{idx}_laebl_{label}.png"
-        )
-        image.save(image_filename, "PNG")
-
-        if idx % 5000 == 0:
-            print(f"{idx} training images saved...")
-
-    print("Saving test images...")
-    for idx, (image, label) in enumerate(test_dataset):
-        image = transforms.ToPILImage()(image)
-
-        image_filename = os.path.join(
-            output_dir, "test", str(label), f"image_{idx}_laebl_{label}.png"
-        )
-
-        image.save(image_filename, "PNG")
-
-        if idx % 2000 == 0:
-            print(f"{idx} test images saved...")
-
-    for QF in QFs:
-        jpeg_output_dir = os.path.join(
-            os.getcwd(), "datasets", "CIFAR100", "original_size", f"jpeg{QF}"
-        )
-        os.makedirs(jpeg_output_dir, exist_ok=True)
-
-        for i in range(len(class_names)):
-            train_class_dir = os.path.join(jpeg_output_dir, "train", str(i))
-            test_class_dir = os.path.join(jpeg_output_dir, "test", str(i))
-            os.makedirs(train_class_dir, exist_ok=True)
-            os.makedirs(test_class_dir, exist_ok=True)
-
-        print(f"Saving jpeg{QF} training images...")
-        for idx, (image, label) in enumerate(train_dataset):
-            image = transforms.ToPILImage()(image)
-
-            image_filename = os.path.join(
-                jpeg_output_dir, "train", str(label), f"image_{idx}_laebl_{label}.png"
-            )
-            image.save(image_filename, "PNG")
-
-            if idx % 5000 == 0:
-                print(f"{idx} jpeg training images saved...")
-
-        print(f"Saving jpeg {QF} test images...")
-        for idx, (image, label) in enumerate(test_dataset):
-            image = transforms.ToPILImage()(image)
-
-            image_filename = os.path.join(
-                jpeg_output_dir, "test", str(label), f"image_{idx}_laebl_{label}.png"
-            )
-
-            image.save(image_filename, "PNG")
-
-            if idx % 2000 == 0:
-                print(f"{idx} jpeg test images saved...")
-
-    print("All jpeg images have been saved successfully.")
 
 
 def extract_label(file_name):
@@ -491,7 +424,6 @@ class Encoder(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        # 인코더 블록 내부 처리
         x = self.ln1(x)
         x = x + self.attention(x, x, x)[0]
         x = x + self.ff(self.ln2(x))
@@ -506,84 +438,145 @@ class ViT(nn.Module):
         embed_size=64,
         img_size=(8, 8),
         patch_size=8,
+        num_classes=192,
         num_heads=4,
+        dropout=0.1,
     ):
         super().__init__()
         self.img_size = img_size
         self.patch_size = patch_size
-        self.in_channels = in_channels
-        # num_tokens: 패치 수 계산
+        self.embed_size = embed_size
         num_tokens = (img_size[0] * img_size[1]) // (patch_size**2)
 
-        # 패치 임베딩 레이어
         self.patch_embedding = nn.Linear(in_channels * patch_size**2, embed_size)
-
-        # 위치 임베딩
         self.pos_embedding = nn.Parameter(
             torch.randn((num_tokens, embed_size)), requires_grad=True
         )
-
-        # 인코더 블록 생성
         self.encoders = nn.ModuleList(
             [
-                Encoder(embed_size=embed_size, num_heads=num_heads)
+                Encoder(embed_size=embed_size, num_heads=num_heads, dropout=dropout)
                 for _ in range(num_encoders)
             ]
         )
-
-        # MLP 헤드: 패치를 다시 이미지로 변환
-        self.mlp_head = nn.Sequential(
-            nn.LayerNorm(embed_size), nn.Linear(embed_size, in_channels * patch_size**2)
-        )
+        self.patch_to_image = nn.Linear(embed_size, in_channels * patch_size**2)
 
     def forward(self, x):
         batch_size, channel_size, height, width = x.shape
 
-        # 이미지를 패치로 분할 (unfold 사용)
         patches = x.unfold(2, self.patch_size, self.patch_size).unfold(
             3, self.patch_size, self.patch_size
         )
         patches = patches.contiguous().view(
-            batch_size, -1, self.in_channels * self.patch_size * self.patch_size
+            batch_size, -1, channel_size * self.patch_size * self.patch_size
         )
 
-        # 패치 임베딩 적용
         x = self.patch_embedding(patches)
 
-        # 위치 임베딩 적용
-        pos_embedding = self.pos_embedding.unsqueeze(0).repeat(batch_size, 1, 1)
-        x = x + pos_embedding
+        x = x + self.pos_embedding.unsqueeze(0)
 
-        # 인코더 블록 통과
         for encoder in self.encoders:
             x = encoder(x)
 
-        # MLP Head 적용하여 패치 재구성
-        x = self.mlp_head(x)
+        x = self.patch_to_image(x)
+        x = x.view(batch_size, -1, self.patch_size, self.patch_size)
 
-        # x를 [batch_size, num_patches, in_channels, patch_size, patch_size]로 리셰이프
-        x = x.view(batch_size, -1, self.in_channels, self.patch_size, self.patch_size)
-
-        # 높이와 너비 방향의 패치 수 계산
-        num_patches_height = self.img_size[0] // self.patch_size
-        num_patches_width = self.img_size[1] // self.patch_size
-
-        # x를 [batch_size, num_patches_height, num_patches_width, in_channels, patch_size, patch_size]로 리셰이프
+        num_patches_per_row = height // self.patch_size
         x = x.view(
             batch_size,
-            num_patches_height,
-            num_patches_width,
-            self.in_channels,
+            num_patches_per_row,
+            num_patches_per_row,
+            channel_size,
             self.patch_size,
             self.patch_size,
         )
-
-        # 차원 재배열: [batch_size, in_channels, img_size[0], img_size[1]]로 변환
         x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
+        x = x.view(batch_size, channel_size, height, width)
 
-        # 최종 리셰이프: [batch_size, in_channels, img_size[0], img_size[1]]
-        x = x.view(batch_size, self.in_channels, self.img_size[0], self.img_size[1])
+        return x
 
+
+class ViTBlock(nn.Module):
+    def __init__(self, embed_dim, num_heads, mlp_dim):
+        super(ViTBlock, self).__init__()
+        self.ln1 = nn.LayerNorm(embed_dim)
+        self.mhsa = nn.MultiheadAttention(embed_dim, num_heads)
+        self.ln2 = nn.LayerNorm(embed_dim)
+        self.mlp = nn.Sequential(
+            nn.Linear(embed_dim, mlp_dim), nn.GELU(), nn.Linear(mlp_dim, embed_dim)
+        )
+
+    def forward(self, x):
+        # x의 형태: [seq_len, batch_size, embed_dim]
+        y = self.ln1(x)
+        y, _ = self.mhsa(y, y, y)
+        x = x + y
+        y = self.ln2(x)
+        y = self.mlp(y)
+        x = x + y
+        return x
+
+
+class ViTAutoencoder(nn.Module):
+    def __init__(
+        self,
+        img_size=8,
+        patch_size=2,
+        in_channels=3,
+        embed_dim=64,
+        num_heads=4,
+        num_layers=4,
+        mlp_dim=128,
+    ):
+        super(ViTAutoencoder, self).__init__()
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.num_patches = (img_size // patch_size) ** 2
+        self.patch_dim = in_channels * patch_size * patch_size
+        self.embed_dim = embed_dim
+
+        self.patch_embed = nn.Linear(self.patch_dim, embed_dim)
+        self.position_embeddings = nn.Parameter(
+            torch.zeros(1, self.num_patches, embed_dim)
+        )
+
+        self.transformer = nn.ModuleList(
+            [ViTBlock(embed_dim, num_heads, mlp_dim) for _ in range(num_layers)]
+        )
+
+        self.decoder = nn.Sequential(nn.Linear(embed_dim, self.patch_dim))
+
+    def forward(self, x):
+        batch_size = x.size(0)
+        # 이미지를 패치로 분할
+        x = x.unfold(2, self.patch_size, self.patch_size).unfold(
+            3, self.patch_size, self.patch_size
+        )
+        x = x.permute(0, 2, 3, 1, 4, 5).contiguous()
+        x = x.view(batch_size, -1, self.patch_dim)
+        # x의 형태: [batch_size, num_patches, patch_dim]
+
+        x = self.patch_embed(x)
+        x = x + self.position_embeddings
+
+        x = x.permute(1, 0, 2)  # [seq_len, batch_size, embed_dim]
+        for layer in self.transformer:
+            x = layer(x)
+        x = x.permute(1, 0, 2)  # [batch_size, num_patches, embed_dim]
+
+        # 패치를 복원
+        x = self.decoder(x)  # [batch_size, num_patches, patch_dim]
+
+        # 이미지를 재구성
+        x = x.view(
+            batch_size,
+            self.img_size // self.patch_size,
+            self.img_size // self.patch_size,
+            3,
+            self.patch_size,
+            self.patch_size,
+        )
+        x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
+        x = x.view(batch_size, 3, self.img_size, self.img_size)
         return x
 
 
@@ -616,13 +609,10 @@ class CIFAR100Dataset(Dataset):
         return input_image, target_image
 
 
-# 정렬 기준 함수 정의
 def sort_key(filename):
-    # 'image_2_label_0_crop_7' 형식에서 image와 crop의 숫자를 추출
     image_match = re.search(r"image_(\d+)", filename)
     crop_match = re.search(r"crop_(\d+)", filename)
 
-    # image와 crop 뒤에 있는 숫자를 정수로 반환
     image_number = int(image_match.group(1)) if image_match else float("inf")
     crop_number = int(crop_match.group(1)) if crop_match else float("inf")
 
@@ -720,11 +710,6 @@ def training_testing():
     make_8x8_image_from_original_dataset()
 
     for QF in QFs:
-        # make jpeg dataset
-        # print("making the jpeg dataaset...")
-        # make_jpeg_datasets(QF)
-        # print("Done")
-
         # jpeg image 8x8로 저장
         print("making the 8x8 image..")
         make_8x8_jpeg_image(QF)
@@ -743,10 +728,12 @@ def training_testing():
         # print(f'''train shape: {train_dataset.shape}''')
         # print(f'''test shape: {test_dataset.shape}''')
 
-        removal_model = ViT().to(device)
+        # removal_model = ViT().to(device)
+        removal_model = ViTAutoencoder().to(device)
 
         # removal  model 손실함수 정의
-        criterion = nn.CrossEntropyLoss()
+        # criterion = nn.CrossEntropyLoss()
+        criterion = nn.MSELoss()
         optimizer = optim.Adam(removal_model.parameters(), lr=learning_rate)
 
         # train the removal model
@@ -756,9 +743,11 @@ def training_testing():
         print(
             "#############################################################################"
         )
-        print(f"[test removal model]")
-        accuracy, precision = test(removal_model, test_loader, f"Removal {QF}")
-        save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
+        test_loss = test(removal_model, test_loader, criterion, f"Removal {QF}")
+        
+        # print(f"[test removal model]")
+        # accuracy, precision = test(removal_model, test_loader, criterion, f"Removal {QF}")
+        # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
         print(
             "#############################################################################"
         )
@@ -785,3 +774,5 @@ if __name__ == "__main__":
     print(device)
 
     training_testing()
+    
+    
