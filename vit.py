@@ -25,7 +25,7 @@ from utils import save_CIFAR100
 
 channels = 3
 learning_rate = 0.001
-epochs = 100
+epochs = 200
 batch_size = 8
 dataset_name = "CIFAR100"
 model_name = "ViT"
@@ -74,43 +74,14 @@ def train(model, train_loader, criterion, optimizer):
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}")
 
 
-# # evaluate model
-# def test(model, test_loader, msg):
-#     model.eval()
-#     correct = 0
-#     total = 0
-#     all_targets = []
-#     all_predictions = []
-
-#     with torch.no_grad():
-#         for images, labels in tqdm(test_loader, desc="Testing", leave=False):
-#             images, labels = images.to(device), labels.to(device)
-
-#             outputs = model(images)
-#             _, predicted = torch.max(outputs.data, 1)
-
-#             # TODO: [8,8,8]이 나옴 --> [8,3,8,8] 이 나와야 함
-#             print(f"predicted: {predicted.shape}")
-#             total += labels.size(0)
-#             correct += (predicted == labels).sum().item()
-
-#             all_targets.extend(labels.cpu().numpy())
-#             all_predictions.extend(predicted.cpu().numpy())
-
-#     accuracy = 100 * correct / total
-#     # precision_per_class = precision_score(all_targets, all_predictions, average=None)
-#     precision_avg = precision_score(all_targets, all_predictions, average="macro")
-
-#     print(f"Accuracy of the model on the test images -- {msg}: {accuracy:.2f}%")
-
-#     return accuracy, precision_avg
+# TODO: 8x8 이미지를 32x32로 변환하는 함수 만들어야 함. 그 후 확인하기
 
 
 # evaluate model
 def test(model, test_loader, criterion, msg):
     removed_images_path = os.path.join(os.getcwd(), "removed_images")
     os.makedirs(removed_images_path, exist_ok=True)
-    
+
     model.eval()
     running_loss = 0.0
 
@@ -129,6 +100,7 @@ def test(model, test_loader, criterion, msg):
     print(f"Average loss of the model on the test images -- {msg}: {avg_loss:.4f}")
 
     return avg_loss
+
 
 # save result
 def save_result(
@@ -407,97 +379,8 @@ def make_8x8_image_from_original_dataset():
 
 
 class Encoder(nn.Module):
-    def __init__(self, embed_size=64, num_heads=3, dropout=0.1):
-        super().__init__()
-        self.ln1 = nn.LayerNorm(embed_size)
-        self.attention = nn.MultiheadAttention(
-            embed_size, num_heads, dropout, batch_first=True
-        )
-        self.ln2 = nn.LayerNorm(embed_size)
-        self.ff = nn.Sequential(
-            nn.Linear(embed_size, 4 * embed_size),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(4 * embed_size, embed_size),
-            nn.Dropout(dropout),
-        )
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        x = self.ln1(x)
-        x = x + self.attention(x, x, x)[0]
-        x = x + self.ff(self.ln2(x))
-        return x
-
-
-class ViT(nn.Module):
-    def __init__(
-        self,
-        in_channels=3,
-        num_encoders=6,
-        embed_size=64,
-        img_size=(8, 8),
-        patch_size=8,
-        num_classes=192,
-        num_heads=4,
-        dropout=0.1,
-    ):
-        super().__init__()
-        self.img_size = img_size
-        self.patch_size = patch_size
-        self.embed_size = embed_size
-        num_tokens = (img_size[0] * img_size[1]) // (patch_size**2)
-
-        self.patch_embedding = nn.Linear(in_channels * patch_size**2, embed_size)
-        self.pos_embedding = nn.Parameter(
-            torch.randn((num_tokens, embed_size)), requires_grad=True
-        )
-        self.encoders = nn.ModuleList(
-            [
-                Encoder(embed_size=embed_size, num_heads=num_heads, dropout=dropout)
-                for _ in range(num_encoders)
-            ]
-        )
-        self.patch_to_image = nn.Linear(embed_size, in_channels * patch_size**2)
-
-    def forward(self, x):
-        batch_size, channel_size, height, width = x.shape
-
-        patches = x.unfold(2, self.patch_size, self.patch_size).unfold(
-            3, self.patch_size, self.patch_size
-        )
-        patches = patches.contiguous().view(
-            batch_size, -1, channel_size * self.patch_size * self.patch_size
-        )
-
-        x = self.patch_embedding(patches)
-
-        x = x + self.pos_embedding.unsqueeze(0)
-
-        for encoder in self.encoders:
-            x = encoder(x)
-
-        x = self.patch_to_image(x)
-        x = x.view(batch_size, -1, self.patch_size, self.patch_size)
-
-        num_patches_per_row = height // self.patch_size
-        x = x.view(
-            batch_size,
-            num_patches_per_row,
-            num_patches_per_row,
-            channel_size,
-            self.patch_size,
-            self.patch_size,
-        )
-        x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
-        x = x.view(batch_size, channel_size, height, width)
-
-        return x
-
-
-class ViTBlock(nn.Module):
     def __init__(self, embed_dim, num_heads, mlp_dim):
-        super(ViTBlock, self).__init__()
+        super(Encoder, self).__init__()
         self.ln1 = nn.LayerNorm(embed_dim)
         self.mhsa = nn.MultiheadAttention(embed_dim, num_heads)
         self.ln2 = nn.LayerNorm(embed_dim)
@@ -506,7 +389,6 @@ class ViTBlock(nn.Module):
         )
 
     def forward(self, x):
-        # x의 형태: [seq_len, batch_size, embed_dim]
         y = self.ln1(x)
         y, _ = self.mhsa(y, y, y)
         x = x + y
@@ -516,7 +398,7 @@ class ViTBlock(nn.Module):
         return x
 
 
-class ViTAutoencoder(nn.Module):
+class ViT(nn.Module):
     def __init__(
         self,
         img_size=8,
@@ -527,7 +409,7 @@ class ViTAutoencoder(nn.Module):
         num_layers=4,
         mlp_dim=128,
     ):
-        super(ViTAutoencoder, self).__init__()
+        super(ViT, self).__init__()
         self.img_size = img_size
         self.patch_size = patch_size
         self.num_patches = (img_size // patch_size) ** 2
@@ -540,33 +422,29 @@ class ViTAutoencoder(nn.Module):
         )
 
         self.transformer = nn.ModuleList(
-            [ViTBlock(embed_dim, num_heads, mlp_dim) for _ in range(num_layers)]
+            [Encoder(embed_dim, num_heads, mlp_dim) for _ in range(num_layers)]
         )
 
         self.decoder = nn.Sequential(nn.Linear(embed_dim, self.patch_dim))
 
     def forward(self, x):
         batch_size = x.size(0)
-        # 이미지를 패치로 분할
         x = x.unfold(2, self.patch_size, self.patch_size).unfold(
             3, self.patch_size, self.patch_size
         )
         x = x.permute(0, 2, 3, 1, 4, 5).contiguous()
         x = x.view(batch_size, -1, self.patch_dim)
-        # x의 형태: [batch_size, num_patches, patch_dim]
 
         x = self.patch_embed(x)
         x = x + self.position_embeddings
 
-        x = x.permute(1, 0, 2)  # [seq_len, batch_size, embed_dim]
+        x = x.permute(1, 0, 2)
         for layer in self.transformer:
             x = layer(x)
-        x = x.permute(1, 0, 2)  # [batch_size, num_patches, embed_dim]
+        x = x.permute(1, 0, 2)
 
-        # 패치를 복원
-        x = self.decoder(x)  # [batch_size, num_patches, patch_dim]
+        x = self.decoder(x)
 
-        # 이미지를 재구성
         x = x.view(
             batch_size,
             self.img_size // self.patch_size,
@@ -729,7 +607,7 @@ def training_testing():
         # print(f'''test shape: {test_dataset.shape}''')
 
         # removal_model = ViT().to(device)
-        removal_model = ViTAutoencoder().to(device)
+        removal_model = ViT().to(device)
 
         # removal  model 손실함수 정의
         # criterion = nn.CrossEntropyLoss()
@@ -740,11 +618,15 @@ def training_testing():
         print(f"[train removal model QF:{QF}]")
         train(removal_model, train_loader, criterion, optimizer)
 
+        test_loss = test(removal_model, test_loader, criterion, f"Removal {QF}")
+        save_model(
+            (removal_model, os.path.join(os.getcwd(), "models"), f"removal_{QF}.pth")
+        )
+
         print(
             "#############################################################################"
         )
-        test_loss = test(removal_model, test_loader, criterion, f"Removal {QF}")
-        
+
         # print(f"[test removal model]")
         # accuracy, precision = test(removal_model, test_loader, criterion, f"Removal {QF}")
         # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
@@ -774,5 +656,3 @@ if __name__ == "__main__":
     print(device)
 
     training_testing()
-    
-    
