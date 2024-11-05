@@ -23,7 +23,7 @@ channels = 1
 learning_rate = 0.001
 epochs = 120
 batch_size = 4
-dataset_name = "compressed_video_enhancement"
+dataset_name = "jpeg2000"
 model_name = "resnet50"
 num_workers = 16
 image_type = "RGB"
@@ -389,11 +389,10 @@ def training_testing():
 
     for QF in QFs:
         # JPEG dataset 생성
-        # print("make jpeg dataset")
+        print("make jpeg dataset")
         print(
             "#############################################################################"
         )
-        print(f"[QF]: {QF}")
         # make_jpeg_datasets(QF)
 
         # load JPEG  datasets
@@ -432,8 +431,8 @@ def training_testing():
         print("[train the jpeg model]")
         train(jpeg_model, jpeg_train_loader, criterion, optimizer)
 
-        # # save jpeg model
-        # save_model(jpeg_model, os.path.join(os.getcwd(), "models"), "jpeg_model.pth")
+        # save jpeg model
+        save_model(jpeg_model, os.path.join(os.getcwd(), "models"), "jpeg_model.pth")
 
         # Test with JPEG test dataset
         print("test jpeg model with JPEG test dataset")
