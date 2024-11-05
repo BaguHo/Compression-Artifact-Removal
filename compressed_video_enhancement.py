@@ -25,7 +25,7 @@ epochs = 100
 batch_size = 4
 dataset_name = "compressed_video_enhancement"
 model_name = "resnet50"
-num_workers = 32
+num_workers = 24
 image_type = "RGB"
 
 # 디렉토리 생성
