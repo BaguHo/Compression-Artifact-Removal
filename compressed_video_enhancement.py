@@ -338,54 +338,54 @@ class ViT(nn.Module):
 def training_testing():
     QFs = [100, 80, 60, 40, 20]
 
-    # original dataset load
-    original_dataset_path = os.path.join(
-        os.getcwd(), "datasets", "thermal_cropped_images"
-    )
-    original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
-    original_dataset_train, original_dataset_test = train_test_split(
-        original_dataset, test_size=0.2, random_state=42
-    )
+    # # original dataset load
+    # original_dataset_path = os.path.join(
+    #     os.getcwd(), "datasets", "thermal_cropped_images"
+    # )
+    # original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
+    # original_dataset_train, original_dataset_test = train_test_split(
+    #     original_dataset, test_size=0.2, random_state=42
+    # )
 
-    original_dataset_train_loader = DataLoader(
-        original_dataset_train,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-    )
-    original_dataset_test_loader = DataLoader(
-        original_dataset_test,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-    )
+    # original_dataset_train_loader = DataLoader(
+    #     original_dataset_train,
+    #     batch_size=batch_size,
+    #     shuffle=True,
+    #     num_workers=num_workers,
+    # )
+    # original_dataset_test_loader = DataLoader(
+    #     original_dataset_test,
+    #     batch_size=batch_size,
+    #     shuffle=False,
+    #     num_workers=num_workers,
+    # )
 
-    train_sample, train_labels = next(iter(original_dataset_train_loader))
-    print(f"train_shape: {train_sample.shape}")
-    print(f"train labels:  {train_labels}")
+    # train_sample, train_labels = next(iter(original_dataset_train_loader))
+    # print(f"train_shape: {train_sample.shape}")
+    # print(f"train labels:  {train_labels}")
 
-    test_sample, test_labels = next(iter(original_dataset_test_loader))
-    print(f"test_shape: {test_sample.shape}")
-    print(f"test labels:  {test_labels}")
+    # test_sample, test_labels = next(iter(original_dataset_test_loader))
+    # print(f"test_shape: {test_sample.shape}")
+    # print(f"test labels:  {test_labels}")
 
-    # original model
-    # original_model = ViT().to(device)
-    original_model = timm.create_model("resnet50", pretrained=True, num_classes=5).to(
-        device
-    )
+    # # original model
+    # # original_model = ViT().to(device)
+    # original_model = timm.create_model("resnet50", pretrained=True, num_classes=5).to(
+    #     device
+    # )
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
+    # criterion = nn.CrossEntropyLoss()
+    # optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
 
-    # original dataset model tarining
-    print("[train the original model]")
-    train(original_model, original_dataset_train_loader, criterion, optimizer)
+    # # original dataset model tarining
+    # print("[train the original model]")
+    # train(original_model, original_dataset_train_loader, criterion, optimizer)
 
-    # save original model
-    print("save original model")
-    save_model(
-        original_model, os.path.join(os.getcwd(), "models"), "original_model.pth"
-    )
+    # # save original model
+    # print("save original model")
+    # save_model(
+    #     original_model, os.path.join(os.getcwd(), "models"), "original_model.pth"
+    # )
 
     for QF in QFs:
         # JPEG dataset 생성
@@ -400,18 +400,18 @@ def training_testing():
             load_jpeg_datasets(QF, transform)
         )
 
-        # test with original dataset test dataset
-        accuracy, precision = test(
-            original_model, original_dataset_test_loader, "original - original"
-        )
-        save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF=QF)
+        # # test with original dataset test dataset
+        # accuracy, precision = test(
+        #     original_model, original_dataset_test_loader, "original - original"
+        # )
+        # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF=QF)
 
-        #  test with JPEG test dataset
-        print("test original model with JPEG test dataset")
-        accuracy, precision = test(
-            original_model, jpeg_test_loader, f"original - jpeg {QF}"
-        )
-        save_result(model_name, dataset_name, f"JPEG", accuracy, precision, QF=QF)
+        # #  test with JPEG test dataset
+        # print("test original model with JPEG test dataset")
+        # accuracy, precision = test(
+        #     original_model, jpeg_test_loader, f"original - jpeg {QF}"
+        # )
+        # save_result(model_name, dataset_name, f"JPEG", accuracy, precision, QF=QF)
 
         # Tarining with JPEG dataset.
         # jpeg_model = ViT().to(device)
@@ -441,11 +441,11 @@ def training_testing():
         )
         save_result(model_name, f"JPEG", f"JPEG", accuracy, precision, QF=QF)
 
-        # test with original  test dataset
-        print("test jpeg model with original  test dataset")
-        accuracy, precision = test(
-            jpeg_model, original_dataset_test_loader, f"jpeg {QF} - original"
-        )
+        # # test with original  test dataset
+        # print("test jpeg model with original  test dataset")
+        # accuracy, precision = test(
+        #     jpeg_model, original_dataset_test_loader, f"jpeg {QF} - original"
+        # )
         save_result(model_name, f"JPEG", dataset_name, accuracy, precision, QF=QF)
         print(
             "#############################################################################"
