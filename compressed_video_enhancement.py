@@ -21,11 +21,11 @@ import timm
 
 channels = 1
 learning_rate = 0.001
-epochs = 120
+epochs = 100
 batch_size = 4
 dataset_name = "compressed_video_enhancement"
 model_name = "resnet50"
-num_workers = 16
+num_workers = 32
 image_type = "RGB"
 
 # 디렉토리 생성
@@ -194,8 +194,6 @@ def make_jpeg_datasets(QF):
 
 # JPEG 데이터셋 로드
 # TODO: dataset에  따라 변경 필요함
-
-
 def load_jpeg_datasets(QF, transform):
     jpeg_train_dir = os.path.join(
         os.getcwd(), "datasets", dataset_name, f"jpeg{QF}", "train"
@@ -203,6 +201,9 @@ def load_jpeg_datasets(QF, transform):
     jpeg_test_dir = os.path.join(
         os.getcwd(), "datasets", dataset_name, f"jpeg{QF}", "test"
     )
+
+    print(f"Load jpeg train dataset from {jpeg_train_dir}")
+    print(f"Load jpeg test dataset from {jpeg_test_dir}")
 
     train_dataset = datasets.ImageFolder(jpeg_train_dir, transform=transform)
     test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
@@ -217,6 +218,7 @@ def load_jpeg_datasets(QF, transform):
         num_workers=num_workers,
         drop_last=True,
     )
+
     test_dataloader = DataLoader(
         test_dataset,
         batch_size=batch_size,
