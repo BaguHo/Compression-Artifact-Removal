@@ -1,26 +1,28 @@
-import torchvision
-from torch.autograd import Variable
-import torch
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-from torchvision import models
-from torch.utils.data import DataLoader, ConcatDataset, Dataset
-import torch.nn.init
-import torch.optim as optim
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import pandas as pd
-import torch.nn as nn
-import torch.nn.functional as F
-from sklearn.metrics import precision_score, confusion_matrix
 import os
-import numpy as np
+import re
 import time
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from PIL import Image
+from sklearn.metrics import confusion_matrix, precision_score
 from sklearn.model_selection import train_test_split
 import timm
-from PIL import Image
-import cv2
-import re
+import torch
+from torch.autograd import Variable
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.nn.init
+import torch.optim as optim
+from torch.utils.data import ConcatDataset, DataLoader, Dataset
+import torchvision.datasets as datasets
+from torchvision import models
+import torchvision.transforms as transforms
+from torchvision.transforms import ToPILImage
+from tqdm import tqdm
+
 from utils import save_CIFAR100
 
 channels = 3
@@ -100,6 +102,14 @@ def test(model, test_loader, criterion, msg):
     print(f"Average loss of the model on the test images -- {msg}: {avg_loss:.4f}")
 
     return avg_loss
+
+
+def save_output_images(image_tensor, label, QF):
+    output_dir = os.path.join(
+        os.getcwd(), "datasets", "original_size", "outputs", f"jpeg{QF}", {label}
+    )
+    image = ToPILImage(image_tensor)
+    image.save()
 
 
 # save result
