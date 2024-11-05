@@ -23,7 +23,7 @@ import torchvision.transforms as transforms
 from torchvision.transforms import ToPILImage
 from tqdm import tqdm
 
-from utils import save_CIFAR100
+from utils.utils import save_CIFAR100
 
 channels = 3
 learning_rate = 0.001
