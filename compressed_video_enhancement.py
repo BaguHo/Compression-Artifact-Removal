@@ -393,7 +393,7 @@ def training_testing():
         print(
             "#############################################################################"
         )
-        make_jpeg_datasets(QF)
+        # make_jpeg_datasets(QF)
 
         # load JPEG  datasets
         jpeg_train_dataset, jpeg_test_dataset, jpeg_train_loader, jpeg_test_loader = (
