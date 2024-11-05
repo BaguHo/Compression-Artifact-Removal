@@ -1,0 +1,16 @@
+Model Name,Channel,Train Dataset,Test Dataset,Accuracy,Precision,Epoch,Batch Size,QF
+resnet50,1,Tufts Face Database,Tufts Face Database,75.0,0.7594474153297682,120,4,100
+resnet50,1,Tufts Face Database,Tufts Face Database,76.36363636363636,0.7774583517617574,120,4,80
+resnet50,1,Tufts Face Database,Tufts Face Database,76.85185185185185,0.7904388683212213,120,4,60
+resnet50,1,Tufts Face Database,Tufts Face Database,68.51851851851852,0.7006990622335891,120,4,40
+resnet50,1,Tufts Face Database,Tufts Face Database,63.888888888888886,0.6622244899958984,120,4,20
+resnet50,1,jpeg2000_removed,jpeg2000_removed,65.0,0.67338179977236,120,4,100
+resnet50,1,jpeg2000_removed,jpeg2000_removed,66.81818181818181,0.6859240842876496,120,4,80
+resnet50,1,jpeg2000_removed,jpeg2000_removed,69.54545454545455,0.7082859900052558,120,4,60
+resnet50,1,jpeg2000_removed,jpeg2000_removed,65.0,0.6832053557647785,120,4,40
+resnet50,1,jpeg2000_removed,jpeg2000_removed,65.0,0.6773086786734278,120,4,20
+resnet50,1,compressed_video_enhancement,compressed_video_enhancement,71.36363636363636,0.7448403297934907,120,4,100
+resnet50,1,compressed_video_enhancement,compressed_video_enhancement,76.36363636363636,0.7779352226720648,120,4,80
+resnet50,1,compressed_video_enhancement,compressed_video_enhancement,78.18181818181819,0.8105015366232926,120,4,60
+resnet50,1,compressed_video_enhancement,compressed_video_enhancement,64.0909090909091,0.6578276270827723,120,4,40
+resnet50,1,compressed_video_enhancement,compressed_video_enhancement,60.90909090909091,0.6434616823967266,120,4,20
