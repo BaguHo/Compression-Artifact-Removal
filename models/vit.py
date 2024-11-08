@@ -411,10 +411,13 @@ class Encoder(nn.Module):
 class ViT(nn.Module):
     def __init__(
         self,
+        # 8*8 이미지를 1*1 patch로 나누면 8*8=64개의 patch가 나온다.
+        # 마지막에 예측하는 패치 하나가 더 들어가서 65개의 패치가 encoder를 통과한다.
         img_size=8,
-        patch_size=2,
+        patch_size=1,
         in_channels=3,
-        embed_dim=64,
+        # embed_dim은 patch_size * patch_size * in_channels이 base모델의 사이즈이다. 3*1*1을 몇 개로 embedding할 것인지 정하는 파라미터
+        embed_dim=6,
         num_heads=4,
         num_layers=4,
         mlp_dim=128,
@@ -629,6 +632,7 @@ def training_testing():
         train(removal_model, train_loader, criterion, optimizer)
 
         test_loss = test(removal_model, test_loader, criterion, f"Removal {QF}")
+        os.mkdirs(os.path.join(os.getcwd(), "models"), exist_ok=True)
         save_model(
             (removal_model, os.path.join(os.getcwd(), "models"), f"removal_{QF}.pth")
         )
