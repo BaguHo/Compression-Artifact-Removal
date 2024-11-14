@@ -751,51 +751,49 @@ def training_testing():
         make_8x8_jpeg_image(QF)
         print("Done")
 
-        # load dataset [training, target] = [jpeg, original] as 8x8
-        print("Loading dataset and dataloader...")
-        train_dataset, test_dataset, train_loader, test_loader = load_images_from_8x8(
-            QF
-        )
-        # print(f'train loader: {train_loader}')
-        print(f"test loader: {test_loader}")
+    # load dataset [training, target] = [jpeg, original] as 8x8
+    print("Loading dataset and dataloader...")
+    train_dataset, test_dataset, train_loader, test_loader = load_images_from_8x8()
+    # print(f'train loader: {train_loader}')
+    print(f"test loader: {test_loader}")
 
-        print("Done")
+    print("Done")
 
-        # print(f'''train shape: {train_dataset.shape}''')
-        # print(f'''test shape: {test_dataset.shape}''')
+    # print(f'''train shape: {train_dataset.shape}''')
+    # print(f'''test shape: {test_dataset.shape}''')
 
-        # removal_model = ViT().to(device)
-        removal_model = ViT().to(device)
-        # TODO: to use multiple GPUs
-        # removal_model = nn.DataParallel(ViT()).to(device)
-        print(f"Total number of parameters: {count_parameters(removal_model)}")
+    # removal_model = ViT().to(device)
+    removal_model = ViT().to(device)
+    # TODO: to use multiple GPUs
+    # removal_model = nn.DataParallel(ViT()).to(device)
+    print(f"Total number of parameters: {count_parameters(removal_model)}")
 
-        # removal  model 손실함수 정의
-        # criterion = nn.CrossEntropyLoss()
-        criterion = nn.MSELoss()
-        optimizer = optim.Adam(removal_model.parameters(), lr=learning_rate)
+    # removal  model 손실함수 정의
+    # criterion = nn.CrossEntropyLoss()
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(removal_model.parameters(), lr=learning_rate)
 
-        # train the removal model
-        print(f"[train removal model QF:{QF}]")
-        train(removal_model, train_loader, criterion, optimizer)
+    # train the removal model
+    # print(f"[train removal model QF:{QF}]")
+    train(removal_model, train_loader, criterion, optimizer)
 
-        test_loss = test(removal_model, test_loader, criterion, f"Removal {QF}")
-        save_model(
-            removal_model,
-            os.path.join(os.getcwd(), "output_models"),
-            f"removal_{QF}.pth",
-        )
+    test_loss = test(removal_model, test_loader, criterion, f"Removal")
+    save_model(
+        removal_model,
+        os.path.join(os.getcwd(), "output_models"),
+        f"removal.pth",
+    )
 
-        print(
-            "#############################################################################"
-        )
+    print(
+        "#############################################################################"
+    )
 
-        # print(f"[test removal model]")
-        # accuracy, precision = test(removal_model, test_loader, criterion, f"Removal {QF}")
-        # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
-        print(
-            "#############################################################################"
-        )
+    # print(f"[test removal model]")
+    # accuracy, precision = test(removal_model, test_loader, criterion, f"Removal {QF}")
+    # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
+    print(
+        "#############################################################################"
+    )
 
 
 ################################################################################################################
