@@ -80,7 +80,7 @@ def train(model, train_loader, criterion, optimizer):
 
 # evaluate model
 def test(model, test_loader, criterion, msg):
-    removed_images_path = os.path.join(os.getcwd(), 'datasets', "removed_images")
+    removed_images_path = os.path.join(os.getcwd(), "datasets", "removed_images")
     os.makedirs(removed_images_path, exist_ok=True)
 
     model.eval()
@@ -99,9 +99,15 @@ def test(model, test_loader, criterion, msg):
             idx = 0
             for image in images:
                 image = ToPILImage()(image)
-                
-                os.makedirs(os.path.join(removed_images_path, str(image_idx)), exist_ok=True)
-                image.save(os.path.join(removed_images_path, f"image_{image_idx}_idx_{idx}.jpeg"))
+
+                os.makedirs(
+                    os.path.join(removed_images_path, str(image_idx)), exist_ok=True
+                )
+                image.save(
+                    os.path.join(
+                        removed_images_path, f"image_{image_idx}_idx_{idx}.jpeg"
+                    )
+                )
                 # image.save(os.path.join(removed_images_path, f"{idx}.jpeg"))
                 idx += 1
             image_idx += 1
@@ -509,6 +515,21 @@ def make_8x8_image_from_original_dataset():
         process_and_save_images(input_test_dir, output_test_dir)
 
 
+# Paramater
+# Patch Embeding Paramaters: patch_size * patch_size * channels + embediing_dim
+# + Positional embeding = 1*64*64
+# + Layer norm Paramaters = 2 * embeding_dim = 2 * 64
+# MultiheadAttention Paramaters =  3 * 64 (3×(64×64+64))+(64×64+64) = 16640
+# MLP block = (64×128+128)+(128×64+64) = 16576
+# Encoder Paramaters = 4×33472=133888
+# Decoder Paramaters = (64×3)+3=192+3=195
+# Total Paramaters = Patch Embedding: 256 + Position Embeddings: 4096 + Encoder Layers:  133888 + Decoder Layer:  195 = 138435
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
 class Encoder(nn.Module):
     def __init__(self, embed_dim, num_heads, mlp_dim):
         super(Encoder, self).__init__()
@@ -533,11 +554,11 @@ class ViT(nn.Module):
     def __init__(
         self,
         img_size=8,
-        patch_size=2,
+        patch_size=1,
         in_channels=3,
         embed_dim=64,
-        num_heads=4,
-        num_layers=4,
+        num_heads=8,
+        num_layers=16,
         mlp_dim=128,
     ):
         super(ViT, self).__init__()
@@ -739,6 +760,7 @@ def training_testing():
 
         # removal_model = ViT().to(device)
         removal_model = ViT().to(device)
+        print(f"Total number of parameters: {count_parameters(removal_model)}")
 
         # removal  model 손실함수 정의
         # criterion = nn.CrossEntropyLoss()
