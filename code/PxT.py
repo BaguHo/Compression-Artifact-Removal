@@ -27,7 +27,7 @@ from tqdm import tqdm
 channels = 3
 learning_rate = 0.001
 epochs = 150
-batch_size = 8
+batch_size = 128
 dataset_name = "CIFAR100"
 model_name = "ViT"
 num_workers = 4
@@ -105,15 +105,17 @@ def test(model, test_loader, criterion, msg):
                 )
                 image.save(
                     os.path.join(
-                        removed_images_path, f'str(image_idx)', f"image_{image_idx}_idx_{idx}.jpeg"
+                        removed_images_path,
+                        f"{str(image_idx)}",
+                        f"image_{image_idx}_idx_{idx}.jpeg",
                     )
                 )
                 # image.save(os.path.join(removed_images_path, f"{idx}.jpeg"))
                 idx += 1
             image_idx += 1
 
-            print(f"outputs shape: {outputs.shape}")
-            print(f"labels shape: {labels.shape}")
+            # print(f"outputs shape: {outputs.shape}")
+            # print(f"labels shape: {labels.shape}")
             running_loss += loss.item()
 
     avg_loss = running_loss / len(test_loader)
@@ -649,76 +651,80 @@ def sort_key(filename):
     return (image_number, crop_number)
 
 
-def load_images_from_8x8(QF):
+def load_images_from_8x8():
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
 
-    # input images
-    train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
-    test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
-
-    # target images (original)
-    target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
-    target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
-
+    QFs = [80, 60, 40, 20]
+    
     train_input_dataset = []
     test_input_dataset = []
     train_target_dataset = []
     test_target_dataset = []
 
-    # 학습 데이터 로드
-    for i in range(100):
-        train_path = os.path.join(train_input_dir, str(i))
-        target_train_path = os.path.join(target_train_dataset_dir, str(i))
+    for QF in QFs:
+        # input images
+        train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
+        test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
 
-        # train_path 내 파일을 정렬된 순서로 불러오기
-        sorted_train_files = sorted(os.listdir(train_path), key=sort_key)
-        sorted_target_train_files = sorted(os.listdir(target_train_path), key=sort_key)
+        # target images (original)
+        target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
+        target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
 
-        # 두 디렉토리의 파일명이 같은지 확인하며 로드
-        for train_file, target_file in zip(
-            sorted_train_files, sorted_target_train_files
-        ):
-            if train_file == target_file:
-                # input 이미지 로드
-                train_image_path = os.path.join(train_path, train_file)
-                train_image = cv2.imread(train_image_path)
-                train_input_dataset.append(np.array(train_image))
+        # 학습 데이터 로드
+        for i in range(100):
+            train_path = os.path.join(train_input_dir, str(i))
+            target_train_path = os.path.join(target_train_dataset_dir, str(i))
 
-                # target 이미지 로드
-                target_image_path = os.path.join(target_train_path, target_file)
-                target_image = cv2.imread(target_image_path)
-                train_target_dataset.append(np.array(target_image))
-            else:
-                print(
-                    f"Warning: Mismatched files in training set: {train_file} and {target_file}"
-                )
+            # train_path 내 파일을 정렬된 순서로 불러오기
+            sorted_train_files = sorted(os.listdir(train_path), key=sort_key)
+            sorted_target_train_files = sorted(os.listdir(target_train_path), key=sort_key)
 
-    # 테스트 데이터 로드
-    for i in range(100):
-        test_path = os.path.join(test_input_dir, str(i))
-        target_test_path = os.path.join(target_test_dataset_dir, str(i))
+            # 두 디렉토리의 파일명이 같은지 확인하며 로드
+            for train_file, target_file in zip(
+                sorted_train_files, sorted_target_train_files
+            ):
+                if train_file == target_file:
+                    # input 이미지 로드
+                    train_image_path = os.path.join(train_path, train_file)
+                    train_image = cv2.imread(train_image_path)
+                    train_input_dataset.append(np.array(train_image))
 
-        # test_path 내 파일을 정렬된 순서로 불러오기
-        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+                    # target 이미지 로드
+                    target_image_path = os.path.join(target_train_path, target_file)
+                    target_image = cv2.imread(target_image_path)
+                    train_target_dataset.append(np.array(target_image))
+                else:
+                    print(
+                        f"Warning: Mismatched files in training set: {train_file} and {target_file}"
+                    )
 
-        # 두 디렉토리의 파일명이 같은지 확인하며 로드
-        for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
-            if test_file == target_file:
-                # input 이미지 로드
-                test_image_path = os.path.join(test_path, test_file)
-                test_image = cv2.imread(test_image_path)
-                test_input_dataset.append(np.array(test_image))
+        # 테스트 데이터 로드
+        # 100 = class 개수
+        for i in range(100):
+            test_path = os.path.join(test_input_dir, str(i))
+            target_test_path = os.path.join(target_test_dataset_dir, str(i))
 
-                # target 이미지 로드
-                target_image_path = os.path.join(target_test_path, target_file)
-                target_image = cv2.imread(target_image_path)
-                test_target_dataset.append(np.array(target_image))
-            else:
-                print(
-                    f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
-                )
+            # test_path 내 파일을 정렬된 순서로 불러오기
+            sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
+            sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+
+            # 두 디렉토리의 파일명이 같은지 확인하며 로드
+            for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
+                if test_file == target_file:
+                    # input 이미지 로드
+                    test_image_path = os.path.join(test_path, test_file)
+                    test_image = cv2.imread(test_image_path)
+                    test_input_dataset.append(np.array(test_image))
+
+                    # target 이미지 로드
+                    target_image_path = os.path.join(target_test_path, target_file)
+                    target_image = cv2.imread(target_image_path)
+                    test_target_dataset.append(np.array(target_image))
+                else:
+                    print(
+                        f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
+                    )
 
     # Dataset과 DataLoader 생성
     train_dataset = CIFAR100Dataset(
@@ -760,6 +766,8 @@ def training_testing():
 
         # removal_model = ViT().to(device)
         removal_model = ViT().to(device)
+        # TODO: to use multiple GPUs
+        # removal_model = nn.DataParallel(ViT()).to(device)
         print(f"Total number of parameters: {count_parameters(removal_model)}")
 
         # removal  model 손실함수 정의
