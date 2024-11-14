@@ -1,4 +1,4 @@
 /datasets/*
 ./experiments/*
 ./SwinIR/*
-./models/*
+./removal_models/*

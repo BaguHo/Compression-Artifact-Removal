@@ -105,7 +105,7 @@ def test(model, test_loader, criterion, msg):
                 )
                 image.save(
                     os.path.join(
-                        removed_images_path, f"image_{image_idx}_idx_{idx}.jpeg"
+                        removed_images_path, f'str(image_idx)', f"image_{image_idx}_idx_{idx}.jpeg"
                     )
                 )
                 # image.save(os.path.join(removed_images_path, f"{idx}.jpeg"))
@@ -762,7 +762,6 @@ def training_testing():
         removal_model = ViT().to(device)
         print(f"Total number of parameters: {count_parameters(removal_model)}")
 
-        
         # removal  model 손실함수 정의
         # criterion = nn.CrossEntropyLoss()
         criterion = nn.MSELoss()
@@ -774,7 +773,9 @@ def training_testing():
 
         test_loss = test(removal_model, test_loader, criterion, f"Removal {QF}")
         save_model(
-            removal_model, os.path.join(os.getcwd(), "models"), f"removal_{QF}.pth"
+            removal_model,
+            os.path.join(os.getcwd(), "output_models"),
+            f"removal_{QF}.pth",
         )
 
         print(
