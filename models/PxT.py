@@ -556,9 +556,9 @@ class ViT(nn.Module):
         img_size=8,
         patch_size=1,
         in_channels=3,
-        embed_dim=64,
-        num_heads=8,
-        num_layers=16,
+        embed_dim=128,
+        num_heads=32,
+        num_layers=32,
         mlp_dim=128,
     ):
         super(ViT, self).__init__()
@@ -743,7 +743,7 @@ def training_testing():
         # jpeg image 8x8로 저장
         print("making the 8x8 image..")
         make_8x8_jpeg_image(QF)
-        print("done")
+        print("Done")
 
         # load dataset [training, target] = [jpeg, original] as 8x8
         print("Loading dataset and dataloader...")
@@ -762,6 +762,7 @@ def training_testing():
         removal_model = ViT().to(device)
         print(f"Total number of parameters: {count_parameters(removal_model)}")
 
+        
         # removal  model 손실함수 정의
         # criterion = nn.CrossEntropyLoss()
         criterion = nn.MSELoss()
