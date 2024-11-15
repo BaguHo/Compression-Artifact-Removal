@@ -779,7 +779,7 @@ def training_testing():
     optimizer = optim.Adam(removal_model.parameters(), lr=learning_rate)
 
     # train the removal model
-    print(f"[train removal model QF:{QF}]")
+    print(f"[train removal model]")
     train(removal_model, train_loader, criterion, optimizer)
 
     test_loss = test(removal_model, test_loader, criterion, f"Removal {QF}")
