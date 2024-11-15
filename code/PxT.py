@@ -766,6 +766,11 @@ def training_testing():
 
         # removal_model = ViT().to(device)
         removal_model = ViT().to(device)
+        # If multiple GPUs are available, use DataParallel
+        if torch.cuda.device_count() > 1:
+            print(f"Using {torch.cuda.device_count()} GPUs!")
+            removal_model = nn.DataParallel(removal_model)
+
         print(f"Total number of parameters: {count_parameters(removal_model)}")
 
         # removal  model 손실함수 정의
