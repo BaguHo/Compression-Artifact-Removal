@@ -27,12 +27,12 @@ from tqdm import tqdm
 channels = 3
 learning_rate = 0.001
 epochs = 500
-batch_size = 128
+batch_size = 512
 dataset_name = "CIFAR100"
 model_name = "ViT"
-num_workers = 4
+num_workers = 64
 image_type = "RGB"
-num_classes = 5
+# num_classes = 5
 QFs = [80, 60, 40, 20]
 
 
@@ -743,15 +743,15 @@ def load_images_from_8x8():
 
 # training & testing for each QF
 def training_testing():
-    save_CIFAR100()
+    # save_CIFAR100()
     # save_ImageNet()
-    make_8x8_image_from_original_dataset()
+    # make_8x8_image_from_original_dataset()
 
-    for QF in QFs:
-        # jpeg image 8x8로 저장
-        print("making the 8x8 image..")
-        make_8x8_jpeg_image(QF)
-        print("Done")
+    # for QF in QFs:
+    #     # jpeg image 8x8로 저장
+    #     print("making the 8x8 image..")
+    #     make_8x8_jpeg_image(QF)
+    #     print("Done")
 
     # load dataset [training, target] = [jpeg, original] as 8x8
     print("Loading dataset and dataloader...")
