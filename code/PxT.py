@@ -26,7 +26,7 @@ from tqdm import tqdm
 
 channels = 3
 learning_rate = 0.001
-epochs = 150
+epochs = 500
 batch_size = 128
 dataset_name = "CIFAR100"
 model_name = "ViT"
@@ -106,7 +106,7 @@ def test(model, test_loader, criterion, msg):
                 image.save(
                     os.path.join(
                         removed_images_path,
-                        f"{str(image_idx)}",
+                        f"str(image_idx)",
                         f"image_{image_idx}_idx_{idx}.jpeg",
                     )
                 )
@@ -114,8 +114,8 @@ def test(model, test_loader, criterion, msg):
                 idx += 1
             image_idx += 1
 
-            # print(f"outputs shape: {outputs.shape}")
-            # print(f"labels shape: {labels.shape}")
+            print(f"outputs shape: {outputs.shape}")
+            print(f"labels shape: {labels.shape}")
             running_loss += loss.item()
 
     avg_loss = running_loss / len(test_loader)
@@ -169,9 +169,6 @@ def extract_label(file_name):
     parts = base_name.split("_")
     label = parts[-1]
     return label
-
-
-QFs = [80, 60, 40, 20]
 
 
 def save_CIFAR100():
@@ -278,6 +275,7 @@ def save_CIFAR100():
                     print(f"{idx} jpeg test images saved...")
 
     print("All jpeg images have been saved successfully.")
+    print("####################################################################")
 
 
 # jpeg 이미지 생성
@@ -416,16 +414,16 @@ def process_and_save_images(input_dir, output_dir):
     for img_file in os.listdir(input_dir):
         img_path = os.path.join(input_dir, img_file)
 
-    with Image.open(img_path) as img:
-        # 이미지를 8x8로 자름
-        cropped_images = crop_image(img)
-        # 잘린 이미지를 output_dir에 저장
-        for idx, cropped_img in enumerate(cropped_images):
-            cropped_img.save(
-                os.path.join(
-                    output_dir, f"{os.path.splitext(img_file)[0]}_crop_{idx}.jpeg"
+        with Image.open(img_path) as img:
+            # 이미지를 8x8로 자름
+            cropped_images = crop_image(img)
+            # 잘린 이미지를 output_dir에 저장
+            for idx, cropped_img in enumerate(cropped_images):
+                cropped_img.save(
+                    os.path.join(
+                        output_dir, f"{os.path.splitext(img_file)[0]}_crop_{idx}.jpeg"
+                    )
                 )
-            )
 
 
 def make_8x8_jpeg_image(QF):
@@ -655,8 +653,6 @@ def load_images_from_8x8():
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
 
-    QFs = [80, 60, 40, 20]
-    
     train_input_dataset = []
     test_input_dataset = []
     train_target_dataset = []
@@ -678,7 +674,9 @@ def load_images_from_8x8():
 
             # train_path 내 파일을 정렬된 순서로 불러오기
             sorted_train_files = sorted(os.listdir(train_path), key=sort_key)
-            sorted_target_train_files = sorted(os.listdir(target_train_path), key=sort_key)
+            sorted_target_train_files = sorted(
+                os.listdir(target_train_path), key=sort_key
+            )
 
             # 두 디렉토리의 파일명이 같은지 확인하며 로드
             for train_file, target_file in zip(
@@ -700,17 +698,20 @@ def load_images_from_8x8():
                     )
 
         # 테스트 데이터 로드
-        # 100 = class 개수
         for i in range(100):
             test_path = os.path.join(test_input_dir, str(i))
             target_test_path = os.path.join(target_test_dataset_dir, str(i))
 
             # test_path 내 파일을 정렬된 순서로 불러오기
             sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-            sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+            sorted_target_test_files = sorted(
+                os.listdir(target_test_path), key=sort_key
+            )
 
             # 두 디렉토리의 파일명이 같은지 확인하며 로드
-            for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
+            for test_file, target_file in zip(
+                sorted_test_files, sorted_target_test_files
+            ):
                 if test_file == target_file:
                     # input 이미지 로드
                     test_image_path = os.path.join(test_path, test_file)
@@ -743,6 +744,7 @@ def load_images_from_8x8():
 # training & testing for each QF
 def training_testing():
     save_CIFAR100()
+    # save_ImageNet()
     make_8x8_image_from_original_dataset()
 
     for QF in QFs:
@@ -751,49 +753,47 @@ def training_testing():
         make_8x8_jpeg_image(QF)
         print("Done")
 
-    # load dataset [training, target] = [jpeg, original] as 8x8
-    print("Loading dataset and dataloader...")
-    train_dataset, test_dataset, train_loader, test_loader = load_images_from_8x8()
-    # print(f'train loader: {train_loader}')
-    print(f"test loader: {test_loader}")
+        # load dataset [training, target] = [jpeg, original] as 8x8
+        print("Loading dataset and dataloader...")
+        train_dataset, test_dataset, train_loader, test_loader = load_images_from_8x8()
+        # print(f'train loader: {train_loader}')
+        print(f"test loader: {test_loader}")
 
-    print("Done")
+        print("Done")
 
-    # print(f'''train shape: {train_dataset.shape}''')
-    # print(f'''test shape: {test_dataset.shape}''')
+        # print(f'''train shape: {train_dataset.shape}''')
+        # print(f'''test shape: {test_dataset.shape}''')
 
-    # removal_model = ViT().to(device)
-    removal_model = ViT().to(device)
-    # TODO: to use multiple GPUs
-    # removal_model = nn.DataParallel(ViT()).to(device)
-    print(f"Total number of parameters: {count_parameters(removal_model)}")
+        # removal_model = ViT().to(device)
+        removal_model = ViT().to(device)
+        print(f"Total number of parameters: {count_parameters(removal_model)}")
 
-    # removal  model 손실함수 정의
-    # criterion = nn.CrossEntropyLoss()
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(removal_model.parameters(), lr=learning_rate)
+        # removal  model 손실함수 정의
+        # criterion = nn.CrossEntropyLoss()
+        criterion = nn.MSELoss()
+        optimizer = optim.Adam(removal_model.parameters(), lr=learning_rate)
 
-    # train the removal model
-    # print(f"[train removal model QF:{QF}]")
-    train(removal_model, train_loader, criterion, optimizer)
+        # train the removal model
+        print(f"[train removal model QF:{QF}]")
+        train(removal_model, train_loader, criterion, optimizer)
 
-    test_loss = test(removal_model, test_loader, criterion, f"Removal")
-    save_model(
-        removal_model,
-        os.path.join(os.getcwd(), "output_models"),
-        f"removal.pth",
-    )
+        test_loss = test(removal_model, test_loader, criterion, f"Removal {QF}")
+        save_model(
+            removal_model,
+            os.path.join(os.getcwd(), "output_models"),
+            f"removal_{QF}.pth",
+        )
 
-    print(
-        "#############################################################################"
-    )
+        print(
+            "#############################################################################"
+        )
 
-    # print(f"[test removal model]")
-    # accuracy, precision = test(removal_model, test_loader, criterion, f"Removal {QF}")
-    # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
-    print(
-        "#############################################################################"
-    )
+        # print(f"[test removal model]")
+        # accuracy, precision = test(removal_model, test_loader, criterion, f"Removal {QF}")
+        # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
+        print(
+            "#############################################################################"
+        )
 
 
 ################################################################################################################
