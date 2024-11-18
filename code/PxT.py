@@ -2,7 +2,6 @@
 import os
 import re
 import time
-
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,13 +26,13 @@ from tqdm import tqdm
 PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
 channels = 3
 learning_rate = 0.001
-epochs = 50
+epochs = 10
 batch_size = 512
 dataset_name = "CIFAR100"
 model_name = "PxT"
 num_workers = 64
 image_type = "RGB"
-num_classes = 30
+num_classes = 20
 QFs = [80, 60, 40, 20]
 
 
@@ -587,10 +586,10 @@ class ViT(nn.Module):
         img_size=8,
         patch_size=1,
         in_channels=3,
-        embed_dim=128,
+        embed_dim=64,
         num_heads=16,
         num_layers=16,
-        mlp_dim=128,
+        mlp_dim=64,
     ):
         super(ViT, self).__init__()
         self.img_size = img_size
