@@ -96,8 +96,8 @@ def train(model, train_loader, criterion, optimizer):
 
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.8f}")
 
-        # 10 에포크마다 체크포인트 저장
-        if (epoch + 1) % 10 == 0:
+        # 5 에포크마다 체크포인트 저장
+        if (epoch + 1) % 5 == 0:
             checkpoint_path = os.path.join(
                 "checkpoints", f"model_checkpoint_epoch_{epoch + 1}.pth"
             )
@@ -781,14 +781,17 @@ def load_images_from_8x8():
 # training & testing for each QF
 def training_testing():
     # TODO: 처음 실행 시에만 실행
-    save_CIFAR100()
-    make_8x8_image_from_original_dataset()
+    # save_CIFAR100()
+    # make_8x8_image_from_original_dataset()
 
-    for QF in QFs:
-        # jpeg image 8x8로 저장
-        print("making the 8x8 image..")
-        make_8x8_jpeg_image(QF)
-        print("Done")
+    # for QF in QFs:
+    #     # jpeg image 8x8로 저장
+    #     print("making the 8x8 image..")
+    #     make_8x8_jpeg_image(QF)
+    #     print("Done")
+
+    # FIx random seed
+    torch.manual_seed(0)
 
     # load dataset [training, target] = [jpeg, original] as 8x8
     print("Loading dataset and dataloader...")
