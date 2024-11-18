@@ -142,11 +142,11 @@ if __name__ == "__main__":
     # print(f"after transform: {images[0]}")
     output_tensor_image = model(images[0].unsqueeze(0))
     print(f"model output: {output_tensor_image}")
-    # output_image = to_pil_image(output_tensor_image[0].cpu())
+    output_image = to_pil_image(output_tensor_image[0].cpu())
 
-    # plt.figure()
-    # plt.imshow(output_image)
-    # plt.show()
+    plt.figure()
+    plt.imshow(output_image)
+    plt.show()
 
     # images = [
     #     torch.tensor(image).permute(2, 0, 1).unsqueeze(0).float().to(device)
