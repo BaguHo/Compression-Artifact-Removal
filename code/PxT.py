@@ -32,7 +32,7 @@ dataset_name = "CIFAR100"
 model_name = "PxT"
 num_workers = 64
 image_type = "RGB"
-num_classes = 20
+num_classes = 10
 QFs = [80, 60, 40, 20]
 
 
@@ -571,9 +571,12 @@ class Encoder(nn.Module):
         )
 
     def forward(self, x):
+        # Multi-head self-attention with residual connection
         y = self.ln1(x)
         y, _ = self.mhsa(y, y, y)
         x = x + y
+
+        # MLP with residual connection
         y = self.ln2(x)
         y = self.mlp(y)
         x = x + y
@@ -588,8 +591,8 @@ class ViT(nn.Module):
         in_channels=3,
         embed_dim=64,
         num_heads=16,
-        num_layers=16,
-        mlp_dim=64,
+        num_layers=8,
+        mlp_dim=128,
     ):
         super(ViT, self).__init__()
         self.img_size = img_size
@@ -599,6 +602,7 @@ class ViT(nn.Module):
         self.embed_dim = embed_dim
 
         self.patch_embed = nn.Linear(self.patch_dim, embed_dim)
+
         self.position_embeddings = nn.Parameter(
             torch.zeros(1, self.num_patches, embed_dim)
         )
@@ -611,6 +615,7 @@ class ViT(nn.Module):
 
     def forward(self, x):
         batch_size = x.size(0)
+
         x = x.unfold(2, self.patch_size, self.patch_size).unfold(
             3, self.patch_size, self.patch_size
         )

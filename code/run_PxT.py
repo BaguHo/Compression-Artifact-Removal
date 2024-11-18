@@ -131,26 +131,27 @@ if __name__ == "__main__":
     # print(np.array(images).shape)
     model = ViT().to(device)
     model.load_state_dict(
-        torch.load(os.path.join(".", "models", "PxT.pth"), map_location=device),
+        torch.load(
+            os.path.join(".", "models", "Model Checkpoint Epoch 10.pth"),
+            map_location=device,
+        ),
         strict=False,
     )
 
     model.eval()
-    print(f'before transform: {images[0]}')
+    print(f"before transform: {images[0]}")
     images = [np.array(image) for image in images]
-    print(f'after transform: {images[0]}')
+    # print(f"after transform: {images[0]}")
     images = torch.tensor(images).permute(0, 3, 1, 2).float().to(device)
-    print(f'after transform: {images[0]}')
+    # print(f"after transform: {images[0]}")
     output_tensor_image = model(images[0].unsqueeze(0))
-    print(f'model output: {output_tensor_image}')
+    print(f"model output: {output_tensor_image}")
     output_image = to_pil_image(output_tensor_image[0].cpu())
-
 
     plt.figure()
     plt.imshow(output_image)
     plt.show()
-    
-    
+
     # images = [
     #     torch.tensor(image).permute(2, 0, 1).unsqueeze(0).float().to(device)
     #     for image in images
