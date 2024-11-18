@@ -27,7 +27,7 @@ from tqdm import tqdm
 PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
 channels = 3
 learning_rate = 0.001
-epochs = 2
+epochs = 10
 batch_size = 512
 dataset_name = "CIFAR100"
 model_name = "ViT"
@@ -75,12 +75,15 @@ def save_model(model, path, filename):
 
 #         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.8f}")
 
+
 # model training
 def train(model, train_loader, criterion, optimizer):
     model.train()
     for epoch in range(epochs):
         running_loss = 0.0
-        for images, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False):
+        for images, labels in tqdm(
+            train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False
+        ):
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(images)
@@ -88,12 +91,14 @@ def train(model, train_loader, criterion, optimizer):
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
-        
+
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.8f}")
-        
+
         # 10 에포크마다 체크포인트 저장
         if (epoch + 1) % 10 == 0:
-            checkpoint_path = os.path.join("checkpoints", f"model_checkpoint_epoch_{epoch + 1}.pth")
+            checkpoint_path = os.path.join(
+                "checkpoints", f"model_checkpoint_epoch_{epoch + 1}.pth"
+            )
             save_model(model, "checkpoints", f"model_checkpoint_epoch_{epoch + 1}.pth")
             print(f"Checkpoint saved at epoch {epoch + 1}")
 
