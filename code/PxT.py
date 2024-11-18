@@ -88,7 +88,7 @@ def train(model, train_loader, criterion, optimizer):
             outputs = model(images)
             # print(outputs)
             # print(labels)
-            input()
+            # input()
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
