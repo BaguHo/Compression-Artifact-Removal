@@ -30,7 +30,7 @@ learning_rate = 0.001
 epochs = 50
 batch_size = 512
 dataset_name = "CIFAR100"
-model_name = "ViT"
+model_name = "PxT"
 num_workers = 64
 image_type = "RGB"
 num_classes = 30
@@ -588,8 +588,8 @@ class ViT(nn.Module):
         patch_size=1,
         in_channels=3,
         embed_dim=128,
-        num_heads=32,
-        num_layers=32,
+        num_heads=16,
+        num_layers=16,
         mlp_dim=128,
     ):
         super(ViT, self).__init__()
