@@ -225,8 +225,8 @@ def save_CIFAR100():
     output_dir = os.path.join(".", "datasets", "CIFAR100", "original_size", "original")
 
     # save original dataset
-    print(f"make output dir  {output_dir}")
     os.makedirs(output_dir, exist_ok=True)
+    print(f"make output dir  {output_dir}")
 
     for i in range(len(class_names)):
         train_class_dir = os.path.join(output_dir, "train", str(i))
@@ -540,8 +540,8 @@ def make_8x8_image_from_original_dataset():
             str(i),
         )
 
-        makedir(output_train_dir)
-        makedir(output_test_dir)
+        os.makedirs(output_train_dir, exist_ok=True)
+        os.makedirs(output_test_dir, exist_ok=True)
 
         process_and_save_images(input_train_dir, output_train_dir)
         process_and_save_images(input_test_dir, output_test_dir)
