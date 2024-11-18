@@ -2,7 +2,6 @@
 import os
 import re
 import time
-
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,13 +26,13 @@ from tqdm import tqdm
 PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
 channels = 3
 learning_rate = 0.001
-epochs = 50
+epochs = 20
 batch_size = 512
 dataset_name = "CIFAR100"
 model_name = "PxT"
-num_workers = 4
+num_workers = 64
 image_type = "RGB"
-num_classes = 30
+num_classes = 10
 QFs = [80, 60, 40, 20]
 
 
@@ -48,7 +47,7 @@ def save_model(model, path, filename):
     makedir(path)
 
     model_path = os.path.join(path, filename)
-    torch.save(model.state_dict(), model_path)
+    torch.save(model, model_path)
     print(f"Model saved to {model_path}")
 
 
@@ -87,6 +86,9 @@ def train(model, train_loader, criterion, optimizer):
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(images)
+            # print(outputs)
+            # print(labels)
+            # input()
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -94,8 +96,8 @@ def train(model, train_loader, criterion, optimizer):
 
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.8f}")
 
-        # 10 에포크마다 체크포인트 저장
-        if (epoch + 1) % 10 == 0:
+        # 5 에포크마다 체크포인트 저장
+        if (epoch + 1) % 5 == 0:
             checkpoint_path = os.path.join(
                 "checkpoints", f"model_checkpoint_epoch_{epoch + 1}.pth"
             )
@@ -137,7 +139,7 @@ def test(model, test_loader, criterion, msg):
                 image.save(
                     os.path.join(
                         removed_images_path,
-                        f"str(image_idx)",
+                        f"{str(image_idx)}",
                         f"image_{image_idx}_idx_{idx}.jpeg",
                     )
                 )
@@ -145,8 +147,8 @@ def test(model, test_loader, criterion, msg):
                 idx += 1
             image_idx += 1
 
-            print(f"outputs shape: {outputs.shape}")
-            print(f"labels shape: {labels.shape}")
+            # print(f"outputs shape: {outputs.shape}")
+            # print(f"labels shape: {labels.shape}")
             running_loss += loss.item()
 
     avg_loss = running_loss / len(test_loader)
@@ -265,45 +267,44 @@ def save_CIFAR100():
             os.getcwd(), "datasets", "CIFAR100", "original_size", f"jpeg{QF}"
         )
 
-        if not os.path.exists(jpeg_output_dir):
-            os.makedirs(jpeg_output_dir, exist_ok=True)
+        os.makedirs(jpeg_output_dir, exist_ok=True)
 
-            for i in range(len(class_names)):
-                train_class_dir = os.path.join(jpeg_output_dir, "train", str(i))
-                test_class_dir = os.path.join(jpeg_output_dir, "test", str(i))
-                os.makedirs(train_class_dir, exist_ok=True)
-                os.makedirs(test_class_dir, exist_ok=True)
+        for i in range(len(class_names)):
+            train_class_dir = os.path.join(jpeg_output_dir, "train", str(i))
+            test_class_dir = os.path.join(jpeg_output_dir, "test", str(i))
+            os.makedirs(train_class_dir, exist_ok=True)
+            os.makedirs(test_class_dir, exist_ok=True)
 
-            print(f"Saving jpeg{QF} training images...")
-            for idx, (image, label) in enumerate(train_dataset):
-                image = transforms.ToPILImage()(image)
+        print(f"Saving jpeg{QF} training images...")
+        for idx, (image, label) in enumerate(train_dataset):
+            image = transforms.ToPILImage()(image)
 
-                image_filename = os.path.join(
-                    jpeg_output_dir,
-                    "train",
-                    str(label),
-                    f"image_{idx}_laebl_{label}.png",
-                )
-                image.save(image_filename, "PNG")
+            image_filename = os.path.join(
+                jpeg_output_dir,
+                "train",
+                str(label),
+                f"image_{idx}_laebl_{label}.jpeg",
+            )
+            image.save(image_filename, "JPEG", quality=QF)
 
-                if idx % 5000 == 0:
-                    print(f"{idx} jpeg training images saved...")
+            if idx % 5000 == 0:
+                print(f"{idx} jpeg training images saved...")
 
-            print(f"Saving jpeg {QF} test images...")
-            for idx, (image, label) in enumerate(test_dataset):
-                image = transforms.ToPILImage()(image)
+        print(f"Saving jpeg {QF} test images...")
+        for idx, (image, label) in enumerate(test_dataset):
+            image = transforms.ToPILImage()(image)
 
-                image_filename = os.path.join(
-                    jpeg_output_dir,
-                    "test",
-                    str(label),
-                    f"image_{idx}_laebl_{label}.png",
-                )
+            image_filename = os.path.join(
+                jpeg_output_dir,
+                "test",
+                str(label),
+                f"image_{idx}_laebl_{label}.jpeg",
+            )
 
-                image.save(image_filename, "PNG")
+            image.save(image_filename, "JPEG", quality=QF)
 
-                if idx % 2000 == 0:
-                    print(f"{idx} jpeg test images saved...")
+            if idx % 2000 == 0:
+                print(f"{idx} jpeg test images saved...")
 
     print("All jpeg images have been saved successfully.")
     print("####################################################################")
@@ -381,6 +382,7 @@ def load_jpeg_datasets(QF):
         num_workers=num_workers,
         drop_last=True,
     )
+
     test_dataloader = DataLoader(
         test_dataset,
         batch_size=batch_size,
@@ -438,8 +440,7 @@ def crop_image(image, crop_size=8):
 
 # 이미지 처리 및 저장 함수 정의
 def process_and_save_images(input_dir, output_dir):
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
     # input_dir 내의 모든 이미지 파일 처리
     for img_file in os.listdir(input_dir):
@@ -572,9 +573,12 @@ class Encoder(nn.Module):
         )
 
     def forward(self, x):
+        # Multi-head self-attention with residual connection
         y = self.ln1(x)
         y, _ = self.mhsa(y, y, y)
         x = x + y
+
+        # MLP with residual connection
         y = self.ln2(x)
         y = self.mlp(y)
         x = x + y
@@ -587,9 +591,9 @@ class ViT(nn.Module):
         img_size=8,
         patch_size=1,
         in_channels=3,
-        embed_dim=128,
+        embed_dim=64,
         num_heads=16,
-        num_layers=16,
+        num_layers=8,
         mlp_dim=128,
     ):
         super(ViT, self).__init__()
@@ -600,6 +604,7 @@ class ViT(nn.Module):
         self.embed_dim = embed_dim
 
         self.patch_embed = nn.Linear(self.patch_dim, embed_dim)
+
         self.position_embeddings = nn.Parameter(
             torch.zeros(1, self.num_patches, embed_dim)
         )
@@ -612,6 +617,7 @@ class ViT(nn.Module):
 
     def forward(self, x):
         batch_size = x.size(0)
+
         x = x.unfold(2, self.patch_size, self.patch_size).unfold(
             3, self.patch_size, self.patch_size
         )
@@ -766,7 +772,7 @@ def load_images_from_8x8():
         test_input_dataset, test_target_dataset, transform=transform
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_dataset, test_dataset, train_loader, test_loader
@@ -774,6 +780,7 @@ def load_images_from_8x8():
 
 # training & testing for each QF
 def training_testing():
+    # TODO: 처음 실행 시에만 실행
     save_CIFAR100()
     make_8x8_image_from_original_dataset()
 
@@ -783,18 +790,19 @@ def training_testing():
         make_8x8_jpeg_image(QF)
         print("Done")
 
+    # FIx random seed
+    torch.manual_seed(0)
+
     # load dataset [training, target] = [jpeg, original] as 8x8
     print("Loading dataset and dataloader...")
     train_dataset, test_dataset, train_loader, test_loader = load_images_from_8x8()
     # print(f'train loader: {train_loader}')
-    print(f"test loader: {test_loader}")
-
+    # print(f"test loader: {test_loader}")
     print("Done")
 
     # print(f'''train shape: {train_dataset.shape}''')
     # print(f'''test shape: {test_dataset.shape}''')
 
-    # removal_model = ViT().to(device)
     removal_model = ViT().to(device)
     # If multiple GPUs are available, use DataParallel
     if torch.cuda.device_count() > 1:
@@ -851,13 +859,4 @@ if __name__ == "__main__":
     )
     print(device)
 
-    # training_testing()
-    # save_CIFAR100()
-    # save_ImageNet()
-    make_8x8_image_from_original_dataset()
-
-    for QF in QFs:
-        # jpeg image 8x8로 저장
-        print("making the 8x8 image..")
-        make_8x8_jpeg_image(QF)
-        print("Done")
+    training_testing()
