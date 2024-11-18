@@ -27,7 +27,7 @@ from tqdm import tqdm
 PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
 channels = 3
 learning_rate = 0.001
-epochs = 10
+epochs = 50
 batch_size = 512
 dataset_name = "CIFAR100"
 model_name = "ViT"
