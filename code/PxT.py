@@ -33,7 +33,7 @@ dataset_name = "CIFAR100"
 model_name = "ViT"
 num_workers = 64
 image_type = "RGB"
-# num_classes = 5
+num_classes = 50
 QFs = [80, 60, 40, 20]
 
 
@@ -339,7 +339,7 @@ def make_jpeg_datasets(QF):
     #     root=os.path.join(os.getcwd(), "datasets"), train=False, download=True
     # )
 
-    for i in range(100):
+    for i in range(num_classes):
         files = os.listdir(os.path.join(train_input_dir, str(i)))
         for file in files:
             file_label = extract_label(file)
@@ -458,7 +458,7 @@ def process_and_save_images(input_dir, output_dir):
 
 
 def make_8x8_jpeg_image(QF):
-    for i in range(100):
+    for i in range(num_classes):
         train_dir = os.path.join(
             os.getcwd(),
             "datasets",
@@ -507,7 +507,7 @@ def make_8x8_jpeg_image(QF):
 def make_8x8_image_from_original_dataset():
     temp_path = os.path.join(os.getcwd(), "datasets", dataset_name)
 
-    for i in range(100):
+    for i in range(num_classes):
         input_train_dir = os.path.join(
             temp_path,
             "original_size",
@@ -699,7 +699,7 @@ def load_images_from_8x8():
         target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
 
         # 학습 데이터 로드
-        for i in range(100):
+        for i in range(num_classes):
             train_path = os.path.join(train_input_dir, str(i))
             target_train_path = os.path.join(target_train_dataset_dir, str(i))
 
@@ -729,7 +729,7 @@ def load_images_from_8x8():
                     )
 
         # 테스트 데이터 로드
-        for i in range(100):
+        for i in range(num_classes):
             test_path = os.path.join(test_input_dir, str(i))
             target_test_path = os.path.join(target_test_dataset_dir, str(i))
 
