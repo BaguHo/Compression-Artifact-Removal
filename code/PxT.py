@@ -33,7 +33,7 @@ dataset_name = "CIFAR100"
 model_name = "ViT"
 num_workers = 64
 image_type = "RGB"
-num_classes = 50
+num_classes = 30
 QFs = [80, 60, 40, 20]
 
 
