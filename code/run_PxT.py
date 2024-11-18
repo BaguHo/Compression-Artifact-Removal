@@ -5,6 +5,8 @@ from PIL import Image
 import numpy as np
 import os
 import cv2
+from torchvision.transforms.functional import to_pil_image
+import matplotlib.pyplot as plt
 
 QF = 60
 
@@ -98,10 +100,18 @@ def load_sample_data():
     image_names = sorted(os.listdir(smaple_data_path))
     image_names = image_names[:16]
 
+    image_paths = []
     for i in range(len(image_names)):
-        image = PIL.Image.open(os.path.join(smaple_data_path, image_names[i]))
-        image = np.array(image)
+        image_path = os.path.join(smaple_data_path, image_names[i])
+        image_paths.append(image_path)
+        image = PIL.Image.open(image_path)
         images.append(image)
+        # show image
+        # image.show()
+        # image = np.array(image)
+        # images.append(image)
+    images[0].show()
+    print(f"image path: {image_paths[0]}")
 
     return images
 
@@ -117,7 +127,8 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     images = load_sample_data()
-    print(np.array(images).shape)
+
+    # print(np.array(images).shape)
     model = ViT().to(device)
     model.load_state_dict(
         torch.load(os.path.join(".", "models", "PxT.pth"), map_location=device),
@@ -125,13 +136,28 @@ if __name__ == "__main__":
     )
 
     model.eval()
-    images = [
-        torch.tensor(image).permute(2, 0, 1).unsqueeze(0).float().to(device)
-        for image in images
-    ]
-    for image in images:
-        print(np.array(image).shape)
-        plt.imshow(np.array(image))
-        print(image)
-        output_image = model(np.array(image))
-        cv2.imshow("Output Image", output_image)
+    print(f'before transform: {images[0]}')
+    images = [np.array(image) for image in images]
+    print(f'after transform: {images[0]}')
+    images = torch.tensor(images).permute(0, 3, 1, 2).float().to(device)
+    print(f'after transform: {images[0]}')
+    output_tensor_image = model(images[0].unsqueeze(0))
+    print(f'model output: {output_tensor_image}')
+    output_image = to_pil_image(output_tensor_image[0].cpu())
+
+
+    plt.figure()
+    plt.imshow(output_image)
+    plt.show()
+    
+    
+    # images = [
+    #     torch.tensor(image).permute(2, 0, 1).unsqueeze(0).float().to(device)
+    #     for image in images
+    # ]
+    # for image in images:
+    #     print(np.array(image).shape)
+    #     plt.imshow(np.array(image))
+    #     print(image)
+    #     output_image = model(np.array(image))
+    #     cv2.imshow("Output Image", output_image)

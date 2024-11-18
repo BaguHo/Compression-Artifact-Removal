@@ -136,7 +136,7 @@ def test(model, test_loader, criterion, msg):
                 image.save(
                     os.path.join(
                         removed_images_path,
-                        f"str(image_idx)",
+                        f"{str(image_idx)}",
                         f"image_{image_idx}_idx_{idx}.jpeg",
                     )
                 )
