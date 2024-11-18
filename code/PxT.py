@@ -26,7 +26,7 @@ from tqdm import tqdm
 PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
 channels = 3
 learning_rate = 0.001
-epochs = 10
+epochs = 1
 batch_size = 512
 dataset_name = "CIFAR100"
 model_name = "PxT"
@@ -47,7 +47,7 @@ def save_model(model, path, filename):
     makedir(path)
 
     model_path = os.path.join(path, filename)
-    torch.save(model.state_dict(), model_path)
+    torch.save(model, model_path)
     print(f"Model saved to {model_path}")
 
 
@@ -86,6 +86,9 @@ def train(model, train_loader, criterion, optimizer):
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(images)
+            print(outputs)
+            print(labels)
+            input()
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -778,15 +781,14 @@ def load_images_from_8x8():
 
 # training & testing for each QF
 def training_testing():
-    # save_CIFAR100()
-    # save_ImageNet()
-    # make_8x8_image_from_original_dataset()
+    save_CIFAR100()
+    make_8x8_image_from_original_dataset()
 
-    # for QF in QFs:
-    #     # jpeg image 8x8로 저장
-    #     print("making the 8x8 image..")
-    #     make_8x8_jpeg_image(QF)
-    #     print("Done")
+    for QF in QFs:
+        # jpeg image 8x8로 저장
+        print("making the 8x8 image..")
+        make_8x8_jpeg_image(QF)
+        print("Done")
 
     # load dataset [training, target] = [jpeg, original] as 8x8
     print("Loading dataset and dataloader...")

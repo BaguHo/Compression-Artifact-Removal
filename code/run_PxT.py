@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
     plt.figure()
     plt.imshow(output_image)
-    plt.show()
+    plt.show()  
 
     # images = [
     #     torch.tensor(image).permute(2, 0, 1).unsqueeze(0).float().to(device)
