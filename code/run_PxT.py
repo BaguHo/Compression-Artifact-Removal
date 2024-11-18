@@ -137,7 +137,7 @@ if __name__ == "__main__":
     print(f"before transform: {images[0]}")
     images = [np.array(image) for image in images]
     print(f"after transform: {images[0]}")
-    images = torch.tensor(images).permute(0, 3, 1, 2).float().to(device)
+    images = (torch.tensor(images).permute(0, 3, 1, 2).float() / 255).to(device)
     # print(f"after transform: {images[0]}")
     output_tensor_image = model(images[0].unsqueeze(0))
     print(f"model output: {output_tensor_image}")
