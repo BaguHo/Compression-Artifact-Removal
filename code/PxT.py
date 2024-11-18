@@ -781,14 +781,14 @@ def load_images_from_8x8():
 
 # training & testing for each QF
 def training_testing():
-    save_CIFAR100()
-    make_8x8_image_from_original_dataset()
+    # save_CIFAR100()
+    # make_8x8_image_from_original_dataset()
 
-    for QF in QFs:
-        # jpeg image 8x8로 저장
-        print("making the 8x8 image..")
-        make_8x8_jpeg_image(QF)
-        print("Done")
+    # for QF in QFs:
+    #     # jpeg image 8x8로 저장
+    #     print("making the 8x8 image..")
+    #     make_8x8_jpeg_image(QF)
+    #     print("Done")
 
     # load dataset [training, target] = [jpeg, original] as 8x8
     print("Loading dataset and dataloader...")
