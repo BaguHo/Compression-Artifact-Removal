@@ -24,9 +24,10 @@ import torchvision.transforms as transforms
 from torchvision.transforms import ToPILImage
 from tqdm import tqdm
 
+PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
 channels = 3
 learning_rate = 0.001
-epochs = 500
+epochs = 2
 batch_size = 512
 dataset_name = "CIFAR100"
 model_name = "ViT"
@@ -51,28 +52,53 @@ def save_model(model, path, filename):
     print(f"Model saved to {model_path}")
 
 
+# # model training
+# def train(model, train_loader, criterion, optimizer):
+#     model.train()
+
+#     for epoch in range(epochs):
+#         running_loss = 0.0
+#         for images, labels in tqdm(
+#             train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False
+#         ):
+#             images, labels = images.to(device), labels.to(device)
+
+#             optimizer.zero_grad()
+
+#             outputs = model(images)
+#             loss = criterion(outputs, labels)
+
+#             loss.backward()
+#             optimizer.step()
+
+#             running_loss += loss.item()
+
+#         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.8f}")
+
 # model training
 def train(model, train_loader, criterion, optimizer):
     model.train()
-
     for epoch in range(epochs):
         running_loss = 0.0
-        for images, labels in tqdm(
-            train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False
-        ):
+        for images, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False):
             images, labels = images.to(device), labels.to(device)
-
             optimizer.zero_grad()
-
             outputs = model(images)
             loss = criterion(outputs, labels)
-
             loss.backward()
             optimizer.step()
-
             running_loss += loss.item()
-
+        
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.8f}")
+        
+        # 10 에포크마다 체크포인트 저장
+        if (epoch + 1) % 10 == 0:
+            checkpoint_path = os.path.join("checkpoints", f"model_checkpoint_epoch_{epoch + 1}.pth")
+            save_model(model, "checkpoints", f"model_checkpoint_epoch_{epoch + 1}.pth")
+            print(f"Checkpoint saved at epoch {epoch + 1}")
+
+    # 마지막 모델 저장
+    save_model(model, "checkpoints", "final_model.pth")
 
 
 # TODO: 8x8 이미지를 32x32로 변환하는 함수 만들어야 함. 그 후 확인하기
@@ -782,11 +808,11 @@ def training_testing():
     print(f"[train removal model]")
     train(removal_model, train_loader, criterion, optimizer)
 
-    test_loss = test(removal_model, test_loader, criterion, f"Removal {QF}")
+    test_loss = test(removal_model, test_loader, criterion, f"Removal ")
     save_model(
         removal_model,
         os.path.join(os.getcwd(), "output_models"),
-        f"removal_{QF}.pth",
+        f"PxT.pth",
     )
 
     print(
