@@ -4,6 +4,7 @@ import PIL
 from PIL import Image
 import numpy as np
 import os
+import cv2
 
 QF = 60
 
@@ -88,7 +89,6 @@ class ViT(nn.Module):
         return x
 
 
-# MS COCO dataset
 def load_sample_data():
     smaple_data_path = os.path.join(
         ".", "datasets", "CIFAR100", "8x8_images", f"jpeg{QF}", "test", "0"
@@ -116,42 +116,22 @@ if __name__ == "__main__":
     device = "cpu"
     print(f"Using device: {device}")
 
-    # Load sample data
     images = load_sample_data()
-
-    # Convert images to tensor and move them to the device
-    images_tensor = [
-        torch.tensor(image).permute(2, 0, 1).float() / 255 for image in images
-    ]  # Normalize between 0 and 1
-
-    # Stack into a batch of size (16, 3, H, W)
-    images_tensor = torch.stack(images_tensor)
-
-    # Load model and move it to the appropriate device (CPU in this case)
+    print(np.array(images).shape)
     model = ViT().to(device)
     model.load_state_dict(
         torch.load(os.path.join(".", "models", "PxT.pth"), map_location=device),
         strict=False,
     )
 
-    # Set model to evaluation mode (important for inference)
     model.eval()
-
-    output = []
-
-    with torch.no_grad():  # Disable gradient calculation for inference
-        for image in images_tensor:
-            # Add batch dimension and pass through model
-            output.append(model(image.unsqueeze(0)).detach().cpu().numpy())
-
-    #  show the output images through PIL as a grid
-    output = np.array(output)
-    output = output.squeeze()
-    output = output.transpose(0, 2, 3, 1)
-    output = output.reshape(4, 4, 8, 8, 3)
-    output = output.transpose(0, 2, 1, 3, 4)
-    output = output.reshape(4 * 8, 4 * 8, 3)
-    output = (output).astype(np.uint8)
-    output = Image.fromarray(output)
-    output.show()
-    
+    images = [
+        torch.tensor(image).permute(2, 0, 1).unsqueeze(0).float().to(device)
+        for image in images
+    ]
+    for image in images:
+        print(np.array(image).shape)
+        plt.imshow(np.array(image))
+        print(image)
+        output_image = model(np.array(image))
+        cv2.imshow("Output Image", output_image)

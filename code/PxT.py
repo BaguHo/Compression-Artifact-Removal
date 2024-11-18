@@ -766,8 +766,8 @@ def load_images_from_8x8():
         test_input_dataset, test_target_dataset, transform=transform
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
     return train_dataset, test_dataset, train_loader, test_loader
 
