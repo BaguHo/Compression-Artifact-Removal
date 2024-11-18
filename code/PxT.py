@@ -86,8 +86,8 @@ def train(model, train_loader, criterion, optimizer):
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(images)
-            print(outputs)
-            print(labels)
+            # print(outputs)
+            # print(labels)
             input()
             loss = criterion(outputs, labels)
             loss.backward()
@@ -147,8 +147,8 @@ def test(model, test_loader, criterion, msg):
                 idx += 1
             image_idx += 1
 
-            print(f"outputs shape: {outputs.shape}")
-            print(f"labels shape: {labels.shape}")
+            # print(f"outputs shape: {outputs.shape}")
+            # print(f"labels shape: {labels.shape}")
             running_loss += loss.item()
 
     avg_loss = running_loss / len(test_loader)
@@ -794,7 +794,7 @@ def training_testing():
     print("Loading dataset and dataloader...")
     train_dataset, test_dataset, train_loader, test_loader = load_images_from_8x8()
     # print(f'train loader: {train_loader}')
-    print(f"test loader: {test_loader}")
+    # print(f"test loader: {test_loader}")
 
     print("Done")
 
