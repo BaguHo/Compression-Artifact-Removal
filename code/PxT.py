@@ -722,12 +722,12 @@ def load_images_from_8x8():
                 if train_file == target_file:
                     # input 이미지 로드
                     train_image_path = os.path.join(train_path, train_file)
-                    train_image = cv2.imread(train_image_path)
+                    train_image = Image.open(train_image_path).convert("RGB")
                     train_input_dataset.append(np.array(train_image))
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_train_path, target_file)
-                    target_image = cv2.imread(target_image_path)
+                    target_image = Image.open(target_image_path).convert("RGB")
                     train_target_dataset.append(np.array(target_image))
                 else:
                     print(
@@ -752,12 +752,12 @@ def load_images_from_8x8():
                 if test_file == target_file:
                     # input 이미지 로드
                     test_image_path = os.path.join(test_path, test_file)
-                    test_image = cv2.imread(test_image_path)
+                    test_image = Image.open(test_image_path).convert("RGB")
                     test_input_dataset.append(np.array(test_image))
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_test_path, target_file)
-                    target_image = cv2.imread(target_image_path)
+                    target_image = Image.open(target_image_path).convert("RGB")
                     test_target_dataset.append(np.array(target_image))
                 else:
                     print(
