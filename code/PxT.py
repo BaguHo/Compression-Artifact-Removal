@@ -780,15 +780,15 @@ def load_images_from_8x8():
 
 # training & testing for each QF
 def training_testing():
-    # TODO: 처음 실행 시에만 실행
-    save_CIFAR100()
-    make_8x8_image_from_original_dataset()
+    # # TODO: 처음 실행 시에만 실행
+    # save_CIFAR100()
+    # make_8x8_image_from_original_dataset()
 
-    for QF in QFs:
-        # jpeg image 8x8로 저장
-        print("making the 8x8 image..")
-        make_8x8_jpeg_image(QF)
-        print("Done")
+    # for QF in QFs:
+    #     # jpeg image 8x8로 저장
+    #     print("making the 8x8 image..")
+    #     make_8x8_jpeg_image(QF)
+    #     print("Done")
 
     # FIx random seed
     torch.manual_seed(0)
@@ -834,9 +834,9 @@ def training_testing():
     # print(f"[test removal model]")
     # accuracy, precision = test(removal_model, test_loader, criterion, f"Removal {QF}")
     # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
-    print(
-        "#############################################################################"
-    )
+    # print(
+    #     "#############################################################################"
+    # )
 
 
 ################################################################################################################
