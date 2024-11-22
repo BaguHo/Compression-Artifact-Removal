@@ -51,30 +51,6 @@ def save_model(model, path, filename):
     print(f"Model saved to {model_path}")
 
 
-# # model training
-# def train(model, train_loader, criterion, optimizer):
-#     model.train()
-
-#     for epoch in range(epochs):
-#         running_loss = 0.0
-#         for images, labels in tqdm(
-#             train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False
-#         ):
-#             images, labels = images.to(device), labels.to(device)
-
-#             optimizer.zero_grad()
-
-#             outputs = model(images)
-#             loss = criterion(outputs, labels)
-
-#             loss.backward()
-#             optimizer.step()
-
-#             running_loss += loss.item()
-
-#         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.8f}")
-
-
 # model training
 def train(model, train_loader, criterion, optimizer):
     model.train()
@@ -106,9 +82,6 @@ def train(model, train_loader, criterion, optimizer):
 
     # 마지막 모델 저장
     save_model(model, "checkpoints", "final_model.pth")
-
-
-# TODO: 8x8 이미지를 32x32로 변환하는 함수 만들어야 함. 그 후 확인하기
 
 
 # evaluate model
@@ -204,112 +177,6 @@ def extract_label(file_name):
     return label
 
 
-def save_CIFAR100():
-    transform = transforms.ToTensor()
-
-    train_dataset = datasets.CIFAR100(
-        root=os.path.join(".", "datasets"),
-        train=True,
-        download=True,
-        transform=transform,
-    )
-    test_dataset = datasets.CIFAR100(
-        root=os.path.join(".", "datasets"),
-        train=False,
-        download=True,
-        transform=transform,
-    )
-
-    class_names = train_dataset.classes
-
-    output_dir = os.path.join(".", "datasets", "CIFAR100", "original_size", "original")
-
-    # save original dataset
-    os.makedirs(output_dir, exist_ok=True)
-    print(f"make output dir  {output_dir}")
-
-    for i in range(len(class_names)):
-        train_class_dir = os.path.join(output_dir, "train", str(i))
-        test_class_dir = os.path.join(output_dir, "test", str(i))
-        os.makedirs(train_class_dir, exist_ok=True)
-        os.makedirs(test_class_dir, exist_ok=True)
-
-    print(f'Saving to {os.path.join(output_dir, "train")}')
-    print("Saving training images...")
-    for idx, (image, label) in enumerate(train_dataset):
-        image = transforms.ToPILImage()(image)
-
-        image_filename = os.path.join(
-            output_dir, "train", str(label), f"image_{idx}_laebl_{label}.png"
-        )
-        image.save(image_filename, "PNG")
-
-        if idx % 5000 == 0:
-            print(f"{idx} training images saved...")
-
-    print(f'Saving to {os.path.join(output_dir, "test")}')
-    print("Saving test images...")
-    for idx, (image, label) in enumerate(test_dataset):
-        image = transforms.ToPILImage()(image)
-
-        image_filename = os.path.join(
-            output_dir, "test", str(label), f"image_{idx}_laebl_{label}.png"
-        )
-
-        image.save(image_filename, "PNG")
-
-        if idx % 2000 == 0:
-            print(f"{idx} test images saved...")
-
-    # make and save jepg datsaet for each QF
-    for QF in QFs:
-        jpeg_output_dir = os.path.join(
-            os.getcwd(), "datasets", "CIFAR100", "original_size", f"jpeg{QF}"
-        )
-
-        os.makedirs(jpeg_output_dir, exist_ok=True)
-
-        for i in range(len(class_names)):
-            train_class_dir = os.path.join(jpeg_output_dir, "train", str(i))
-            test_class_dir = os.path.join(jpeg_output_dir, "test", str(i))
-            os.makedirs(train_class_dir, exist_ok=True)
-            os.makedirs(test_class_dir, exist_ok=True)
-
-        print(f"Saving jpeg{QF} training images...")
-        for idx, (image, label) in enumerate(train_dataset):
-            image = transforms.ToPILImage()(image)
-
-            image_filename = os.path.join(
-                jpeg_output_dir,
-                "train",
-                str(label),
-                f"image_{idx}_laebl_{label}.jpeg",
-            )
-            image.save(image_filename, "JPEG", quality=QF)
-
-            if idx % 5000 == 0:
-                print(f"{idx} jpeg training images saved...")
-
-        print(f"Saving jpeg {QF} test images...")
-        for idx, (image, label) in enumerate(test_dataset):
-            image = transforms.ToPILImage()(image)
-
-            image_filename = os.path.join(
-                jpeg_output_dir,
-                "test",
-                str(label),
-                f"image_{idx}_laebl_{label}.jpeg",
-            )
-
-            image.save(image_filename, "JPEG", quality=QF)
-
-            if idx % 2000 == 0:
-                print(f"{idx} jpeg test images saved...")
-
-    print("All jpeg images have been saved successfully.")
-    print("####################################################################")
-
-
 # jpeg 이미지 생성
 def make_jpeg_datasets(QF):
     train_output_dir = os.path.join(
@@ -394,13 +261,6 @@ def load_jpeg_datasets(QF):
     return train_dataset, test_dataset, train_dataloader, test_dataloader
 
 
-def tensor_to_image(tensor):
-    tensor = tensor * 0.5 + 0.5
-    image_np = tensor.numpy().squeeze() * 255
-    image_np = image_np.astype(np.uint8)
-    return image_np
-
-
 def show_images(dataset, dataloader, length=5):
     random_indices = torch.randperm(len(dataloader))[:length]
 
@@ -422,129 +282,6 @@ def show_images(dataset, dataloader, length=5):
     num_images_to_show = 5
     for i in range(num_images_to_show):
         imshow(images[i], labels[i].item())
-
-
-def crop_image(image, crop_size=8):
-    width, height = image.size
-    cropped_images = []
-
-    for top in range(0, height, crop_size):
-        for left in range(0, width, crop_size):
-            right = min(left + crop_size, width)
-            bottom = min(top + crop_size, height)
-            cropped_img = image.crop((left, top, right, bottom))
-            cropped_images.append(cropped_img)
-
-    return cropped_images
-
-
-# 이미지 처리 및 저장 함수 정의
-def process_and_save_images(input_dir, output_dir):
-    os.makedirs(output_dir, exist_ok=True)
-
-    # input_dir 내의 모든 이미지 파일 처리
-    for img_file in os.listdir(input_dir):
-        img_path = os.path.join(input_dir, img_file)
-
-        with Image.open(img_path) as img:
-            # 이미지를 8x8로 자름
-            cropped_images = crop_image(img)
-            # 잘린 이미지를 output_dir에 저장
-            for idx, cropped_img in enumerate(cropped_images):
-                cropped_img.save(
-                    os.path.join(
-                        output_dir, f"{os.path.splitext(img_file)[0]}_crop_{idx}.jpeg"
-                    )
-                )
-
-
-def make_8x8_jpeg_image(QF):
-    for i in range(num_classes):
-        train_dir = os.path.join(
-            os.getcwd(),
-            "datasets",
-            dataset_name,
-            "original_size",
-            f"jpeg{QF}",
-            "train",
-            str(i),
-        )
-        test_dir = os.path.join(
-            os.getcwd(),
-            "datasets",
-            dataset_name,
-            "original_size",
-            f"jpeg{QF}",
-            "test",
-            str(i),
-        )
-
-        output_train_dir = os.path.join(
-            os.getcwd(),
-            "datasets",
-            dataset_name,
-            "8x8_images",
-            f"jpeg{QF}",
-            "train",
-            str(i),
-        )
-        output_test_dir = os.path.join(
-            os.getcwd(),
-            "datasets",
-            dataset_name,
-            "8x8_images",
-            f"jpeg{QF}",
-            "test",
-            str(i),
-        )
-
-        os.makedirs(output_train_dir, exist_ok=True)
-        os.makedirs(output_test_dir, exist_ok=True)
-
-        process_and_save_images(train_dir, output_train_dir)
-        process_and_save_images(test_dir, output_test_dir)
-
-
-def make_8x8_image_from_original_dataset():
-    temp_path = os.path.join(os.getcwd(), "datasets", dataset_name)
-
-    for i in range(num_classes):
-        input_train_dir = os.path.join(
-            temp_path,
-            "original_size",
-            "original",
-            "train",
-            str(i),
-        )
-
-        input_test_dir = os.path.join(
-            temp_path,
-            "original_size",
-            "original",
-            "test",
-            str(i),
-        )
-
-        output_train_dir = os.path.join(
-            temp_path,
-            "8x8_images",
-            f"original",
-            "train",
-            str(i),
-        )
-        output_test_dir = os.path.join(
-            temp_path,
-            "8x8_images",
-            f"original",
-            "test",
-            str(i),
-        )
-
-        os.makedirs(output_train_dir, exist_ok=True)
-        os.makedirs(output_test_dir, exist_ok=True)
-
-        process_and_save_images(input_train_dir, output_train_dir)
-        process_and_save_images(input_test_dir, output_test_dir)
 
 
 # Paramater
@@ -585,7 +322,7 @@ class Encoder(nn.Module):
         return x
 
 
-class ViT(nn.Module):
+class PxT(nn.Module):
     def __init__(
         self,
         img_size=8,
@@ -596,7 +333,7 @@ class ViT(nn.Module):
         num_layers=8,
         mlp_dim=128,
     ):
-        super(ViT, self).__init__()
+        super(PxT, self).__init__()
         self.img_size = img_size
         self.patch_size = patch_size
         self.num_patches = (img_size // patch_size) ** 2
@@ -780,7 +517,6 @@ def load_images_from_8x8():
 
 # training & testing for each QF
 def training_testing():
-    # # TODO: 처음 실행 시에만 실행
     # save_CIFAR100()
     # make_8x8_image_from_original_dataset()
 
@@ -803,7 +539,7 @@ def training_testing():
     # print(f'''train shape: {train_dataset.shape}''')
     # print(f'''test shape: {test_dataset.shape}''')
 
-    removal_model = ViT().to(device)
+    removal_model = PxT().to(device)
     # If multiple GPUs are available, use DataParallel
     if torch.cuda.device_count() > 1:
         print(f"Using {torch.cuda.device_count()} GPUs!")
