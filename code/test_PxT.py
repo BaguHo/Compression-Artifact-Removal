@@ -9,6 +9,7 @@ from torchvision.transforms.functional import to_pil_image
 import matplotlib.pyplot as plt
 
 QF = 60
+num_classes = 20
 
 
 class Encoder(nn.Module):
@@ -92,26 +93,27 @@ class ViT(nn.Module):
 
 
 def load_sample_data():
-    smaple_data_path = os.path.join(
-        ".", "datasets", "CIFAR100", "8x8_images", f"jpeg{QF}", "test", "0"
-    )
-    # Load 16 images from sample data path
-    images = []
-    image_names = sorted(os.listdir(smaple_data_path))
-    image_names = image_names[:16]
+    for i in range(num_classes):
+        smaple_data_path = os.path.join(
+            ".", "datasets", "CIFAR100", "8x8_images", f"jpeg{QF}", "test", str(i)
+        )
+        # Load 16 images from sample data path
+        images = []
+        image_names = sorted(os.listdir(smaple_data_path))
+        image_names = image_names[:16]
 
-    image_paths = []
-    for i in range(len(image_names)):
-        image_path = os.path.join(smaple_data_path, image_names[i])
-        image_paths.append(image_path)
-        image = PIL.Image.open(image_path)
-        images.append(image)
-        # show image
-        # image.show()
-        # image = np.array(image)
-        # images.append(image)
-    images[0].show()
-    print(f"image path: {image_paths[0]}")
+        image_paths = []
+        for i in range(len(image_names)):
+            image_path = os.path.join(smaple_data_path, image_names[i])
+            image_paths.append(image_path)
+            image = PIL.Image.open(image_path)
+            images.append(image)
+            # show image
+            # image.show()
+            # image = np.array(image)
+            # images.append(image)
+        images[0].show()
+        print(f"image path: {image_paths[0]}")
 
     return images
 
