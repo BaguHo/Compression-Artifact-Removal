@@ -6,37 +6,40 @@ from natsort import natsorted
 big_image = np.zeros((32, 32, 3), dtype=np.uint8)
 
 num_classes = 20
-n = 0
 
 if __name__ == "__main__":
     for i in range(num_classes):
-        input_image_path = os.path.join(".", "datasets", "removed_images", str(i))
+        input_image_path = os.path.join(
+            ".", "datasets", "removed_images_50_epoch", str(i)
+        )
+        output_path = os.path.join(
+            ".", "datasets", "removed_and_merged_images_50_epoch", str(i)
+        )
         images_names = natsorted(os.listdir(input_image_path))
-        images_names = images_names[16 * n : 16 * (n + 1)]
         print(images_names)
 
-        for i in range(16):
-            image_path = os.path.join(input_image_path, images_names[i])
-            image = plt.imread(image_path)
-            image = np.array(image)
-            big_image[
-                (i // 4) * 8 : (i // 4) * 8 + 8, (i % 4) * 8 : (i % 4) * 8 + 8, :
-            ] = image
-
-        output_path = os.path.join(".", "datasets", "removed_and_merged_images", str(i))
-
-        for i in range(len(os.listdir(input_image_path)) // 16):
-            big_image = np.zeros((32, 32, 3), dtype=np.uint8)
-            images_names = natsorted(os.listdir(input_image_path))
-            images_names = images_names[16 * i : 16 * (i + 1)]
-            for j in range(16):
-                image_path = os.path.join(input_image_path, images_names[j])
+        for j in range(len(os.listdir(input_image_path)) // 16):
+            slice_images_names = images_names[16 * j : 16 * (j + 1)]
+            for k in range(16):
+                image_path = os.path.join(input_image_path, slice_images_names[k])
                 image = plt.imread(image_path)
                 image = np.array(image)
                 big_image[
-                    (j // 4) * 8 : (j // 4) * 8 + 8, (j % 4) * 8 : (j % 4) * 8 + 8, :
+                    (k // 4) * 8 : (k // 4) * 8 + 8, (k % 4) * 8 : (k % 4) * 8 + 8, :
+                ] = image
+
+            big_image = np.zeros((32, 32, 3), dtype=np.uint8)
+            slice_images_names = natsorted(os.listdir(input_image_path))
+            slice_images_names = slice_images_names[16 * j : 16 * (j + 1)]
+            for k in range(16):
+                image_path = os.path.join(input_image_path, slice_images_names[k])
+                image = plt.imread(image_path)
+                image = np.array(image)
+                big_image[
+                    (k // 4) * 8 : (k // 4) * 8 + 8, (k % 4) * 8 : (k % 4) * 8 + 8, :
                 ] = image
 
             plt.imshow(big_image)
             os.makedirs(output_path, exist_ok=True)
-            plt.savefig(os.path.join(output_path, f"output_{i}.png"))
+            plt.savefig(os.path.join(output_path, f"output_{j}.png"))
+            print(f"Saved {output_path}/output_{j}.png")

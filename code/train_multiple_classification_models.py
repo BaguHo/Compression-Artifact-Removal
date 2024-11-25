@@ -19,7 +19,6 @@ import time
 from sklearn.model_selection import train_test_split
 import timm
 import time
-import wget
 
 channels = 1
 learning_rate = 0.001
@@ -34,19 +33,6 @@ image_type = 'RGB'
 def makedir(path):
     if not os.path.exists(path):
         os.makedirs(path)
-
-# Download and unzip the dataset
-def download_dataset():
-    # load the dataset
-    file_name = 'thermal_crroped_images'
-    url = f'wget –no-check-certificate ‘https://docs.google.com/uc?export=download&id=14VBOjguAx_j0TE-X_i0PchCIMymgrM0B’ -O {file_name}'
-    output_path = './datasets'
-
-    if not os.path.exist(os.path.join(output_path, file_name)):
-        wget.download(url, dest_path)
-
-        # unzip the dataset
-        os.system('unzip ' + file_name + '-d '+ output_path)
 
 # save model
 def save_model(model, path, filename):
