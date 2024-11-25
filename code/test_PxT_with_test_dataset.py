@@ -10,7 +10,7 @@ import torch
 from torch import nn
 
 QFs = [80, 60, 40, 20]
-batch_size = 64
+batch_size = 512
 num_classes = 20
 model_name = "PxT_50_epoch.pth"
 
@@ -195,20 +195,40 @@ def load_images_from_8x8(QF):
 
 
 if __name__ == "__main__":
+    # Check if GPUs are available and set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     for QF in QFs:
+        # Load test dataset and dataloader
         _, test_loader = load_images_from_8x8(QF)
+
+        # Load model and move it to the appropriate device (GPU/CPU)
         model = torch.load("./models/PxT_50_epoch.pth", map_location=device)
+        model = model.to(device)  # Move model to GPU if available
+
+        # Enable multi-GPU support with DataParallel
+        if torch.cuda.device_count() > 1:
+            print(f"Using {torch.cuda.device_count()} GPUs with DataParallel")
+            model = nn.DataParallel(model)
+
+        model.eval()
+
+        # Output directory for saving results
         output_dir = os.path.join(
             os.getcwd(), "datasets", "removed_images_50_epoch_each_QF", f"QF_{QF}"
         )
-        model.eval()
 
         with torch.no_grad():
             for batch_idx, (input_images, target_images) in enumerate(test_loader):
-                # Get model outputs
+                # Move input images and target images to the appropriate device
+                input_images = input_images.to(device)
+                target_images = target_images.to(device)
+
+                # Get model outputs (on multiple GPUs if available)
                 output_images = model(input_images)
 
+                # Ensure directories for each class exist
                 for i in range(num_classes):
                     os.makedirs(os.path.join(output_dir, str(i)), exist_ok=True)
 
@@ -219,7 +239,7 @@ if __name__ == "__main__":
                     )  # Assuming sequential order per class
                     class_dir = os.path.join(output_dir, str(class_label))
 
-                    # Convert tensor to PIL Image and save
+                    # Convert tensor to PIL Image and save (move tensor back to CPU first)
                     output_image = transforms.ToPILImage()(output_images[idx].cpu())
                     file_name = f"output_image_{batch_idx}_{idx}.png"
                     output_path = os.path.join(class_dir, file_name)
