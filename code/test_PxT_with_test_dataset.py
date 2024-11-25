@@ -9,8 +9,7 @@ import re
 import torch
 from torch import nn
 
-# QFs = [80, 60, 40, 20]
-QF = 60
+QFs = [80, 60, 40, 20]
 batch_size = 64
 num_classes = 20
 model_name = "PxT_50_epoch.pth"
@@ -146,7 +145,7 @@ def sort_key(filename):
     return (image_number, crop_number)
 
 
-def load_images_from_8x8():
+def load_images_from_8x8(QF):
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
 
@@ -197,30 +196,33 @@ def load_images_from_8x8():
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    _, test_loader = load_images_from_8x8()
-    model = torch.load("./models/PxT_50_epoch.pth", map_location=device)
-    output_dir = os.path.join(
-        os.getcwd(), "datasets", "removed_images_50_epoch_each_QF", f"QF_{QF}"
-    )
-    model.eval()
+    for QF in QFs:
+        _, test_loader = load_images_from_8x8(QF)
+        model = torch.load("./models/PxT_50_epoch.pth", map_location=device)
+        output_dir = os.path.join(
+            os.getcwd(), "datasets", "removed_images_50_epoch_each_QF", f"QF_{QF}"
+        )
+        model.eval()
 
-    with torch.no_grad():
-        for batch_idx, (input_images, target_images) in enumerate(test_loader):
-            # Get model outputs
-            output_images = model(input_images)
+        with torch.no_grad():
+            for batch_idx, (input_images, target_images) in enumerate(test_loader):
+                # Get model outputs
+                output_images = model(input_images)
 
-            for i in range(num_classes):
-                os.makedirs(os.path.join(output_dir, str(i)), exist_ok=True)
+                for i in range(num_classes):
+                    os.makedirs(os.path.join(output_dir, str(i)), exist_ok=True)
 
-            # Iterate over batch and save each image
-            for idx in range(input_images.size(0)):
-                class_label = idx % num_classes  # Assuming sequential order per class
-                class_dir = os.path.join(output_dir, str(class_label))
+                # Iterate over batch and save each image
+                for idx in range(input_images.size(0)):
+                    class_label = (
+                        idx % num_classes
+                    )  # Assuming sequential order per class
+                    class_dir = os.path.join(output_dir, str(class_label))
 
-                # Convert tensor to PIL Image and save
-                output_image = transforms.ToPILImage()(output_images[idx].cpu())
-                file_name = f"output_image_{batch_idx}_{idx}.png"
-                output_path = os.path.join(class_dir, file_name)
-                output_image.save(output_path)
+                    # Convert tensor to PIL Image and save
+                    output_image = transforms.ToPILImage()(output_images[idx].cpu())
+                    file_name = f"output_image_{batch_idx}_{idx}.png"
+                    output_path = os.path.join(class_dir, file_name)
+                    output_image.save(output_path)
 
-                print(f"Saved: {output_path}")
+                    print(f"Saved: {output_path}")
