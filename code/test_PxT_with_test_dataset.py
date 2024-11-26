@@ -243,5 +243,6 @@ if __name__ == "__main__":
                             f"image_{image_idx}_idx_{idx}.jpeg",
                         )
                     )
+                    print(f"Saved {output_dir}/image_{image_idx}_idx_{idx}.jpeg")
                     idx += 1
                 image_idx += 1
