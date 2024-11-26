@@ -10,7 +10,7 @@ import torch
 from torch import nn
 
 QFs = [80, 60, 40, 20]
-batch_size = 512
+batch_size = 1
 num_classes = 20
 model_name = "PxT_50_epoch.pth"
 
