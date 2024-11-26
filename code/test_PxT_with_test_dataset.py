@@ -8,6 +8,8 @@ from torchvision import transforms
 import re
 import torch
 from torch import nn
+from torchvision.transforms import ToPILImage
+import tqdm
 
 QFs = [80, 60, 40, 20]
 batch_size = 1
@@ -218,31 +220,29 @@ if __name__ == "__main__":
         output_dir = os.path.join(
             os.getcwd(), "datasets", "removed_images_50_epoch_each_QF", f"QF_{QF}"
         )
+        criterion = nn.MSELoss()
 
         with torch.no_grad():
-            for batch_idx, (input_images, target_images) in enumerate(test_loader):
-                # Move input images and target images to the appropriate device
-                input_images = input_images.to(device)
-                target_images = target_images.to(device)
+            image_idx = 0
+            for images, labels in tqdm(test_loader, desc="Testing", leave=False):
+                images, labels = images.to(device), labels.to(device)
 
-                # Get model outputs (on multiple GPUs if available)
-                output_images = model(input_images)
+                outputs = model(images)
+                loss = criterion(outputs, labels)
 
-                # Ensure directories for each class exist
-                for i in range(num_classes):
-                    os.makedirs(os.path.join(output_dir, str(i)), exist_ok=True)
+                #  모델 output 이미지 저장 (8x8 이미지)
+                images = outputs
+                idx = 0
+                for image in images:
+                    image = ToPILImage()(image)
 
-                # Iterate over batch and save each image
-                for idx in range(input_images.size(0)):
-                    class_label = (
-                        idx % num_classes
-                    )  # Assuming sequential order per class
-                    class_dir = os.path.join(output_dir, str(class_label))
-
-                    # Convert tensor to PIL Image and save (move tensor back to CPU first)
-                    output_image = transforms.ToPILImage()(output_images[idx].cpu())
-                    file_name = f"output_image_{batch_idx}_{idx}.png"
-                    output_path = os.path.join(class_dir, file_name)
-                    output_image.save(output_path)
-
-                    print(f"Saved: {output_path}")
+                    os.makedirs(os.path.join(output_dir, str(image_idx)), exist_ok=True)
+                    image.save(
+                        os.path.join(
+                            output_dir,
+                            f"{str(image_idx)}",
+                            f"image_{image_idx}_idx_{idx}.jpeg",
+                        )
+                    )
+                    idx += 1
+                image_idx += 1
