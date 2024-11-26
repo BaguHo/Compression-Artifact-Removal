@@ -9,7 +9,6 @@ import re
 import torch
 from torch import nn
 from torchvision.transforms import ToPILImage
-import tqdm
 
 QFs = [80, 60, 40, 20]
 batch_size = 1
@@ -224,7 +223,7 @@ if __name__ == "__main__":
 
         with torch.no_grad():
             image_idx = 0
-            for images, labels in tqdm(test_loader, desc="Testing", leave=False):
+            for images, labels in test_loader:
                 images, labels = images.to(device), labels.to(device)
 
                 outputs = model(images)
