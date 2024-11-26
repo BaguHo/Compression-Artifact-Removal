@@ -236,11 +236,11 @@ if __name__ == "__main__":
                 for image in images:
                     image = ToPILImage()(image)
 
-                    os.makedirs(os.path.join(output_dir, str(image_idx)), exist_ok=True)
+                    os.makedirs(os.path.join(output_dir, str(labels)), exist_ok=True)
                     image.save(
                         os.path.join(
                             output_dir,
-                            f"{str(image_idx)}",
+                            str(labels),
                             f"image_{image_idx}_idx_{idx}.jpeg",
                         )
                     )
