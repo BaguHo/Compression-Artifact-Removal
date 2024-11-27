@@ -4,11 +4,12 @@ import numpy as np
 from natsort import natsorted
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
+from torchvision import transforms, datasets
 import re
 import torch
 from torch import nn
 from torchvision.transforms import ToPILImage
+from natsort import natsorted
 
 QFs = [80, 60, 40, 20]
 batch_size = 1
@@ -107,142 +108,114 @@ class ViT(nn.Module):
         return x
 
 
-class CIFAR100Dataset(Dataset):
-    def __init__(self, input_images, target_images, transform=None):
-        self.input_images = input_images
-        self.target_images = target_images
+class CustomImageFolder(Dataset):
+    def __init__(self, root_dir, transform=None, selected_classes=None):
+        self.root_dir = root_dir
         self.transform = transform
+        self.classes = sorted(os.listdir(root_dir))
+
+        if selected_classes is not None:
+            self.classes = [cls for cls in self.classes if cls in selected_classes]
+
+        self.image_paths = []
+        self.labels = []
+
+        for label_idx, class_name in enumerate(self.classes):
+            class_dir = os.path.join(root_dir, class_name)
+            if os.path.isdir(class_dir):
+                file_names = natsorted(os.listdir(class_dir))
+                for file_name in file_names:
+                    file_path = os.path.join(class_dir, file_name)
+                    self.image_paths.append(file_path)
+                    self.labels.append(label_idx)
 
     def __len__(self):
-        return len(self.input_images)
+        return len(self.image_paths)
 
     def __getitem__(self, idx):
-        input_image = self.input_images[idx]
-        target_image = self.target_images[idx]
+        img_path = self.image_paths[idx]
+        label = self.labels[idx]
 
-        # print(np.array(self.input_images).shape)
-        # print(np.array(self.target_images).shape)
-
-        input_image = Image.fromarray(input_image)
-        target_image = Image.fromarray(target_image)
-
-        # print(f'input image shape: {input_image.shape}')
-        # print(f'target image shape: {target_image.shape}')
-
+        image = Image.open(img_path).convert("RGB")
         if self.transform:
-            input_image = self.transform(input_image)
-            target_image = self.transform(target_image)
+            image = self.transform(image)
 
-        return input_image, target_image
-
-
-def sort_key(filename):
-    image_match = re.search(r"image_(\d+)", filename)
-    crop_match = re.search(r"crop_(\d+)", filename)
-
-    image_number = int(image_match.group(1)) if image_match else float("inf")
-    crop_number = int(crop_match.group(1)) if crop_match else float("inf")
-
-    return (image_number, crop_number)
+        return image, label
 
 
 def load_images_from_8x8(QF):
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
 
-    test_input_dataset = []
-    test_target_dataset = []
-
-    # input images
     test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
 
-    # target images (original)
-    target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
-
-    # 테스트 데이터 로드
-    for i in range(num_classes):
-        test_path = os.path.join(test_input_dir, str(i))
-        target_test_path = os.path.join(target_test_dataset_dir, str(i))
-
-        # test_path 내 파일을 정렬된 순서로 불러오기
-        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
-
-        # 두 디렉토리의 파일명이 같은지 확인하며 로드
-        for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
-            if test_file == target_file:
-                # input 이미지 로드
-                test_image_path = os.path.join(test_path, test_file)
-                test_image = Image.open(test_image_path).convert("RGB")
-                test_input_dataset.append(np.array(test_image))
-
-                # target 이미지 로드
-                target_image_path = os.path.join(target_test_path, target_file)
-                target_image = Image.open(target_image_path).convert("RGB")
-                test_target_dataset.append(np.array(target_image))
-            else:
-                print(
-                    f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
-                )
-
-    # Dataset과 DataLoader 생성
-    test_dataset = CIFAR100Dataset(
-        test_input_dataset, test_target_dataset, transform=transform
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+        ]
     )
 
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    selected_classes = [str(i) for i in range(num_classes)]
+
+    test_dataset = CustomImageFolder(
+        root_dir=test_input_dir, transform=transform, selected_classes=selected_classes
+    )
+
+    test_loader = DataLoader(test_dataset, shuffle=False)
+
+    print(f"Test dataset classes: {test_dataset.classes}")
 
     return test_dataset, test_loader
 
 
 if __name__ == "__main__":
-    # Check if GPUs are available and set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     for QF in QFs:
-        # Load test dataset and dataloader
         _, test_loader = load_images_from_8x8(QF)
 
-        # Load model and move it to the appropriate device (GPU/CPU)
         model = torch.load("./models/PxT_50_epoch.pth", map_location=device)
-        model = model.to(device)  # Move model to GPU if available
+        model = model.to(device)
 
-        # Enable multi-GPU support with DataParallel
         if torch.cuda.device_count() > 1:
             print(f"Using {torch.cuda.device_count()} GPUs with DataParallel")
             model = nn.DataParallel(model)
 
         model.eval()
 
-        # Output directory for saving results
         output_dir = os.path.join(
             os.getcwd(), "datasets", "removed_images_50_epoch_each_QF", f"QF_{QF}"
         )
-        criterion = nn.MSELoss()
 
         with torch.no_grad():
+            output_images = []
             image_idx = 0
+            small_image_idx = 0
+
             for images, labels in test_loader:
                 images, labels = images.to(device), labels.to(device)
 
                 outputs = model(images)
-                loss = criterion(outputs, labels)
 
-                #  모델 output 이미지 저장 (8x8 이미지)
+                # 모델 output 이미지 저장 (8x8 이미지)
                 images = outputs
-                idx = 0
-                for image in images:
-                    image = ToPILImage()(image)
 
-                    os.makedirs(os.path.join(output_dir, str(image_idx)), exist_ok=True)
-                    image.save(
-                        os.path.join(
-                            output_dir,
-                            str(image_idx),
-                            f"image_{image_idx}_idx_{idx}.jpeg",
-                        )
+                for image, label in zip(images, labels):
+                    image = ToPILImage()(image.cpu())
+
+                    # 클래스별 디렉토리 생성
+                    class_dir = os.path.join(output_dir, f"{label}")
+                    os.makedirs(class_dir, exist_ok=True)
+
+                    # 이미지 저장
+                    image_path = os.path.join(
+                        class_dir, f"image_{image_idx}_idx_{small_image_idx}.jpeg"
                     )
-                    print(f"Saved {output_dir}/image_{image_idx}_idx_{idx}.jpeg")
-                    idx += 1
-                image_idx += 1
+                    image.save(image_path)
+                    print(f"Saved {image_path}")
+
+                    small_image_idx += 1
+                    if small_image_idx == 16:
+                        small_image_idx = 0
+                        image_idx += 1

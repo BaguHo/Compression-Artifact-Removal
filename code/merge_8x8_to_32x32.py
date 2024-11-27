@@ -30,8 +30,8 @@ if __name__ == "__main__":
             for image_name in images_names:
                 image = plt.imread(os.path.join(input_image_path, image_name))
                 image = (image * 255).astype(np.uint8)
-                plt.imshow(image)
-                plt.show()
+                # plt.imshow(image)
+                # plt.show()
                 input_images.append(image)
 
             image_length = len(os.listdir(input_image_path)) // 16
@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
                 plt.imshow(output_image)
                 plt.show()
-                input()
+                # input()
                 os.makedirs(output_path, exist_ok=True)
                 output_images.append(output_image)
                 output_image_names.append(os.path.join(output_path, f"output_{j}.png"))

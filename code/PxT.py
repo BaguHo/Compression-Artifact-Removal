@@ -109,13 +109,14 @@ def test(model, test_loader, criterion, msg):
                 os.makedirs(
                     os.path.join(removed_images_path, str(image_idx)), exist_ok=True
                 )
-                image.save(
-                    os.path.join(
-                        removed_images_path,
-                        f"{str(image_idx)}",
-                        f"image_{image_idx}_idx_{idx}.jpeg",
-                    )
-                )
+                # TODO: remove saving images
+                # image.save(
+                #     os.path.join(
+                #         removed_images_path,
+                #         f"{str(image_idx)}",
+                #         f"image_{image_idx}_idx_{idx}.jpeg",
+                #     )
+                # )
                 # image.save(os.path.join(removed_images_path, f"{idx}.jpeg"))
                 idx += 1
             image_idx += 1
@@ -460,6 +461,9 @@ def load_images_from_8x8():
                     # input 이미지 로드
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = Image.open(train_image_path).convert("RGB")
+                    # plt.imshow(train_image)
+                    # plt.show()
+                    # input()
                     train_input_dataset.append(np.array(train_image))
 
                     # target 이미지 로드
