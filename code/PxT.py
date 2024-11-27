@@ -131,14 +131,6 @@ def test(model, test_loader, criterion, msg):
     return avg_loss
 
 
-def save_output_images(image_tensor, label, QF):
-    output_dir = os.path.join(
-        os.getcwd(), "datasets", "original_size", "outputs", f"jpeg{QF}", {label}
-    )
-    image = ToPILImage(image_tensor)
-    image.save()
-
-
 # save result
 def save_result(
     model_name=model_name,
