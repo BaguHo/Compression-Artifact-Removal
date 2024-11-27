@@ -147,6 +147,7 @@ def load_images_from_8x8(QF):
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
 
+    train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
     test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
 
     transform = transforms.Compose(
@@ -157,15 +158,20 @@ def load_images_from_8x8(QF):
 
     selected_classes = [str(i) for i in range(num_classes)]
 
+    train_dataset = CustomImageFolder(
+        root_dir=train_input_dir, transform=transform, selected_classes=selected_classes
+    )
+
     test_dataset = CustomImageFolder(
         root_dir=test_input_dir, transform=transform, selected_classes=selected_classes
     )
 
-    test_loader = DataLoader(test_dataset, shuffle=False)
+    train_loader = DataLoader(train_dataset, shuffle=False, batch_size=batch_size)
+    test_loader = DataLoader(test_dataset, shuffle=False, batch_size=batch_size)
 
     print(f"Test dataset classes: {test_dataset.classes}")
 
-    return test_dataset, test_loader
+    return train_loader, test_loader
 
 
 if __name__ == "__main__":
@@ -173,7 +179,7 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     for QF in QFs:
-        _, test_loader = load_images_from_8x8(QF)
+        train_loader, test_loader = load_images_from_8x8(QF)
 
         model = torch.load("./models/PxT_50_epoch.pth", map_location=device)
         model = model.to(device)
@@ -188,34 +194,32 @@ if __name__ == "__main__":
             os.getcwd(), "datasets", "removed_images_50_epoch_each_QF", f"QF_{QF}"
         )
 
+        os.makedirs(output_dir, exist_ok=True)
+
         with torch.no_grad():
-            output_images = []
+            batch_idx = 0
             image_idx = 0
-            small_image_idx = 0
 
-            for images, labels in test_loader:
-                images, labels = images.to(device), labels.to(device)
+            for batch_images, batch_labels in test_loader:
+                batch_images, batch_labels = batch_images.to(device), batch_labels.to(
+                    device
+                )
 
-                outputs = model(images)
+                batch_outputs = model(batch_images)
 
-                # 모델 output 이미지 저장 (8x8 이미지)
-                images = outputs
-
-                for image, label in zip(images, labels):
+                for i, (image, label) in enumerate(zip(batch_outputs, batch_labels)):
                     image = ToPILImage()(image.cpu())
 
-                    # 클래스별 디렉토리 생성
-                    class_dir = os.path.join(output_dir, f"{label}")
+                    class_dir = os.path.join(output_dir, str(label.item()))
                     os.makedirs(class_dir, exist_ok=True)
 
-                    # 이미지 저장
                     image_path = os.path.join(
-                        class_dir, f"image_{image_idx}_idx_{small_image_idx}.jpeg"
+                        class_dir,
+                        f"batch_{batch_idx}_image_{image_idx}_within_batch_{i}.jpeg",
                     )
                     image.save(image_path)
                     print(f"Saved {image_path}")
 
-                    small_image_idx += 1
-                    if small_image_idx == 16:
-                        small_image_idx = 0
-                        image_idx += 1
+                    image_idx += 1
+
+                batch_idx += 1
