@@ -13,7 +13,7 @@ from natsort import natsorted
 
 QFs = [80, 60, 40, 20]
 batch_size = 1
-num_classes = 20
+num_classes = 100
 model_name = "PxT_50_epoch.pth"
 
 transform = transforms.Compose(
@@ -46,7 +46,7 @@ class Encoder(nn.Module):
         return x
 
 
-class ViT(nn.Module):
+class PxT(nn.Module):
     def __init__(
         self,
         img_size=8,
@@ -108,41 +108,6 @@ class ViT(nn.Module):
         return x
 
 
-class CustomImageFolder(Dataset):
-    def __init__(self, root_dir, transform=None, selected_classes=None):
-        self.root_dir = root_dir
-        self.transform = transform
-        self.classes = sorted(os.listdir(root_dir))
-
-        if selected_classes is not None:
-            self.classes = [cls for cls in self.classes if cls in selected_classes]
-
-        self.image_paths = []
-        self.labels = []
-
-        for label_idx, class_name in enumerate(self.classes):
-            class_dir = os.path.join(root_dir, class_name)
-            if os.path.isdir(class_dir):
-                file_names = natsorted(os.listdir(class_dir))
-                for file_name in file_names:
-                    file_path = os.path.join(class_dir, file_name)
-                    self.image_paths.append(file_path)
-                    self.labels.append(label_idx)
-
-    def __len__(self):
-        return len(self.image_paths)
-
-    def __getitem__(self, idx):
-        img_path = self.image_paths[idx]
-        label = self.labels[idx]
-
-        image = Image.open(img_path).convert("RGB")
-        if self.transform:
-            image = self.transform(image)
-
-        return image, label
-
-
 def load_images_from_8x8(QF):
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
@@ -156,15 +121,13 @@ def load_images_from_8x8(QF):
         ]
     )
 
-    selected_classes = [str(i) for i in range(num_classes)]
+    train_dataset = datasets.ImageFolder(root=train_input_dir, transform=transform)
 
-    train_dataset = CustomImageFolder(
-        root_dir=train_input_dir, transform=transform, selected_classes=selected_classes
-    )
+    print(f'load train_dataset from "{train_input_dir}"')
 
-    test_dataset = CustomImageFolder(
-        root_dir=test_input_dir, transform=transform, selected_classes=selected_classes
-    )
+    test_dataset = datasets.ImageFolder(root=test_input_dir, transform=transform)
+
+    print(f'load test_dataset from "{test_input_dir}"')
 
     train_loader = DataLoader(train_dataset, shuffle=False, batch_size=batch_size)
     test_loader = DataLoader(test_dataset, shuffle=False, batch_size=batch_size)
@@ -179,6 +142,7 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     for QF in QFs:
+        image_indexs = [0 for i in range(num_classes)]
         train_loader, test_loader = load_images_from_8x8(QF)
 
         model = torch.load("./models/PxT_50_epoch.pth", map_location=device)
@@ -188,38 +152,79 @@ if __name__ == "__main__":
             print(f"Using {torch.cuda.device_count()} GPUs with DataParallel")
             model = nn.DataParallel(model)
 
-        model.eval()
-
-        output_dir = os.path.join(
-            os.getcwd(), "datasets", "removed_images_50_epoch_each_QF", f"QF_{QF}"
+        train_output_dir = os.path.join(
+            os.getcwd(),
+            "datasets",
+            "removed_images_50_epoch_each_QF",
+            f"QF_{QF}",
+            "train",
         )
 
-        os.makedirs(output_dir, exist_ok=True)
+        test_output_dir = os.path.join(
+            os.getcwd(),
+            "datasets",
+            "removed_images_50_epoch_each_QF",
+            f"QF_{QF}",
+            "test",
+        )
 
-        with torch.no_grad():
-            batch_idx = 0
-            image_idx = 0
+        os.makedirs(test_output_dir, exist_ok=True)
+        os.makedirs(train_output_dir, exist_ok=True)
 
-            for batch_images, batch_labels in test_loader:
-                batch_images, batch_labels = batch_images.to(device), batch_labels.to(
-                    device
+        image_idx = 0
+        crop_idx = 0
+
+        for images, labels in train_loader:
+            images, labels = images.to(device), labels.to(device)
+
+            print(f"train image shape: {images.shape}")
+            outputs = model(images)
+
+            images = outputs
+
+            for image, label in zip(images, labels):
+                image = ToPILImage()(image.cpu())
+                class_dir = os.path.join(train_output_dir, f"{label}")
+                print(f"current label: {label}")
+                os.makedirs(class_dir, exist_ok=True)
+
+                image_path = os.path.join(
+                    class_dir,
+                    f"image_{image_indexs[label]}_crop_{crop_idx}.jpeg",
                 )
+                image.save(image_path)
+                print(f"Saved {image_path}")
 
-                batch_outputs = model(batch_images)
+                crop_idx += 1
+                if crop_idx == 16:
+                    image_indexs[label] += 1
+                    crop_idx = 0
 
-                for i, (image, label) in enumerate(zip(batch_outputs, batch_labels)):
-                    image = ToPILImage()(image.cpu())
+        crop_idx = 0
 
-                    class_dir = os.path.join(output_dir, str(label.item()))
-                    os.makedirs(class_dir, exist_ok=True)
+        for images, labels in test_loader:
+            images, labels = images.to(device), labels.to(device)
 
-                    image_path = os.path.join(
-                        class_dir,
-                        f"batch_{batch_idx}_image_{image_idx}_within_batch_{i}.jpeg",
-                    )
-                    image.save(image_path)
-                    print(f"Saved {image_path}")
+            print(f"test images shape: {images.shape}")
 
-                    image_idx += 1
+            outputs = model(images)
 
-                batch_idx += 1
+            images = outputs
+
+            for image, label in zip(images, labels):
+                print(f"current label: {label}")
+                image = ToPILImage()(image.cpu())
+                class_dir = os.path.join(train_output_dir, f"{label}")
+                os.makedirs(class_dir, exist_ok=True)
+
+                image_path = os.path.join(
+                    class_dir,
+                    f"image_{image_indexs[label]}_crop_{crop_idx}.jpeg",
+                )
+                image.save(image_path)
+                print(f"Saved {image_path}")
+
+                crop_idx += 1
+                if crop_idx == 16:
+                    image_indexs[label] += 1
+                    crop_idx = 0
