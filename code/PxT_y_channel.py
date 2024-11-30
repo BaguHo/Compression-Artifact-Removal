@@ -446,7 +446,6 @@ def load_images_from_8x8():
                 os.listdir(target_train_path), key=sort_key
             )
 
-            # 두 디렉토리의 파일명이 같은지 확인하며 로드
             for train_file, target_file in zip(
                 sorted_train_files, sorted_target_train_files
             ):
@@ -455,12 +454,21 @@ def load_images_from_8x8():
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = Image.open(train_image_path).convert("YCbCr")
                     y_channel_train_image = np.array(train_image)[:, :, 0]
+                    y_channel_train_image = np.expand_dims(
+                        y_channel_train_image, axis=0
+                    )
+                    # print(f"y_channel_train_image: {y_channel_train_image}")
+                    # print(f"y_channel_train_image shape: {y_channel_train_image.shape}")
+                    # input()
                     train_input_dataset.append(np.array(y_channel_train_image))
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_train_path, target_file)
                     target_image = Image.open(target_image_path).convert("YCbCr")
                     y_channel_target_image = np.array(target_image)[:, :, 0]
+                    y_channel_target_image = np.expand_dims(
+                        y_channel_target_image, axis=0
+                    )
                     train_target_dataset.append(np.array(y_channel_target_image))
                 else:
                     print(
@@ -487,12 +495,16 @@ def load_images_from_8x8():
                     test_image_path = os.path.join(test_path, test_file)
                     test_image = Image.open(test_image_path).convert("YCbCr")
                     y_channel_test_image = np.array(test_image)[:, :, 0]
+                    y_channel_test_image = np.expand_dims(y_channel_test_image, axis=0)
                     test_input_dataset.append(np.array(y_channel_test_image))
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_test_path, target_file)
                     target_image = Image.open(target_image_path).convert("YCbCr")
                     y_channel_target_image = np.array(target_image)[:, :, 0]
+                    y_channel_target_image = np.expand_dims(
+                        y_channel_target_image, axis=0
+                    )
                     test_target_dataset.append(np.array(target_image))
                 else:
                     print(
