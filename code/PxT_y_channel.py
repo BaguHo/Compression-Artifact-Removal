@@ -77,7 +77,9 @@ def train(model, train_loader, criterion, optimizer):
             checkpoint_path = os.path.join(
                 "checkpoints", f"model_checkpoint_epoch_{epoch + 1}.pth"
             )
-            save_model(model, "checkpoints", f"model_checkpoint_epoch_{epoch + 1}.pth")
+            save_model(
+                model, "checkpoints", f"{model_name}_checkpoint_epoch_{epoch + 1}.pth"
+            )
             print(f"Checkpoint saved at epoch {epoch + 1}")
 
     # 마지막 모델 저장
