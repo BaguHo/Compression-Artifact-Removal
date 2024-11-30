@@ -23,7 +23,7 @@ if __name__ == "__main__":
                 "datasets",
                 "removed_images_50_epoch_each_QF",
                 f"QF_{QF}",
-                "train",
+                # "train",
                 str(i),
             )
             print(f"input_image_path: {input_image_path}")
@@ -32,7 +32,7 @@ if __name__ == "__main__":
                 "datasets",
                 "removed_and_merged_images_50_epoch_QF",
                 f"QF_{QF}",
-                "train",
+                # "train",
                 str(i),
             )
             print(f"output_path: {output_path}")
@@ -41,12 +41,6 @@ if __name__ == "__main__":
 
             for image_name in images_names:
                 image = plt.imread(os.path.join(input_image_path, image_name))
-
-                # 스케일링 후 확인
-                # plt.imshow(image)
-                # plt.show()
-                # input()
-
                 input_images.append(image)
 
             image_length = len(os.listdir(input_image_path)) // 16
@@ -56,8 +50,9 @@ if __name__ == "__main__":
                 for k in range(16):
                     image = input_images[j * 16 + k]
                     image = np.array(image, dtype=np.uint8)
-                    # plt.imshow(image)
-                    # plt.show()
+                    plt.imshow(image)
+                    plt.show()
+                    input()
                     # print(image)
 
                     big_image[
@@ -70,9 +65,9 @@ if __name__ == "__main__":
 
                 output_image = Image.fromarray(big_image)
 
-                # plt.imshow(output_image)
-                # plt.show()
-                # input()
+                plt.imshow(output_image)
+                plt.show()
+                input()
                 os.makedirs(output_path, exist_ok=True)
                 output_images.append(output_image)
                 output_image_names.append(os.path.join(output_path, f"output_{j}.png"))
@@ -84,4 +79,4 @@ if __name__ == "__main__":
             for j in range(image_length):
                 output_images[j].save(output_image_names[j])
                 # print(f"Saved {output_path}/output_{j}.png")
-            input()
+            # input()

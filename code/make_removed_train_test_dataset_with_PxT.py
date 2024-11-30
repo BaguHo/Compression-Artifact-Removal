@@ -13,7 +13,7 @@ from natsort import natsorted
 
 QFs = [80, 60, 40, 20]
 batch_size = 1
-num_classes = 100
+num_classes = 20
 model_name = "PxT_50_epoch.pth"
 
 transform = transforms.Compose(
@@ -46,7 +46,7 @@ class Encoder(nn.Module):
         return x
 
 
-class PxT(nn.Module):
+class ViT(nn.Module):
     def __init__(
         self,
         img_size=8,
@@ -138,7 +138,11 @@ def load_images_from_8x8(QF):
 
 
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps" if torch.cuda.is_mps_available() else "cpu"
+    )
     print(f"Using device: {device}")
 
     for QF in QFs:
