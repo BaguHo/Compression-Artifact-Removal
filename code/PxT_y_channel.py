@@ -24,7 +24,6 @@ from torchvision.transforms import ToPILImage
 from tqdm import tqdm
 
 PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
-channels = 3
 learning_rate = 0.001
 epochs = 50
 batch_size = 512
@@ -133,36 +132,36 @@ def test(model, test_loader, criterion, msg):
     return avg_loss
 
 
-# save result
-def save_result(
-    model_name=model_name,
-    train_dataset=None,
-    test_dataset=None,
-    accuracy=None,
-    precision=None,
-    QF=None,
-):
-    results_df = pd.DataFrame(
-        {
-            "Model Name": [model_name],
-            "Channel": [channels],
-            "Train Dataset": [train_dataset],
-            "Test Dataset": [test_dataset],
-            "Accuracy": [accuracy],
-            "Precision": [precision],
-            "Epoch": [epochs],
-            "Batch Size": [batch_size],
-            "QF": [QF],
-        }
-    )
-    file_path = os.path.join(os.getcwd(), "result.csv")
+# # save result
+# def save_result(
+#     model_name=model_name,
+#     train_dataset=None,
+#     test_dataset=None,
+#     accuracy=None,
+#     precision=None,
+#     QF=None,
+# ):
+#     results_df = pd.DataFrame(
+#         {
+#             "Model Name": [model_name],
+#             "Channel": [channels],
+#             "Train Dataset": [train_dataset],
+#             "Test Dataset": [test_dataset],
+#             "Accuracy": [accuracy],
+#             "Precision": [precision],
+#             "Epoch": [epochs],
+#             "Batch Size": [batch_size],
+#             "QF": [QF],
+#         }
+#     )
+#     file_path = os.path.join(os.getcwd(), "result.csv")
 
-    if os.path.isfile(file_path):
-        results_df.to_csv(file_path, mode="a", index=False, header=False)
-    else:
-        results_df.to_csv(file_path, mode="w", index=False)
+#     if os.path.isfile(file_path):
+#         results_df.to_csv(file_path, mode="a", index=False, header=False)
+#     else:
+#         results_df.to_csv(file_path, mode="w", index=False)
 
-    print("Results saved to './result.csv'")
+#     print("Results saved to './result.csv'")
 
 
 def extract_label(file_name):
