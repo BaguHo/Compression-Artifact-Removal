@@ -132,38 +132,6 @@ def test(model, test_loader, criterion, msg):
     return avg_loss
 
 
-# # save result
-# def save_result(
-#     model_name=model_name,
-#     train_dataset=None,
-#     test_dataset=None,
-#     accuracy=None,
-#     precision=None,
-#     QF=None,
-# ):
-#     results_df = pd.DataFrame(
-#         {
-#             "Model Name": [model_name],
-#             "Channel": [channels],
-#             "Train Dataset": [train_dataset],
-#             "Test Dataset": [test_dataset],
-#             "Accuracy": [accuracy],
-#             "Precision": [precision],
-#             "Epoch": [epochs],
-#             "Batch Size": [batch_size],
-#             "QF": [QF],
-#         }
-#     )
-#     file_path = os.path.join(os.getcwd(), "result.csv")
-
-#     if os.path.isfile(file_path):
-#         results_df.to_csv(file_path, mode="a", index=False, header=False)
-#     else:
-#         results_df.to_csv(file_path, mode="w", index=False)
-
-#     print("Results saved to './result.csv'")
-
-
 def extract_label(file_name):
     base_name = os.path.splitext(file_name)[0]
     parts = base_name.split("_")
@@ -278,7 +246,7 @@ def show_images(dataset, dataloader, length=5):
         imshow(images[i], labels[i].item())
 
 
-# Paramater
+# How to calculate the paramater?
 # Patch Embeding Paramaters: patch_size * patch_size * channels + embediing_dim
 # + Positional embeding = 1*64*64
 # + Layer norm Paramaters = 2 * embeding_dim = 2 * 64
@@ -369,12 +337,13 @@ class PxT(nn.Module):
             batch_size,
             self.img_size // self.patch_size,
             self.img_size // self.patch_size,
-            3,
+            1,
             self.patch_size,
             self.patch_size,
         )
+
         x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
-        x = x.view(batch_size, 3, self.img_size, self.img_size)
+        x = x.view(batch_size, 1, self.img_size, self.img_size)
         return x
 
 
@@ -454,21 +423,25 @@ def load_images_from_8x8():
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = Image.open(train_image_path).convert("YCbCr")
                     y_channel_train_image = np.array(train_image)[:, :, 0]
-                    y_channel_train_image = np.expand_dims(
-                        y_channel_train_image, axis=0
-                    )
+                    # y_channel_train_image = np.expand_dims(
+                    #     y_channel_train_image, axis=0
+                    # )
                     # print(f"y_channel_train_image: {y_channel_train_image}")
                     # print(f"y_channel_train_image shape: {y_channel_train_image.shape}")
+                    # print(f"type(y_channel_train_image): {type(y_channel_train_image)}")
                     # input()
+
+                    y_channel_train_image = y_channel_train_image.astype(np.uint8)
                     train_input_dataset.append(np.array(y_channel_train_image))
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_train_path, target_file)
                     target_image = Image.open(target_image_path).convert("YCbCr")
                     y_channel_target_image = np.array(target_image)[:, :, 0]
-                    y_channel_target_image = np.expand_dims(
-                        y_channel_target_image, axis=0
-                    )
+                    # y_channel_target_image = np.expand_dims(
+                    #     y_channel_target_image, axis=0
+                    # )
+                    y_channel_target_image = y_channel_target_image.astype(np.uint8)
                     train_target_dataset.append(np.array(y_channel_target_image))
                 else:
                     print(
@@ -495,16 +468,18 @@ def load_images_from_8x8():
                     test_image_path = os.path.join(test_path, test_file)
                     test_image = Image.open(test_image_path).convert("YCbCr")
                     y_channel_test_image = np.array(test_image)[:, :, 0]
-                    y_channel_test_image = np.expand_dims(y_channel_test_image, axis=0)
+                    # y_channel_test_image = np.expand_dims(y_channel_test_image, axis=0)
+                    y_channel_test_image = y_channel_test_image.astype(np.uint8)
                     test_input_dataset.append(np.array(y_channel_test_image))
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_test_path, target_file)
                     target_image = Image.open(target_image_path).convert("YCbCr")
                     y_channel_target_image = np.array(target_image)[:, :, 0]
-                    y_channel_target_image = np.expand_dims(
-                        y_channel_target_image, axis=0
-                    )
+                    # y_channel_target_image = np.expand_dims(
+                    #     y_channel_target_image, axis=0
+                    # )
+                    y_channel_target_image = y_channel_target_image.astype(np.uint8)
                     test_target_dataset.append(np.array(target_image))
                 else:
                     print(
@@ -576,13 +551,6 @@ def training_testing():
     print(
         "#############################################################################"
     )
-
-    # print(f"[test removal model]")
-    # accuracy, precision = test(removal_model, test_loader, criterion, f"Removal {QF}")
-    # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
-    # print(
-    #     "#############################################################################"
-    # )
 
 
 ################################################################################################################
