@@ -12,7 +12,7 @@ from torchvision.transforms import ToPILImage
 
 QFs = [80, 60, 40, 20]
 batch_size = 1
-num_classes = 20
+num_classes = 100
 model_name = "PxT_y_channel.pth"
 
 transform = transforms.Compose(

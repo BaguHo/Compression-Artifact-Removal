@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 dataset_name = "CIFAR100"
-num_classes = 20
+num_classes = 100
 
 
 def crop_image(image, crop_size=8):
