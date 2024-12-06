@@ -542,11 +542,11 @@ def training_testing():
     train(removal_model, train_loader, criterion, optimizer)
 
     test_loss = test(removal_model, test_loader, criterion, f"Removal ")
-    save_model(
-        removal_model,
-        os.path.join(os.getcwd(), "output_models"),
-        f"PxT.pth",
-    )
+    # save_model(
+    #     removal_model,
+    #     os.path.join(os.getcwd(), "output_models"),
+    #     f"PxT.pth",
+    # )
 
     print(
         "#############################################################################"
