@@ -26,12 +26,12 @@ from tqdm import tqdm
 PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
 learning_rate = 0.001
 epochs = 50
-batch_size = 512
+batch_size = 128
 dataset_name = "CIFAR100"
 model_name = "PxT_y_channel"
-num_workers = 128
+num_workers = 8
 image_type = "YCbCr"
-num_classes = 20
+num_classes = 10
 QFs = [80, 60, 40, 20]
 
 
