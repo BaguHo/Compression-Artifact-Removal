@@ -22,6 +22,11 @@ from torchvision import models
 import torchvision.transforms as transforms
 from torchvision.transforms import ToPILImage
 from tqdm import tqdm
+from knockknock import slack_sender
+
+slack_webhook_url = (
+    "https://hooks.slack.com/services/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"
+)
 
 PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
 learning_rate = 0.001
@@ -501,6 +506,9 @@ def load_images_from_8x8():
 
 
 # training & testing for each QF
+
+
+@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def training_testing():
     # save_CIFAR100()
     # make_8x8_image_from_original_dataset()
@@ -551,6 +559,7 @@ def training_testing():
     print(
         "#############################################################################"
     )
+    return "PxT Y channel model training done"
 
 
 ################################################################################################################
