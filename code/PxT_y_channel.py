@@ -31,7 +31,7 @@ dataset_name = "CIFAR100"
 model_name = "PxT_y_channel"
 num_workers = 128
 image_type = "YCbCr"
-num_classes = 100
+num_classes = 5
 QFs = [80, 60, 40, 20]
 
 
@@ -290,10 +290,10 @@ class PxT(nn.Module):
         img_size=8,
         patch_size=1,
         in_channels=1,
-        embed_dim=64,
-        num_heads=16,
-        num_layers=8,
-        mlp_dim=128,
+        embed_dim=32,
+        num_heads=8,
+        num_layers=4,
+        mlp_dim=64,
     ):
         super(PxT, self).__init__()
         self.img_size = img_size
