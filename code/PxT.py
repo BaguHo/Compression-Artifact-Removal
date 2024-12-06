@@ -1,17 +1,13 @@
 # TODO: it should be run in the root directory of the project
 import os
 import re
-import time
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from PIL import Image
 from sklearn.metrics import confusion_matrix, precision_score
 from sklearn.model_selection import train_test_split
-import timm
 import torch
-from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init
