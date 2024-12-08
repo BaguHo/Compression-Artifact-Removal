@@ -36,7 +36,7 @@ dataset_name = "CIFAR100"
 model_name = "PxT_y_channel"
 num_workers = 128
 image_type = "YCbCr"
-num_classes = 5
+num_classes = 20
 QFs = [80, 60, 40, 20]
 
 
@@ -265,7 +265,6 @@ def show_images(dataset, dataloader, length=5):
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-
 class Encoder(nn.Module):
     def __init__(self, embed_dim, num_heads, mlp_dim):
         super(Encoder, self).__init__()
@@ -295,10 +294,10 @@ class PxT(nn.Module):
         img_size=8,
         patch_size=1,
         in_channels=1,
-        embed_dim=32,
-        num_heads=8,
-        num_layers=4,
-        mlp_dim=64,
+        embed_dim=128,  # 32에서 128로 증가
+        num_heads=16,   # 8에서 16으로 증가 
+        num_layers=8,   # 4에서 8로 증가
+        mlp_dim=256,    # 64에서 256으로 증가
     ):
         super(PxT, self).__init__()
         self.img_size = img_size

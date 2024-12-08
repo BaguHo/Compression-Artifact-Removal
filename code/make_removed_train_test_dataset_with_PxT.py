@@ -12,8 +12,8 @@ from torchvision.transforms import ToPILImage
 
 QFs = [80, 60, 40, 20]
 batch_size = 1
-num_classes = 5
-model_name = "PxT_y_channel.pth"
+num_classes = 20
+model_name = "PxT.pth"
 
 transform = transforms.Compose(
     [
@@ -106,12 +106,19 @@ class PxT(nn.Module):
         x = x.view(batch_size, 1, self.img_size, self.img_size)
         return x
 
-
 class NaturalSortImageFolder(datasets.ImageFolder):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # 파일 경로를 자연스러운 순서로 정렬
         self.samples = natsorted(self.samples, key=lambda x: x[0])
+        self.imgs = self.samples
+        
+        # 0~4 클래스만 필터링
+        filtered_samples = []
+        for path, label in self.samples:
+            if 0 <= label <= 4:
+                filtered_samples.append((path, label))
+        self.samples = filtered_samples
         self.imgs = self.samples
 
 
@@ -179,7 +186,7 @@ if __name__ == "__main__":
         image_indexs = [0 for i in range(num_classes)]
         train_loader, test_loader = load_images_from_8x8(QF)
 
-        model = torch.load("./models/PxT_y_channel.pth", map_location="cpu")
+        model = torch.load(f"./models/{model_name}", map_location="cpu")
         model = model.to(device)
 
         if torch.cuda.device_count() > 1:
@@ -210,7 +217,8 @@ if __name__ == "__main__":
 
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
-
+            # print(f"labels: {np.array(labels)}")
+            # input()
             # print(f"train image shape: {images.shape}")
             outputs = model(images)
 
