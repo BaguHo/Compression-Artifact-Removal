@@ -13,7 +13,7 @@ from torchvision.transforms import ToPILImage
 QFs = [80, 60, 40, 20]
 batch_size = 1
 num_classes = 20
-model_name = "PxT.pth"
+model_name = "PxT_y_channel_70_epoch_20_claases.pth"
 
 transform = transforms.Compose(
     [
@@ -106,13 +106,14 @@ class PxT(nn.Module):
         x = x.view(batch_size, 1, self.img_size, self.img_size)
         return x
 
+
 class NaturalSortImageFolder(datasets.ImageFolder):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # 파일 경로를 자연스러운 순서로 정렬
         self.samples = natsorted(self.samples, key=lambda x: x[0])
         self.imgs = self.samples
-        
+
         # 0~4 클래스만 필터링
         filtered_samples = []
         for path, label in self.samples:

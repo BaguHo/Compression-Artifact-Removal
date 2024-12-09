@@ -1,7 +1,7 @@
 # TODO: it should be run in the root directory of the project
 import os
 import re
-import time
+import math
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +9,6 @@ import pandas as pd
 from PIL import Image
 from sklearn.metrics import confusion_matrix, precision_score
 from sklearn.model_selection import train_test_split
-import timm
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
@@ -144,54 +143,36 @@ def extract_label(file_name):
     return label
 
 
-# jpeg 이미지 생성
-def make_jpeg_datasets(QF):
-    train_output_dir = os.path.join(
-        os.getcwd(), "datasets", dataset_name, "original_size", f"jpeg{QF}", "train"
-    )
-    test_output_dir = os.path.join(
-        os.getcwd(), "datasets", dataset_name, "original_size", f"jpeg{QF}", "test"
-    )
+def calculate_psnr(original_images, generated_images):
+    """
+    두 이미지 리스트(original_images, generated_images)의 PSNR을 계산합니다.
 
-    makedir(train_output_dir)
-    makedir(test_output_dir)
+    Args:
+        original_images (list): 입력 이미지 리스트 (numpy 배열 형태)
+        generated_images (list): 출력 이미지 리스트 (numpy 배열 형태)
 
-    train_input_dir = os.path.join(
-        os.getcwd(), "datasets", dataset_name, "original_size", "original", "train"
-    )
-    test_input_dir = os.path.join(
-        os.getcwd(), "datasets", dataset_name, "original_size", "original", "test"
-    )
+    Returns:
+        list: 각 이미지에 대한 PSNR 값 리스트
+        float: 전체 평균 PSNR 값
+    """
+    psnr_values = []
 
-    # original dataset load
-    original_train_dataset = datasets.ImageFolder(train_input_dir)
-    original_test_dataset = datasets.ImageFolder(test_input_dir)
+    for original, generated in zip(original_images, generated_images):
+        # 두 이미지 간의 차이를 계산
+        mse = np.mean((original - generated) ** 2)
+        if mse == 0:  # MSE가 0일 경우 (두 이미지가 동일)
+            psnr = float("inf")
+        else:
+            # PSNR 계산 (픽셀 값이 8비트 기준으로 [0, 255] 범위라고 가정)
+            max_pixel_value = 255.0
+            psnr = 20 * math.log10(max_pixel_value / math.sqrt(mse))
 
-    # original_train_dataset = datasets.CIFAR100(
-    #     root=os.path.join(os.getcwd(), "datasets"), train=True, download=True
-    # )
-    # original_test_dataset = datasets.CIFAR100(
-    #     root=os.path.join(os.getcwd(), "datasets"), train=False, download=True
-    # )
+        psnr_values.append(psnr)
 
-    for i in range(num_classes):
-        files = os.listdir(os.path.join(train_input_dir, str(i)))
-        for file in files:
-            file_label = extract_label(file)
-            temp_path = os.path.join(train_output_dir, str(file_label))
-            os.makedirs(temp_path, exist_ok=True)
-            file_output_path = os.path.join(train_output_dir, str(file_label), file)
-            image = Image.open(os.path.join(train_input_dir, str(i), file))
-            image.save(file_output_path, "JPEG", qaulity=QF)
+    # 평균 PSNR 계산
+    average_psnr = np.mean(psnr_values)
 
-        files = os.listdir(os.path.join(test_input_dir, str(i)))
-        for file in files:
-            file_label = extract_label(file)
-            temp_path = os.path.join(test_output_dir, str(file_label))
-            os.makedirs(temp_path, exist_ok=True)
-            file_output_path = os.path.join(test_output_dir, str(file_label), file)
-            image = Image.open(os.path.join(test_input_dir, str(i), file))
-            image.save(file_output_path, "JPEG", qaulity=QF)
+    return psnr_values, average_psnr
 
 
 # JPEG 데이터셋 로드
@@ -205,9 +186,6 @@ def load_jpeg_datasets(QF):
 
     train_dataset = datasets.ImageFolder(jpeg_train_dir)
     test_dataset = datasets.ImageFolder(jpeg_test_dir)
-
-    # print(f'train_dataset shape: {train_dataset}')
-    # print(f'test_dataset shape: {test_dataset}')
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -265,6 +243,7 @@ def show_images(dataset, dataloader, length=5):
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+
 class Encoder(nn.Module):
     def __init__(self, embed_dim, num_heads, mlp_dim):
         super(Encoder, self).__init__()
@@ -295,9 +274,9 @@ class PxT(nn.Module):
         patch_size=1,
         in_channels=1,
         embed_dim=128,  # 32에서 128로 증가
-        num_heads=16,   # 8에서 16으로 증가 
-        num_layers=8,   # 4에서 8로 증가
-        mlp_dim=256,    # 64에서 256으로 증가
+        num_heads=16,  # 8에서 16으로 증가
+        num_layers=8,  # 4에서 8로 증가
+        mlp_dim=256,  # 64에서 256으로 증가
     ):
         super(PxT, self).__init__()
         self.img_size = img_size
@@ -369,9 +348,6 @@ class CIFAR100Dataset(Dataset):
 
         input_image = Image.fromarray(input_image)
         target_image = Image.fromarray(target_image)
-
-        # print(f'input image shape: {input_image.shape}')
-        # print(f'target image shape: {target_image.shape}')
 
         if self.transform:
             input_image = self.transform(input_image)
