@@ -22,12 +22,13 @@ import time
 
 channels = 1
 learning_rate = 0.001
-epochs = 100
-batch_size = 4
-dataset_name = "Tufts_Face_Database"
-model_list = ['efficientnet_b3', 'resent18', 'resnet50', 'resnet101', 'mobilenetv2', 'vgg19', 'resnext50_32x4d', 'resnext101_32x4d', 'inception_v3']
-num_workers = 3
+epochs = 70
+batch_size = 64
+dataset_name = "combined_ycbcr"
+model_list = ['efficientnet_b3', 'mobilenetv2', 'vgg19']
+num_workers = 4
 image_type = 'RGB'
+num_classes = 20
 
 # 디렉토리 생성
 def makedir(path):
@@ -35,11 +36,11 @@ def makedir(path):
         os.makedirs(path)
 
 # save model
-def save_model(model, path, filename):
-    makedir(path)
-
+def save_model(model, filename):
+    path = os.path.join(os.getcwd(), 'classification_models')
+    os.makedirs(path, exist_ok=True)
     model_path = os.path.join(path, filename)
-    torch.save(model.state_dict(), model_path)
+    torch.save(model, model_path)
     print(f"Model saved to {model_path}")
 
 # model training
@@ -105,63 +106,15 @@ def save_result(model_name=None,  train_dataset=None, test_dataset=None, accurac
         'Batch Size': [batch_size],
         'QF': [QF]
     })
-    file_path = os.path.join(os.getcwd(), 'result.csv')
+    file_path = os.path.join(os.getcwd(), 'results', f'num_classes_{num_classes}_epochs_{epochs}_result.csv')
 
     if os.path.isfile(file_path):
         results_df.to_csv(file_path, mode='a', index=False, header=False)
     else:
         results_df.to_csv(file_path, mode='w', index=False)
 
-    print("Results saved to './result.csv'")
-
-
-# jpeg 이미지 생성
-def make_jpeg_datasets(QF):
-    train_output_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'train')
-    test_output_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'test')
-
-    makedir(train_output_dir)
-    makedir(test_output_dir)
-
-    # original dataset load
-    original_dataset_path = os.path.join(os.getcwd(), 'datasets', 'thermal_cropped_images')
-    original_dataset = datasets.ImageFolder(original_dataset_path, transform=transform)
-    original_dataset_train, original_dataset_test = train_test_split(original_dataset, test_size=0.2, random_state=42)
-
-    # make JPEG dataset
-    for i in range(5):
-        makedir(os.path.join(train_output_dir, str(i + 1)))
-        makedir(os.path.join(test_output_dir, str(i + 1)))
-
-    # Define a transform to convert tensors to PIL images
-    to_pil = transforms.ToPILImage()
-
-    # Save train images as JPEG
-    for idx, (image_tensor, label) in enumerate(original_dataset_train):
-        image = to_pil(image_tensor)
-        file_name = f"{idx}_label_{label + 1}.jpg"
-        output_file_path = os.path.join(train_output_dir, str(label + 1), file_name)
-        image.save(output_file_path, 'JPEG', quality=QF)
-        # print(f'saved {output_file_path}')
-
-    # Save test images as JPEG
-    for idx, (image_tensor, label) in enumerate(original_dataset_test):
-        image = to_pil(image_tensor)
-        file_name = f"image_{idx}_label_{label + 1}.jpg"
-        output_file_path = os.path.join(test_output_dir, str(label + 1), file_name)
-        image.save(output_file_path, 'JPEG', quality=QF)
-        # print(f'saved {output_file_path}')
-
-    # for idx, (image, label) in enumerate(original_dataset_train):
-    #     file_name = f"image_{idx}_label_{label}.jpg"
-    #     output_file_path = os.path.join(train_output_dir, str(label), file_name)
-    #     image.convert(image_type).save(output_file_path, 'JPEG', quality=QF)
-
-    # for idx, (image, label) in enumerate(original_dataset_test):
-    #     file_name = f"image_{idx}_label_{label}.jpg"
-    #     output_file_path = os.path.join(test_output_dir, "class_" + str(label), file_name)
-    #     image.convert(image_type).save(output_file_path, 'JPEG', quality=QF)
-
+    print(f"Results saved to '{file_path}'")
+    
 # JPEG 데이터셋 로드
 def load_jpeg_datasets(QF, transform):
     jpeg_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'train')
@@ -213,7 +166,7 @@ def show_images(dataset, dataloader, length=5):
 
 # train and test the models for each QF
 def training_testing():
-    QFs = [100, 80, 60, 40, 20]
+    QFs = [80, 60, 40, 20]
 
     # original dataset load
     original_dataset_path = os.path.join(os.getcwd(), 'datasets', 'thermal_cropped_images')
@@ -225,20 +178,7 @@ def training_testing():
     original_dataset_test_loader = DataLoader(
         original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-    # JPEG dataset 생성
-    print('make jpeg dataset')
-    print('#############################################################################')
-    for QF in QFs:
-        make_jpeg_datasets(QF)
 
-    # check the shape of dataset
-    # train_sample, train_labels = next(iter(original_dataset_train_loader))
-    # print(f'train_shape: {train_sample.shape}')
-    # print(f'train labels:  {train_labels}')
-
-    # test_sample, test_labels = next(iter(original_dataset_test_loader))
-    # print(f'test_shape: {test_sample.shape}')
-    # print(f'test labels:  {test_labels}')
 
     for current_model_name in model_list:
         print(f'[Current Model: {current_model_name}]')
@@ -291,6 +231,7 @@ def training_testing():
                 accuracies[3], pricision[3] += test(jpeg_model, jpeg_test_loader, f'jpeg {QF} - jpeg {QF}')
                 # save_result(current_model_name, f'JPEG', f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
                 print('#############################################################################')
+
         accuracies = [i / 10 for i in accuracies]
         pricisions = [i / 10 for i in pricisions]
 

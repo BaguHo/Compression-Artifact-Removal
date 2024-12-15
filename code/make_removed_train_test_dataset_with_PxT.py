@@ -9,6 +9,7 @@ import re
 import torch
 from torch import nn
 from torchvision.transforms import ToPILImage
+from tqdm import tqdm
 
 QFs = [80, 60, 40, 20]
 batch_size = 1
@@ -117,7 +118,7 @@ class NaturalSortImageFolder(datasets.ImageFolder):
         # 0~4 클래스만 필터링
         filtered_samples = []
         for path, label in self.samples:
-            if 0 <= label <= 4:
+            if 0 <= label < num_classes:
                 filtered_samples.append((path, label))
         self.samples = filtered_samples
         self.imgs = self.samples
@@ -169,26 +170,29 @@ def load_images_from_8x8(QF):
     train_loader = DataLoader(train_dataset, shuffle=False, batch_size=batch_size)
     test_loader = DataLoader(test_dataset, shuffle=False, batch_size=batch_size)
 
-    print(f"Test dataset classes: {test_dataset.classes}")
+    # print(f"Test dataset classes: {test_dataset.classes}")
 
     return train_loader, test_loader
 
 
 if __name__ == "__main__":
-    device = "cpu"
-    # device = torch.device(
-    #     "cuda"
-    #     if torch.cuda.is_available()
-    #     else "mps" if torch.backends.mps.is_available() else "cpu"
-    # )
+    # device = "cpu"
+    device = torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps" if torch.backends.mps.is_available() else "cpu"
+    )
     print(f"Using device: {device}")
 
     for QF in QFs:
+
         image_indexs = [0 for i in range(num_classes)]
         train_loader, test_loader = load_images_from_8x8(QF)
 
-        model = torch.load(f"./models/{model_name}", map_location="cpu")
+        # model = torch.load(f"./models/{model_name}", map_location="cpu")
+        model = torch.load(f"./models/{model_name}")
         model = model.to(device)
+
 
         if torch.cuda.device_count() > 1:
             print(f"Using {torch.cuda.device_count()} GPUs with DataParallel")
@@ -216,11 +220,9 @@ if __name__ == "__main__":
         image_idx = 0
         crop_idx = 0
 
-        for images, labels in train_loader:
+        for images, labels in tqdm(train_loader, desc="Processing Train Data"):
             images, labels = images.to(device), labels.to(device)
-            # print(f"labels: {np.array(labels)}")
-            # input()
-            # print(f"train image shape: {images.shape}")
+            # print(f"train labels: {(labels)}")
             outputs = model(images)
 
             images = outputs
@@ -228,7 +230,6 @@ if __name__ == "__main__":
             for image, label in zip(images, labels):
                 image = ToPILImage()(image.cpu())
                 class_dir = os.path.join(train_output_dir, f"{label}")
-                # print(f"current label: {label}")
                 os.makedirs(class_dir, exist_ok=True)
 
                 image_path = os.path.join(
@@ -236,7 +237,7 @@ if __name__ == "__main__":
                     f"image_{image_indexs[label]}_crop_{crop_idx}.jpeg",
                 )
                 image.save(image_path)
-                print(f"Saved {image_path}")
+                # print(f"Saved {image_path}")
 
                 crop_idx += 1
                 if crop_idx == 16:
@@ -245,17 +246,14 @@ if __name__ == "__main__":
 
         crop_idx = 0
 
-        for images, labels in test_loader:
+        for images, labels in tqdm(test_loader, desc="Processing Test Data"):
             images, labels = images.to(device), labels.to(device)
-
-            # print(f"test images shape: {images.shape}")
-
+            # print(f"test labels: {(labels)}")
             outputs = model(images)
 
             images = outputs
 
             for image, label in zip(images, labels):
-                # print(f"current label: {label}")
                 image = ToPILImage()(image.cpu())
                 class_dir = os.path.join(test_output_dir, f"{label}")
                 os.makedirs(class_dir, exist_ok=True)
@@ -265,7 +263,7 @@ if __name__ == "__main__":
                     f"image_{image_indexs[label]}_crop_{crop_idx}.jpeg",
                 )
                 image.save(image_path)
-                print(f"Saved {image_path}")
+                # print(f"Saved {image_path}")
 
                 crop_idx += 1
                 if crop_idx == 16:

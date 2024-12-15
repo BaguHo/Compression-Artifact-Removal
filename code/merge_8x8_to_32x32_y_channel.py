@@ -4,7 +4,7 @@ import os
 from natsort import natsorted
 from PIL import Image
 
-num_classes = 5
+num_classes = 20
 QFs = [80, 60, 40, 20]
 
 if __name__ == "__main__":
