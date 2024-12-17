@@ -22,14 +22,14 @@ import time
 
 channels = 1
 learning_rate = 0.001
-epochs = 70
-batch_size = 64
+epochs = 1
+batch_size = 128
 dataset_name = "combined_ycbcr"
 model_list = ['efficientnet_b3', 'mobilenetv2', 'vgg19']
 num_workers = 4
 image_type = 'RGB'
 num_classes = 20
-
+train_times = 5
 # 디렉토리 생성
 def makedir(path):
     if not os.path.exists(path):
@@ -43,8 +43,20 @@ def save_model(model, filename):
     torch.save(model, model_path)
     print(f"Model saved to {model_path}")
 
+# checkpoint 저장
+def save_checkpoint(model, optimizer, epoch, filename):
+    path = os.path.join(os.getcwd(), 'classification_checkpoint')
+    os.makedirs(path, exist_ok=True)
+    checkpoint_path = os.path.join(path, filename)
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, checkpoint_path)
+    print(f"Checkpoint saved to {checkpoint_path}")
+
 # model training
-def train(model, train_loader, criterion, optimizer):
+def train(model, train_loader, criterion, optimizer, current_model_name, QF):
     model.train()
 
     for epoch in range(epochs):
@@ -63,7 +75,10 @@ def train(model, train_loader, criterion, optimizer):
             running_loss += loss.item()
 
         print(f'Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}')
-
+        
+        # 체크포인트 저장
+        if (epoch+1) % 10 == 0:
+            save_checkpoint(model, optimizer, epoch, f'{current_model_name}_QF_{QF}.pth')
 
 # evaluate model
 def test(model, test_loader, msg):
@@ -116,15 +131,16 @@ def save_result(model_name=None,  train_dataset=None, test_dataset=None, accurac
     print(f"Results saved to '{file_path}'")
     
 # JPEG 데이터셋 로드
-def load_jpeg_datasets(QF, transform):
-    jpeg_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'train')
-    jpeg_test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'test')
+def load_jpeg_datasets(QF, transform, dataset_name):
+    if dataset_name == 'combined_ycbcr':
+        jpeg_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'QF_{QF}', 'train')
+        jpeg_test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'QF_{QF}', 'test')
+    else:
+        jpeg_train_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'train')
+        jpeg_test_dir = os.path.join(os.getcwd(), 'datasets', dataset_name, f'jpeg{QF}', 'test')
 
     train_dataset = datasets.ImageFolder(jpeg_train_dir, transform=transform)
     test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
-
-    # print(f'train_dataset shape: {train_dataset}')
-    # print(f'test_dataset shape: {test_dataset}')
 
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
                                   num_workers=num_workers, drop_last=True)
@@ -178,40 +194,41 @@ def training_testing():
     original_dataset_test_loader = DataLoader(
         original_dataset_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
-
-
     for current_model_name in model_list:
         print(f'[Current Model: {current_model_name}]')
-        original_model = timm.create_model(current_model_name, pretrained=True, num_classes=5).to(device)
+        original_model = timm.create_model(current_model_name, pretrained=True, num_classes=num_classes).to(device)
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
 
-        accuracies = [0.0] * 4
-        pricisions = [0.0] * 4
+        # accuracies = [0.0] * 4
+        # pricisions = [0.0] * 4
 
-        for _ in range(10):
+        for _ in range(train_times):
             # original dataset model tarining
-            print('[train the original model]')
-            train(original_model, original_dataset_train_loader, criterion, optimizer)
-            print('#############################################################################')
+            # print('[train the original model]')
+            # train(original_model, original_dataset_train_loader, criterion, optimizer)
+            # print('#############################################################################')
 
             for QF in QFs:
                 # load JPEG  datasets
-                jpeg_train_dataset, jpeg_test_dataset,  jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(QF, transform)
+                jpeg_train_dataset, jpeg_test_dataset,  jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(QF, transform, dataset_name)
 
-                # test with original dataset test dataset
-                accuracies[0], pricisions[0] += test(original_model, original_dataset_test_loader, 'original - original')
-                # save_result(current_model_name, dataset_name,  dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
+                # # test with original dataset test dataset
+                # accuracy, precision = test(original_model, original_dataset_test_loader, 'original - original')
+                # accuracies[0] += accuracy
+                # pricisions[0] += precision
+                # # save_result(current_model_name, dataset_name,  dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
 
-                #  test with JPEG test dataset
-                print('test original model with JPEG test dataset')
-                accuracies[1], pricisions[1] += test(original_model, jpeg_test_loader, f'original - jpeg {QF}')
-                # save_result(current_model_name, dataset_name, f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
+                # #  test with JPEG test dataset
+                # print('test original model with JPEG test dataset')
+                # accuracy, precision = test(original_model, jpeg_test_loader, f'original - jpeg {QF}')
+                # accuracies[1] += accuracy
+                # pricisions[1] += precision
+                # # save_result(current_model_name, dataset_name, f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
 
-                # Tarining with JPEG dataset.
-                print(f'[Current Model: {current_model_name}]')
-                jpeg_model = timm.create_model(current_model_name, pretrained=True, num_classes=5).to(device)
+                # create  jpeg model
+                jpeg_model = timm.create_model(current_model_name, pretrained=True, num_classes=num_classes).to(device)
 
                 # JPEG model 손실함수 정의
                 criterion = nn.CrossEntropyLoss()
@@ -219,33 +236,36 @@ def training_testing():
 
                 # train the jpeg model
                 print('[train the jpeg model]')
-                train(jpeg_model, jpeg_train_loader, criterion, optimizer)
+                train(jpeg_model, jpeg_train_loader, criterion, optimizer, current_model_name, QF)
 
-                # test with original test dataset
-                print('test jpeg model with original  test dataset')
-                accuracies[2], pricisions[2] += test(jpeg_model, original_dataset_test_loader, f'jpeg {QF} - original')
-                # save_result(current_model_name, f'JPEG', dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
+                # # test with original test dataset
+                # print('test jpeg model with original  test dataset')
+                # accuracy, precision = test(jpeg_model, original_dataset_test_loader, f'jpeg {QF} - original')
+                # accuracies[2] += accuracy
+                # pricisions[2] += precision
+                # # save_result(current_model_name, f'JPEG', dataset_name, accuracy, precision, epoch   s, batch_size, QF=QF)
 
                 # Test with JPEG test dataset
                 print('test jpeg model with JPEG test dataset')
-                accuracies[3], pricision[3] += test(jpeg_model, jpeg_test_loader, f'jpeg {QF} - jpeg {QF}')
+                accuracy, precision = test(jpeg_model, jpeg_test_loader, f'jpeg {QF} - jpeg {QF}')
+                # accuracies[3] += accuracy
+                # pricisions[3] += precision
                 # save_result(current_model_name, f'JPEG', f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
                 print('#############################################################################')
 
-        accuracies = [i / 10 for i in accuracies]
-        pricisions = [i / 10 for i in pricisions]
+                # accuracies = [i / train_times for i in accuracies]
+                # pricisions = [i / train_times for i in pricisions]
 
-        save_resule(current_model_name, dataset_name, dataset_name, accuracies[0], pricisions[0], epochs, batch_size, QF)
-        save_resule(current_model_name, dataset_name, JPEG, accuracies[1], pricisions[1], epochs, batch_size, QF)
-        save_resule(current_model_name, JPEG, dataset_name, accuracies[2], pricisions[1], epochs, batch_size, QF)
-        save_resule(current_model_name, JPEG, JPEG, accuracies[3], pricisions[3], epochs, batch_size, QF)
+                # save_result(current_model_name, dataset_name, dataset_name, accuracies[0], pricisions[0], epochs, batch_size, QF)
+                # save_result(current_model_name, dataset_name, JPEG, accuracies[1], pricisions[1], epochs, batch_size, QF)
+                # save_result(current_model_name, JPEG, dataset_name, accuracies[2], pricisions[1], epochs, batch_size, QF)
+                # save_result(current_model_name, "JPEG", "JPEG", accuracies[3], pricisions[3], epochs, batch_size, QF)
 
+                save_result(current_model_name, dataset_name, dataset_name, accuracy, precision, epochs, batch_size, QF)
 ################################################################################################################
 ################################################################################################################
 
 if __name__ == "__main__":
-
-    download_dataset()
     # transform 정의
     transform = transforms.Compose([
         transforms.ToTensor(),
