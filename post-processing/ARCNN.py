@@ -7,26 +7,51 @@
 #  }
 # =============================================================================
 
+# 메인 터미널에서 실행
+# avg PSNR: 33.3950
+# avg SSIM: 0.9090
 
 import os
 import torch
 import numpy as np
 import pandas as pd
 import torch.nn as nn
+import re
 from PIL import Image
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 from sklearn.model_selection import train_test_split
+import csv, os
+from tqdm import tqdm
 from skimage.metrics import (
     peak_signal_noise_ratio as psnr,
     structural_similarity as ssim,
 )
 
-RESULTS_DIR = "./post-processed-outputs/ARCNN-ouputs"
-os.makedirs(RESULTS_DIR, exist_ok=True)
+model_output_dir = "./post-processing/models/"
 
-num_epochs = 20
+num_epochs = 2
+num_classes = 20
+QFs = [80, 60, 40, 20]
+batch_size = 128
+
+transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+    ]
+)
+
+
+def sort_key(filename):
+    image_match = re.search(r"image_(\d+)", filename)
+    crop_match = re.search(r"crop_(\d+)", filename)
+
+    image_number = int(image_match.group(1)) if image_match else float("inf")
+    crop_number = int(crop_match.group(1)) if crop_match else float("inf")
+
+    return (image_number, crop_number)
 
 
 class ARCNN(nn.Module):
@@ -55,222 +80,247 @@ class ARCNN(nn.Module):
         return x
 
 
-def extract_patches_from_rgb_image(image_path: str, patch_size: int = 224):
-    patches = []
-
-    if not os.path.exists(image_path):
-        print(f"Warning: File {image_path} does not exist.")
-        return []
-
-    image = Image.open(image_path)
-    if image.mode != "RGB":
-        print(f"Warning: Expected an RGB image, got {image.mode}.")
-        return []
-
-    width, height = image.size
-    image_array = np.array(image)
-
-    for i in range(0, height, patch_size):
-        for j in range(0, width, patch_size):
-            patch = image_array[i : i + patch_size, j : j + patch_size]
-            if patch.shape[0] < patch_size or patch.shape[1] < patch_size:
-                patch = np.pad(
-                    patch,
-                    (
-                        (0, patch_size - patch.shape[0]),
-                        (0, patch_size - patch.shape[1]),
-                        (0, 0),
-                    ),
-                    "constant",
-                )
-            patches.append(patch)
-
-    return patches
-
-
-class ImageDataset(Dataset):
-    def __init__(self, csv_path, original_dir, denoised_dir, patch_size=224):
-        df = pd.read_csv(csv_path)
-        self.pairs = []
-
-        for _, row in df.iterrows():
-            original_file_name = f"original_{row['image_name']}.png"
-            denoised_file_name = f"denoised_{row['image_name']}.png"
-            original_path = os.path.join(original_dir, original_file_name)
-            denoised_path = os.path.join(denoised_dir, denoised_file_name)
-
-            original_patches = extract_patches_from_rgb_image(original_path, patch_size)
-            denoised_patches = extract_patches_from_rgb_image(denoised_path, patch_size)
-
-            self.pairs.extend(zip(original_patches, denoised_patches))
+class CIFAR100Dataset(Dataset):
+    def __init__(self, input_images, target_images, transform=None):
+        self.input_images = input_images
+        self.target_images = target_images
+        self.transform = transform
 
     def __len__(self):
-        return len(self.pairs)
+        return len(self.input_images)
 
     def __getitem__(self, idx):
-        original_patch, denoised_patch = self.pairs[idx]
-        original_patch = (
-            torch.from_numpy(original_patch).permute(2, 0, 1).float() / 255.0
+        input_image = self.input_images[idx]
+        target_image = self.target_images[idx]
+
+        # print(np.array(self.input_images).shape)
+        # print(np.array(self.target_images).shape)
+
+        input_image = Image.fromarray(input_image)
+        target_image = Image.fromarray(target_image)
+
+        if self.transform:
+            input_image = self.transform(input_image)
+            target_image = self.transform(target_image)
+
+        return input_image, target_image
+
+
+def load_images_from_original_size():
+    dataset_name = "CIFAR100"
+    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original_size")
+
+    train_input_dataset = []
+    test_input_dataset = []
+    train_target_dataset = []
+    test_target_dataset = []
+
+    for QF in QFs:
+        # input images
+        train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
+        test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
+
+        # target images (original)
+        target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
+        target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
+
+        # 학습 데이터 로드
+        for i in range(num_classes):
+            train_path = os.path.join(train_input_dir, str(i))
+            target_train_path = os.path.join(target_train_dataset_dir, str(i))
+
+            # train_path 내 파일을 정렬된 순서로 불러오기
+            sorted_train_file_names = sorted(os.listdir(train_path), key=sort_key)
+            sorted_target_train_file_names = sorted(
+                os.listdir(target_train_path), key=sort_key
+            )
+
+            for train_file, target_file in zip(
+                sorted_train_file_names, sorted_target_train_file_names
+            ):
+                # input 이미지 로드
+                train_image_path = os.path.join(train_path, train_file)
+                train_image = Image.open(train_image_path).convert("YCbCr")
+                train_image = np.array(train_image, dtype=np.uint8)
+                train_input_dataset.append(train_image)
+
+                # target 이미지 로드
+                target_image_path = os.path.join(target_train_path, target_file)
+                target_image = Image.open(target_image_path).convert("YCbCr")
+                target_image = np.array(target_image, dtype=np.uint8)
+                train_target_dataset.append(target_image)
+
+        # 테스트 데이터 로드
+        for i in range(num_classes):
+            test_path = os.path.join(test_input_dir, str(i))
+            target_test_path = os.path.join(target_test_dataset_dir, str(i))
+
+            # test_path 내 파일을 정렬된 순서로 불러오기
+            sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
+            sorted_target_test_files = sorted(
+                os.listdir(target_test_path), key=sort_key
+            )
+
+            # 두 디렉토리의 파일명이 같은지 확인하며 로드
+            for test_file, target_file in zip(
+                sorted_test_files, sorted_target_test_files
+            ):
+                # input 이미지 로드
+                test_image_path = os.path.join(test_path, test_file)
+                test_image = Image.open(test_image_path).convert("YCbCr")
+                test_image = np.array(test_image, dtype=np.uint8)
+                test_input_dataset.append(np.array(test_image))
+
+                # target 이미지 로드
+                target_image_path = os.path.join(target_test_path, target_file)
+                test_target_images = Image.open(target_image_path).convert("YCbCr")
+                test_target_images = np.array(test_target_images, dtype=np.uint8)
+                test_target_dataset.append(np.array(test_target_images))
+
+    # Dataset과 DataLoader 생성
+    train_dataset = CIFAR100Dataset(
+        train_input_dataset, train_target_dataset, transform=transform
+    )
+    test_dataset = CIFAR100Dataset(
+        test_input_dataset, test_target_dataset, transform=transform
+    )
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_dataset, test_dataset, train_loader, test_loader
+
+
+if __name__ == "__main__":
+    device = torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps" if torch.backends.mps.is_available() else "cpu"
+    )
+
+    train_dataset, test_dataset, train_loader, test_loader = (
+        load_images_from_original_size()
+    )
+
+    model = ARCNN()
+    if torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)
+    model = model.to(device)
+
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    best_val_loss = float("inf")
+
+    # TODO: Train
+    for epoch in range(num_epochs):
+        model.train()
+        total_loss = 0
+
+        for jpeg_input_images, original_target_images in tqdm(
+            train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"
+        ):
+            jpeg_input_images, original_target_images = jpeg_input_images.to(
+                device
+            ), original_target_images.to(device)
+            output = model(jpeg_input_images)
+            loss = criterion(output, original_target_images)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+
+        print(
+            f"Epoch {epoch+1}/{num_epochs}, Training Loss: {total_loss / len(train_loader):.4f}"
         )
-        denoised_patch = (
-            torch.from_numpy(denoised_patch).permute(2, 0, 1).float() / 255.0
-        )
 
-        return original_patch, denoised_patch
+        model.eval()
+        val_loss = 0.0
 
+        with torch.nograd():
+            for jpeg_input_images_val, original_target_images_val in tqdm(
+                test_loader, desc="Validation"
+            ):
+                jpeg_input_images_val, original_target_images_val = (
+                    jpeg_input_images_val.to(device),
+                    original_target_images_val.to(device),
+                )
+                outputs_val = model(original_target_images_val)
+                loss = criterion(outputs_val, jpeg_input_images_val)
+                val_loss += loss.item()
 
-original_dir = (
-    "/ghosting-artifact-metric/dataset/m-gaid-dataset-high-frequency/original"
-)
-denoised_dir = (
-    "/ghosting-artifact-metric/dataset/m-gaid-dataset-high-frequency/denoised"
-)
-csv_path = "/ghosting-artifact-metric/Code/Non_Zeros_Classified_label_filtered.csv"
+        val_loss /= len(test_loader)
+        print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss:.4f}")
 
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            torch.save(
+                model.state_dict(),
+                os.path.join(model_output_dir, "Best_ARCNN_Model.pth"),
+            )
+            print(f"New best model saved with validation loss: {val_loss:.4f}")
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-dataset = ImageDataset(csv_path, original_dir, denoised_dir, patch_size=224)
-train_data, temp_data = train_test_split(dataset, test_size=0.2, random_state=42)
-val_data, test_data = train_test_split(temp_data, test_size=0.5, random_state=42)
-
-train_loader = DataLoader(train_data, batch_size=16, shuffle=True)
-val_loader = DataLoader(val_data, batch_size=16, shuffle=False)
-test_loader = DataLoader(test_data, batch_size=16, shuffle=False)
-
-
-model = ARCNN()
-model = nn.DataParallel(model)
-model = model.to(device)
-
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
-best_val_loss = float("inf")
-
-
-for epoch in range(num_epochs):
-
-    model.train()
-    total_loss = 0
-
-    for original, denoised in train_loader:
-        original, denoised = original.to(device), denoised.to(device)
-
-        output = model(denoised)
-
-        loss = criterion(output, original)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item()
-
-    print(
-        f"Epoch {epoch+1}/{num_epochs}, Training Loss: {total_loss / len(train_loader):.4f}"
+    # TODO: Test
+    model.load_state_dict(
+        torch.load(os.path.join(model_output_dir, "Best_ARCNN_Model.pth"))
     )
 
     model.eval()
-    val_loss = 0.0
 
+    psnr_scores, ssim_scores = [], []
     with torch.no_grad():
-        for original_val, denoised_val in val_loader:
-            original_val, denoised_val = original_val.to(device), denoised_val.to(
+        for jpeg_input_images_val, original_target_images in tqdm(
+            test_loader, desc="Testing"
+        ):
+            jpeg_input_images_val, original_target_images = jpeg_input_images_val.to(
                 device
-            )
+            ), original_target_images.to(device)
+            outputs_test = model(original_target_images)
+            # show outputs image
+            plt.imshow(outputs_test[0].cpu().detach().numpy().transpose(1, 2, 0))
+            plt.show()
+            input()
 
-            outputs_val = model(denoised_val)
+            outputs_test = outputs_test.cpu().numpy()
+            jpeg_input_images_val = jpeg_input_images_val.cpu().numpy()
 
-            loss = criterion(outputs_val, original_val)
-
-            val_loss += loss.item()
-
-    val_loss /= len(val_loader)
-
-    print(f"Epoch {epoch+1}/{num_epochs}, Validation Loss: {val_loss:.4f}")
-
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        torch.save(
-            model.state_dict(), os.path.join(RESULTS_DIR, "Best_ARCNN_Model.pth")
-        )
-        print(f"New best model saved with validation loss: {val_loss:.4f}")
-
-
-model.load_state_dict(torch.load(os.path.join(RESULTS_DIR, "Best_ARCNN_Model.pth")))
-model.eval()
-
-
-def visualize_patches(original, denoised, restored):
-    if isinstance(original, np.ndarray):
-        original = torch.tensor(original)
-    if isinstance(denoised, np.ndarray):
-        denoised = torch.tensor(denoised)
-    if isinstance(restored, np.ndarray):
-        restored = torch.tensor(restored)
-
-    original = (original * 255).clamp(0, 255).byte()
-    denoised = (denoised * 255).clamp(0, 255).byte()
-    restored = (restored * 255).clamp(0, 255).byte()
-
-    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
-    axs[0].imshow(original.permute(1, 2, 0).cpu().numpy())
-    axs[0].set_title("Original Image")
-    axs[1].imshow(denoised.permute(1, 2, 0).cpu().numpy())
-    axs[1].set_title("Denoised Image")
-    axs[2].imshow(restored.permute(1, 2, 0).cpu().numpy())
-    axs[2].set_title("ARCNN")
-    for ax in axs:
-        ax.axis("off")
-    plt.show()
-
-
-psnr_scores, ssim_scores = [], []
-visualized_images = 0
-visualize_limit = 10
-
-
-with torch.no_grad():
-    for original_test, denoised_test in test_loader:
-        original_test, denoised_test = original_test.to(device), denoised_test.to(
-            device
-        )
-
-        outputs_test = model(denoised_test)
-
-        outputs_test = outputs_test.cpu().numpy()
-        original_test = original_test.cpu().numpy()
-
-        for i in range(len(outputs_test)):
-
-            psnr_scores.append(psnr(original_test[i], outputs_test[i]))
-
-            patch_size = min(outputs_test[i].shape[0], outputs_test[i].shape[1])
-            win_size = min(7, patch_size)
-
-            if win_size >= 3:
-                ssim_val = ssim(
-                    original_test[i],
-                    outputs_test[i],
-                    win_size=win_size,
-                    channel_axis=-1,
-                    data_range=1.0,
+            for i in range(len(outputs_test)):
+                log_dir = "./psnr_log"
+                log_file = os.path.join(log_dir, "PxT.csv")
+                os.makedirs(log_dir, exist_ok=True)
+                file_exists = os.path.isfile(log_file)
+                with open(log_file, "a", newline="") as f:
+                    writer = csv.writer(f)
+                    if not file_exists:
+                        writer.writerow(["PSNR", "SSIM"])
+                    writer.writerow(
+                        [
+                            psnr(jpeg_input_images_val[i], outputs_test[i]),
+                            ssim(
+                                jpeg_input_images_val[i],
+                                outputs_test[i],
+                                channel_axis=0,
+                                win_size=3,
+                                data_range=1.0,
+                            ),
+                        ]
+                    )
+                psnr_scores.append(psnr(jpeg_input_images_val[i], outputs_test[i]))
+                ssim_scores.append(
+                    ssim(
+                        jpeg_input_images_val[i],
+                        outputs_test[i],
+                        channel_axis=0,
+                        win_size=3,
+                        data_range=1.0,
+                    )
                 )
-                ssim_scores.append(ssim_val)
-            else:
-                print(f"Skipping SSIM for patch {i} due to insufficient size")
 
-            if visualized_images < visualize_limit:
-                visualize_patches(original_test[i], denoised_test[i], outputs_test[i])
-                visualized_images += 1
+    avg_psnr = np.mean(psnr_scores)
+    avg_ssim = np.mean(ssim_scores) if ssim_scores else 0
+    print(f"Average PSNR: {avg_psnr:.4f}")
+    print(f"Average SSIM: {avg_ssim:.4f}")
 
-
-avg_psnr = np.mean(psnr_scores)
-avg_ssim = np.mean(ssim_scores) if ssim_scores else 0
-
-print(f"Average PSNR: {avg_psnr:.4f}")
-print(f"Average SSIM: {avg_ssim:.4f}")
-
-# Average PSNR: 33.0046
-# Average SSIM: 0.9213
+    # Average PSNR: 33.0046
+    # Average SSIM: 0.9213

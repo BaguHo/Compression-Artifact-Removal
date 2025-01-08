@@ -2,7 +2,6 @@
 import os
 import re
 import math
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -173,37 +172,6 @@ def calculate_psnr(original_images, generated_images):
     average_psnr = np.mean(psnr_values)
 
     return psnr_values, average_psnr
-
-
-# JPEG 데이터셋 로드
-def load_jpeg_datasets(QF):
-    jpeg_train_dir = os.path.join(
-        os.getcwd(), "datasets", dataset_name, f"jpeg{QF}", "train"
-    )
-    jpeg_test_dir = os.path.join(
-        os.getcwd(), "datasets", dataset_name, f"jpeg{QF}", "test"
-    )
-
-    train_dataset = datasets.ImageFolder(jpeg_train_dir)
-    test_dataset = datasets.ImageFolder(jpeg_test_dir)
-
-    train_dataloader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        drop_last=True,
-    )
-
-    test_dataloader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        drop_last=True,
-    )
-
-    return train_dataset, test_dataset, train_dataloader, test_dataloader
 
 
 def show_images(dataset, dataloader, length=5):
@@ -474,7 +442,7 @@ def load_images_from_8x8():
         test_input_dataset, test_target_dataset, transform=transform
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_dataset, test_dataset, train_loader, test_loader
