@@ -38,15 +38,9 @@ num_classes = 20
 QFs = [80, 60, 40, 20]
 
 
-# 디렉토리 생성
-def makedir(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-
 # save model
 def save_model(model, path, filename):
-    makedir(path)
+    os.makedirs(path, exist_ok=True)
 
     model_path = os.path.join(path, filename)
     torch.save(model, model_path)
@@ -526,3 +520,8 @@ if __name__ == "__main__":
     print(device)
 
     training_testing()
+
+    # 프로그램 종료 후 컴퓨터 종료
+    if device == "cuda" and os.name == "posix":
+        os.system("sudo shutdown")
+
