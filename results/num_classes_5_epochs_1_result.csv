@@ -1,0 +1,25 @@
+Model Name,Channel,Train Dataset,Test Dataset,Accuracy,Precision,Epoch,Batch Size,QF
+efficientnet_b3,3,combined_ycbcr,combined_ycbcr,55.0,0.5482315953360946,1,32,80
+efficientnet_b3,3,combined_ycbcr,JPEG,49.7,0.5023260340260312,1,32,80
+efficientnet_b3,3,JPEG,combined_ycbcr,46.2,0.5023260340260312,1,32,80
+efficientnet_b3,3,JPEG,JPEG,54.96666666666667,0.5499537245182047,1,32,80
+efficientnet_b3,3,combined_ycbcr,combined_ycbcr,55.0,0.5482315953360946,1,32,60
+efficientnet_b3,3,combined_ycbcr,JPEG,49.233333333333334,0.4972657981053872,1,32,60
+efficientnet_b3,3,JPEG,combined_ycbcr,45.8,0.4972657981053872,1,32,60
+efficientnet_b3,3,JPEG,JPEG,51.6,0.5263217276320437,1,32,60
+efficientnet_b3,3,combined_ycbcr,combined_ycbcr,55.0,0.5482315953360946,1,32,40
+efficientnet_b3,3,combined_ycbcr,JPEG,47.96666666666667,0.484356905757476,1,32,40
+efficientnet_b3,3,JPEG,combined_ycbcr,38.4,0.484356905757476,1,32,40
+efficientnet_b3,3,JPEG,JPEG,52.666666666666664,0.5282758324369425,1,32,40
+efficientnet_b3,3,combined_ycbcr,combined_ycbcr,55.0,0.5482315953360946,1,32,20
+efficientnet_b3,3,combined_ycbcr,JPEG,46.03333333333333,0.4676855838006507,1,32,20
+efficientnet_b3,3,JPEG,combined_ycbcr,36.8,0.4676855838006507,1,32,20
+efficientnet_b3,3,JPEG,JPEG,49.03333333333333,0.4945946878323567,1,32,20
+mobilenetv2_100,3,combined_ycbcr,combined_ycbcr,60.8,0.6069490416082282,1,32,80
+mobilenetv2_100,3,combined_ycbcr,JPEG,57.06666666666667,0.5731697056939404,1,32,80
+mobilenetv2_100,3,JPEG,combined_ycbcr,57.4,0.5731697056939404,1,32,80
+mobilenetv2_100,3,JPEG,JPEG,69.2,0.6974248631021867,1,32,80
+mobilenetv2_100,3,combined_ycbcr,combined_ycbcr,60.8,0.6069490416082282,1,32,60
+mobilenetv2_100,3,combined_ycbcr,JPEG,58.06666666666667,0.594094004333692,1,32,60
+mobilenetv2_100,3,JPEG,combined_ycbcr,60.2,0.594094004333692,1,32,60
+mobilenetv2_100,3,JPEG,JPEG,67.53333333333333,0.6779467495863208,1,32,60

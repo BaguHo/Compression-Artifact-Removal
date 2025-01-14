@@ -11,17 +11,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.metrics import precision_score
 import os
-import numpy as np
 import timm
 import re
+from knockknock import slack_sender
 
+slack_webhook_url = (
+    "https://hooks.slack.com/services/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"
+)
 
 learning_rate = 0.001
-epochs = 50
-batch_size = 256
+epochs = 40
+batch_size = 32
 dataset_name = "combined_ycbcr"
-model_list = ["efficientnet_b3", "mobilenetv2", "vgg19"]
-num_workers = 4
+model_list = ["efficientnet_b3", "mobilenetv2_100", "vgg19"]
+num_workers = 6
 image_type = "RGB"
 num_classes = 5
 
@@ -134,7 +137,7 @@ def save_result(
     else:
         results_df.to_csv(file_path, mode="w", index=False)
 
-    print(f"Results saved to '{file_path}'")
+    # print(f"Results saved to '{file_path}'")
 
 
 # JPEG 데이터셋 로드
@@ -173,6 +176,7 @@ def sort_key(filename):
 
 
 # train and test the models for each QF
+@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def training_testing():
     QFs = [80, 60, 40, 20]
 
@@ -183,11 +187,31 @@ def training_testing():
     original_test_dir = os.path.join(
         os.getcwd(), "datasets", "CIFAR100", "original_size", "original", "test"
     )
-
     original_train_dataset = datasets.ImageFolder(
         original_train_dir, transform=transform
     )
     original_test_dataset = datasets.ImageFolder(original_test_dir, transform=transform)
+
+    # keep only 0~4 folder classes
+    train_indices = [
+        i for i, (_, c) in enumerate(original_train_dataset.samples) if c < 5
+    ]
+    test_indices = [
+        i for i, (_, c) in enumerate(original_test_dataset.samples) if c < 5
+    ]
+
+    original_train_dataset.samples = [
+        original_train_dataset.samples[i] for i in train_indices
+    ]
+    original_train_dataset.targets = [
+        original_train_dataset.targets[i] for i in train_indices
+    ]
+    original_test_dataset.samples = [
+        original_test_dataset.samples[i] for i in test_indices
+    ]
+    original_test_dataset.targets = [
+        original_test_dataset.targets[i] for i in test_indices
+    ]
 
     original_train_loader = DataLoader(
         original_train_dataset,
@@ -211,9 +235,6 @@ def training_testing():
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
 
-        accuracies = [0.0] * 4
-        pricisions = [0.0] * 4
-
         # original dataset model tarining
         print("[train the original model]")
         train(
@@ -228,6 +249,8 @@ def training_testing():
         )
 
         for QF in QFs:
+            accuracies = [0.0] * 4
+            pricisions = [0.0] * 4
             # load JPEG  datasets
             _, _, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
                 QF, transform
@@ -238,15 +261,15 @@ def training_testing():
             acc, prec = test(
                 original_model, original_test_loader, "original - original"
             )
-            accuracies[0] += acc
-            pricisions[0] += prec
+            accuracies[0] = acc
+            pricisions[0] = prec
             # save_result(current_model_name, dataset_name,  dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
 
             #  test with JPEG test dataset
             print("[original - jpeg]")
             acc, prec = test(original_model, jpeg_test_loader, f"original - jpeg {QF}")
-            accuracies[1] += acc
-            pricisions[1] += prec
+            accuracies[1] = acc
+            pricisions[1] = prec
             # save_result(current_model_name, dataset_name, f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
 
             # Tarining with JPEG dataset.
@@ -268,22 +291,19 @@ def training_testing():
             # test with original test dataset
             print("[jpeg - original]")
             acc, prec = test(jpeg_model, original_test_loader, f"jpeg {QF} - original")
-            accuracies[2] += acc
-            pricisions[2] += prec
+            accuracies[2] = acc
+            pricisions[2] = prec
             # save_result(current_model_name, f'JPEG', dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
 
             # Test with JPEG test dataset
             print("[jpeg - jpeg]")
             acc, prec = test(jpeg_model, jpeg_test_loader, f"jpeg {QF} - jpeg {QF}")
-            accuracies[3] += acc
-            pricisions[3] += prec
+            accuracies[3] = acc
+            pricisions[3] = prec
             # save_result(current_model_name, f'JPEG', f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
             print(
                 "#############################################################################"
             )
-
-            accuracies = [i / epochs for i in accuracies]
-            pricisions = [i / epochs for i in pricisions]
 
             save_result(
                 current_model_name,
@@ -325,6 +345,7 @@ def training_testing():
                 batch_size,
                 QF,
             )
+            print("saved results")
 
 
 ################################################################################################################
