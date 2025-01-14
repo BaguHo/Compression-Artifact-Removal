@@ -15,13 +15,11 @@ import timm
 import re
 from knockknock import slack_sender
 
-slack_webhook_url = (
-    "https://hooks.slack.com/services/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"
-)
+slack_webhook_url = ("https://hooks.slack.com/services/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")
 
 learning_rate = 0.001
-epochs = 40
-batch_size = 32
+epochs = 80
+batch_size = 512
 dataset_name = "combined_ycbcr"
 model_list = ["efficientnet_b3", "mobilenetv2_100", "vgg19"]
 num_workers = 6
