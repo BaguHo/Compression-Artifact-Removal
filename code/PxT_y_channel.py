@@ -27,7 +27,6 @@ slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
 
-PxT_output_path = os.path.join(os.getcwd(), "models", "PxT.pth")
 learning_rate = 0.001
 epochs = 70
 batch_size = 512

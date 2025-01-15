@@ -22,9 +22,9 @@ epochs = 80
 batch_size = 512
 dataset_name = "combined_ycbcr"
 model_list = ["efficientnet_b3", "mobilenetv2_100", "vgg19"]
-num_workers = 6
+num_workers = 12
 image_type = "RGB"
-num_classes = 5
+num_classes = 20
 
 QFs = [80, 60, 40, 20]
 
