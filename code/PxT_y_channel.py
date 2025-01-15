@@ -444,6 +444,7 @@ def load_images_from_8x8():
 
 
 # merge 8x8 to 32x32
+@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def merge_8x8_to_32x32_y_channel(QF):
     for QF in QFs:
         for i in range(num_classes):
@@ -513,6 +514,7 @@ def merge_8x8_to_32x32_y_channel(QF):
 
 
 # combine y channel with cbcr
+@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def combine_y_with_cbcr(QF):
     for QF in QFs:
         for i in range(num_classes):
