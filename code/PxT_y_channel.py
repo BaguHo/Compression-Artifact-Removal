@@ -21,6 +21,7 @@ import torchvision.transforms as transforms
 from torchvision.transforms import ToPILImage
 from tqdm import tqdm
 from knockknock import slack_sender
+from natsort import natsorted
 
 slack_webhook_url = (
     "https://hooks.slack.com/services/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"
@@ -235,10 +236,10 @@ class PxT(nn.Module):
         img_size=8,
         patch_size=1,
         in_channels=1,
-        embed_dim=128,  # 32에서 128로 증가
-        num_heads=16,  # 8에서 16으로 증가
-        num_layers=8,  # 4에서 8로 증가
-        mlp_dim=256,  # 64에서 256으로 증가
+        embed_dim=256,  # 128에서 256으로 증가
+        num_heads=32,  # 16에서 32으로 증가
+        num_layers=16,  # 8에서 16로 증가
+        mlp_dim=512,  # 256에서 512으로 증가
     ):
         super(PxT, self).__init__()
         self.img_size = img_size
@@ -442,6 +443,140 @@ def load_images_from_8x8():
     return train_dataset, test_dataset, train_loader, test_loader
 
 
+# merge 8x8 to 32x32
+def merge_8x8_to_32x32_y_channel(QF):
+    for QF in QFs:
+        for i in range(num_classes):
+            for mode in ["train", "test"]:
+                input_images = []
+                output_images = []
+                output_image_names = []
+
+                print(f"QF: {QF}, class: {i}")
+
+                input_image_path = os.path.join(
+                    ".",
+                    "datasets",
+                    "removed_image_PxT_y_channel",
+                    f"QF_{QF}",
+                    mode,
+                    str(i),
+                )
+                print(f"input_image_path: {input_image_path}")
+
+                output_path = os.path.join(
+                    ".",
+                    "datasets",
+                    "merged_image_PxT_y_channel",
+                    f"QF_{QF}",
+                    mode,
+                    str(i),
+                )
+                print(f"output_path: {output_path}")
+
+                images_names = natsorted(os.listdir(input_image_path))
+
+                for image_name in images_names:
+                    image = plt.imread(os.path.join(input_image_path, image_name))
+                    input_images.append(image)
+
+                image_length = len(os.listdir(input_image_path)) // 16
+
+                for j in range(image_length):
+                    big_image = np.zeros((32, 32), dtype=np.uint8)
+                    for k in range(16):
+                        image = input_images[j * 16 + k]
+                        image = np.array(image, dtype=np.uint8)
+
+                        big_image[
+                            (k // 4) * 8 : (k // 4) * 8 + 8,
+                            (k % 4) * 8 : (k % 4) * 8 + 8,
+                        ] = image
+
+                    output_image = Image.fromarray(big_image)
+
+                    # plt.imshow(output_image)
+                    # plt.show()
+                    # input()
+                    os.makedirs(output_path, exist_ok=True)
+                    output_images.append(output_image)
+                    output_image_names.append(
+                        os.path.join(output_path, f"output_{j}.png")
+                    )
+
+                print("[images names]")
+                for name in output_image_names:
+                    print(name)
+
+                for j in range(image_length):
+                    output_images[j].save(output_image_names[j])
+
+
+# combine y channel with cbcr
+def combine_y_with_cbcr(QF):
+    for QF in QFs:
+        for i in range(num_classes):
+            y_images = []
+            cbcr_images = []
+
+            for mode in ["train", "test"]:
+                y_image_dir = os.path.join(
+                    ".",
+                    "datasets",
+                    "merged_image_PxT_y_channel",
+                    f"QF_{QF}",
+                    mode,
+                    str(i),
+                )
+
+                cbcr_image_dir = os.path.join(
+                    ".",
+                    "datasets",
+                    "CIFAR100",
+                    "original_size",
+                    f"jpeg{QF}",
+                    mode,
+                    str(i),
+                )
+
+                y_image_names = natsorted(os.listdir(y_image_dir))
+                for image_name in y_image_names:
+                    img = Image.open(os.path.join(y_image_dir, image_name))
+                    img_array = np.array(img)[
+                        :, :, np.newaxis
+                    ]  # Add channel dimension for Y
+                    # print(f"img_array shape: {img_array.shape}")
+                    # input()
+                    y_images.append(img_array)
+
+                cbcr_image_names = natsorted(os.listdir(cbcr_image_dir))
+                for image_name in cbcr_image_names:
+                    img = Image.open(os.path.join(cbcr_image_dir, image_name)).convert(
+                        "YCbCr"
+                    )
+                    # print(f"img shape: {np.array(img).shape}")
+                    _, cb, cr = img.split()
+                    # print(f"np.dstack((cb, cr)) shape: {np.dstack((cb, cr)).shape}")
+                    # input()
+                    cbcr_images.append(np.dstack((cb, cr)))
+
+                output_path = os.path.join(
+                    ".", "datasets", "combined_ycbcr", f"QF_{QF}", mode, str(i)
+                )
+                os.makedirs(output_path, exist_ok=True)
+
+                for idx, (y_img, cbcr) in enumerate(zip(y_images, cbcr_images)):
+                    y_array = np.array(y_img)
+                    ycbcr = np.dstack((y_array, cbcr))
+                    combined_img = Image.fromarray(ycbcr, mode="YCbCr")
+
+                    rgb_img = combined_img.convert("RGB")
+
+                    output_filename = f"combined_{idx}.png"
+                    rgb_img.save(os.path.join(output_path, output_filename))
+                    print(f"saved {os.path.join(output_path, output_filename)}")
+
+
 # training & testing for each QF
 
 
@@ -521,7 +656,14 @@ if __name__ == "__main__":
 
     training_testing()
 
+    # Merge 8x8 to 32x32
+    for QF in QFs:
+        merge_8x8_to_32x32_y_channel(QF)
+
+    # Combine removed Y channel with jpeg CbCr
+    for QF in QFs:
+        combine_y_with_cbcr(QF)
+
     # 프로그램 종료 후 컴퓨터 종료
     if device == "cuda" and os.name == "posix":
         os.system("sudo shutdown")
-

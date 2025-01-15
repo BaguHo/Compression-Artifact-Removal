@@ -1,7 +1,8 @@
 import os
-import numpy as np
 from PIL import Image
+import numpy as np
 from natsort import natsorted
+from matplotlib import pyplot as plt
 
 QFs = [80, 60, 40, 20]
 num_classes = 20
@@ -62,6 +63,10 @@ for QF in QFs:
                 y_array = np.array(y_img)
                 ycbcr = np.dstack((y_array, cbcr))
                 combined_img = Image.fromarray(ycbcr, mode="YCbCr")
+
+                # show combined iamge
+                plt.imshow(combined_img)
+                plt.show()
 
                 rgb_img = combined_img.convert("RGB")
 
