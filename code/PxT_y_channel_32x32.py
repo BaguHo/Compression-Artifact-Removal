@@ -28,11 +28,11 @@ slack_webhook_url = (
 )
 
 learning_rate = 1e-5
-epochs = 1
-batch_size = 8  # 512
+epochs = 30
+batch_size = 64  # 512
 dataset_name = "CIFAR100"
-model_name = "PxT_y_channel"
-num_workers = 3  # 64
+model_name = "PxT_y_channel_32x32"
+num_workers = 8  # 64
 image_type = "YCbCr"
 num_classes = 20
 QFs = [80, 60, 40, 20]
@@ -44,7 +44,10 @@ def save_model(model, path, filename):
 
     model_path = os.path.join(path, filename)
     torch.save(model, model_path)
-    print(f"Model saved to {model_path}")
+
+    model_state_dict_path = os.path.join(path, f"{filename}_state_dict.pth")
+    torch.save(model.state_dict(), model_state_dict_path)
+    print(f"Model state dict saved to {model_state_dict_path}")
 
 
 # model training
@@ -79,7 +82,7 @@ def train(model, train_loader, criterion, optimizer):
             print(f"Checkpoint saved at epoch {epoch + 1}")
 
     # 마지막 모델 저장
-    save_model(model, "checkpoints", model_name)
+    save_model(model, "models", model_name + ".pth")
 
 
 # evaluate model
@@ -232,13 +235,13 @@ class Encoder(nn.Module):
 class PxT(nn.Module):
     def __init__(
         self,
-        img_size=8,
+        img_size=32,
         patch_size=1,
         in_channels=1,
-        embed_dim=256,  # 128에서 256으로 증가
-        num_heads=32,  # 16에서 32으로 증가
-        num_layers=16,  # 8에서 16로 증가
-        mlp_dim=512,  # 256에서 512으로 증가
+        embed_dim=128,
+        num_heads=16, 
+        num_layers=8,
+        mlp_dim=256,  
     ):
         super(PxT, self).__init__()
         self.img_size = img_size
@@ -349,12 +352,13 @@ def load_cifiar100():
 
         # 학습 데이터 로드
         for i in range(num_classes):
+            print(f"Loading train class {i}...")
             train_path = os.path.join(train_input_dir, str(i))
             target_train_path = os.path.join(target_train_dataset_dir, str(i))
 
             # train_path 내 파일을 정렬된 순서로 불러오기
-            sorted_train_files = sorted(os.listdir(train_path), key=sort_key)
-            sorted_target_train_files = sorted(
+            sorted_train_files = natsorted(os.listdir(train_path), key=sort_key)
+            sorted_target_train_files = natsorted(
                 os.listdir(target_train_path), key=sort_key
             )
 
@@ -365,14 +369,6 @@ def load_cifiar100():
                 train_image_path = os.path.join(train_path, train_file)
                 train_image = Image.open(train_image_path).convert("YCbCr")
                 y_channel_train_image = np.array(train_image)[:, :, 0]
-                # y_channel_train_image = np.expand_dims(
-                #     y_channel_train_image, axis=0
-                # )
-                # print(f"y_channel_train_image: {y_channel_train_image}")
-                # print(f"y_channel_train_image shape: {y_channel_train_image.shape}")
-                # print(f"type(y_channel_train_image): {type(y_channel_train_image)}")
-                # input()
-
                 y_channel_train_image = y_channel_train_image.astype(np.uint8)
                 train_input_dataset.append(np.array(y_channel_train_image))
 
@@ -380,20 +376,19 @@ def load_cifiar100():
                 target_image_path = os.path.join(target_train_path, target_file)
                 target_image = Image.open(target_image_path).convert("YCbCr")
                 y_channel_target_image = np.array(target_image)[:, :, 0]
-                # y_channel_target_image = np.expand_dims(
-                #     y_channel_target_image, axis=0
-                # )
                 y_channel_target_image = y_channel_target_image.astype(np.uint8)
                 train_target_dataset.append(np.array(y_channel_target_image))
 
+                print(f"train_shape: {np.array(y_channel_train_image).shape}, target_shape: {np.array(y_channel_target_image).shape}")
+                
         # 테스트 데이터 로드
         for i in range(num_classes):
             test_path = os.path.join(test_input_dir, str(i))
             target_test_path = os.path.join(target_test_dataset_dir, str(i))
 
             # test_path 내 파일을 정렬된 순서로 불러오기
-            sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-            sorted_target_test_files = sorted(
+            sorted_test_files = natsorted(os.listdir(test_path), key=sort_key)
+            sorted_target_test_files = natsorted(
                 os.listdir(target_test_path), key=sort_key
             )
 
@@ -424,7 +419,7 @@ def load_cifiar100():
         train_input_dataset, train_target_dataset, transform=transform
     )
     test_dataset = CIFAR100Dataset(
-        test_input_dataset, test_target_dataset, transform=transform
+        test_input_dataset, test_target_dataset, transform=tranfsform
     )
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)

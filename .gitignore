@@ -2,3 +2,4 @@
 ./experiments/*
 ./SwinIR/*
 ./classification_checkpoint/*
+./checkpoints/*

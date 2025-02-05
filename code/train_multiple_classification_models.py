@@ -18,9 +18,9 @@ from knockknock import slack_sender
 slack_webhook_url = ("https://hooks.slack.com/services/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")
 
 learning_rate = 0.001
-epochs = 80
+epochs = 40
 batch_size = 512
-dataset_name = "combined_ycbcr"
+dataset_name = "combined_ycbcr_32x32"
 model_list = ["efficientnet_b3", "mobilenetv2_100", "vgg19"]
 num_workers = 12
 image_type = "RGB"
@@ -45,6 +45,7 @@ def save_model(model, filename):
 
 
 # model training
+@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def train(current_model_name, model, train_loader, criterion, optimizer):
     model.train()
 
@@ -74,6 +75,7 @@ def train(current_model_name, model, train_loader, criterion, optimizer):
 
 
 # evaluate model
+@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def test(model, test_loader, msg):
     model.eval()
     correct = 0
@@ -172,76 +174,49 @@ def sort_key(filename):
 
     return (image_number, crop_number)
 
-
 # train and test the models for each QF
 @slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def training_testing():
     QFs = [80, 60, 40, 20]
 
     # load original dataset
-    original_train_dir = os.path.join(
-        os.getcwd(), "datasets", "CIFAR100", "original_size", "original", "train"
-    )
-    original_test_dir = os.path.join(
-        os.getcwd(), "datasets", "CIFAR100", "original_size", "original", "test"
-    )
-    original_train_dataset = datasets.ImageFolder(
-        original_train_dir, transform=transform
-    )
-    original_test_dataset = datasets.ImageFolder(original_test_dir, transform=transform)
+    # original_train_dir = os.path.join(
+    #     os.getcwd(), "datasets", "CIFAR100", "original_size", "original", "train"
+    # )
+    # original_test_dir = os.path.join(
+    #     os.getcwd(), "datasets", "CIFAR100", "original_size", "original", "test"
+    # )
+    # original_train_dataset = datasets.ImageFolder(
+    #     original_train_dir, transform=transform
+    # )
+    # original_test_dataset = datasets.ImageFolder(original_test_dir, transform=transform)
 
-    # keep only 0~4 folder classes
-    train_indices = [
-        i for i, (_, c) in enumerate(original_train_dataset.samples) if c < 5
-    ]
-    test_indices = [
-        i for i, (_, c) in enumerate(original_test_dataset.samples) if c < 5
-    ]
-
-    original_train_dataset.samples = [
-        original_train_dataset.samples[i] for i in train_indices
-    ]
-    original_train_dataset.targets = [
-        original_train_dataset.targets[i] for i in train_indices
-    ]
-    original_test_dataset.samples = [
-        original_test_dataset.samples[i] for i in test_indices
-    ]
-    original_test_dataset.targets = [
-        original_test_dataset.targets[i] for i in test_indices
-    ]
-
-    original_train_loader = DataLoader(
-        original_train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-    )
-    original_test_loader = DataLoader(
-        original_test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-    )
+    # # keep only 0~4 folder classes
+    # train_indices = [
+    #     i for i, (_, c) in enumerate(original_train_dataset.samples) if c < 5
+    # ]
+    # test_indices = [
+    #     i for i, (_, c) in enumerate(original_test_dataset.samples) if c < 5
+    # ]
 
     for current_model_name in model_list:
         print(f"[Current Model: {current_model_name}]")
-        original_model = timm.create_model(
-            current_model_name, pretrained=True, num_classes=num_classes
-        ).to(device)
+        # original_model = timm.create_model(
+        #     current_model_name, pretrained=True, num_classes=num_classes
+        # ).to(device)
 
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
+        # criterion = nn.CrossEntropyLoss()
+        # optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
 
-        # original dataset model tarining
-        print("[train the original model]")
-        train(
-            current_model_name,
-            original_model,
-            original_train_loader,
-            criterion,
-            optimizer,
-        )
+        # # original dataset model tarining
+        # print("[train the original model]")
+        # train(
+        #     current_model_name,
+        #     original_model,
+        #     original_train_loader,
+        #     criterion,
+        #     optimizer,
+        # )
         print(
             "#############################################################################"
         )
@@ -254,20 +229,20 @@ def training_testing():
                 QF, transform
             )
 
-            # test with original dataset test dataset
-            print("[original - original]")
-            acc, prec = test(
-                original_model, original_test_loader, "original - original"
-            )
-            accuracies[0] = acc
-            pricisions[0] = prec
+            # # test with original dataset test dataset
+            # print("[original - original]")
+            # acc, prec = test(
+            #     original_model, original_test_loader, "original - original"
+            # )
+            # accuracies[0] = acc
+            # pricisions[0] = prec
             # save_result(current_model_name, dataset_name,  dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
 
-            #  test with JPEG test dataset
-            print("[original - jpeg]")
-            acc, prec = test(original_model, jpeg_test_loader, f"original - jpeg {QF}")
-            accuracies[1] = acc
-            pricisions[1] = prec
+            # #  test with JPEG test dataset
+            # print("[original - jpeg]")
+            # acc, prec = test(original_model, jpeg_test_loader, f"original - jpeg {QF}")
+            # accuracies[1] = acc
+            # pricisions[1] = prec
             # save_result(current_model_name, dataset_name, f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
 
             # Tarining with JPEG dataset.
@@ -280,18 +255,22 @@ def training_testing():
             criterion = nn.CrossEntropyLoss()
             optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
 
+            if torch.cuda.device_count() > 1:
+                print(f"Using {torch.cuda.device_count()} GPUs!")
+                jpeg_model = nn.DataParallel(jpeg_model)
+
             # train the jpeg model
             print("[train the jpeg model]")
             train(
                 current_model_name, jpeg_model, jpeg_train_loader, criterion, optimizer
             )
 
-            # test with original test dataset
-            print("[jpeg - original]")
-            acc, prec = test(jpeg_model, original_test_loader, f"jpeg {QF} - original")
-            accuracies[2] = acc
-            pricisions[2] = prec
-            # save_result(current_model_name, f'JPEG', dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
+            # # test with original test dataset
+            # print("[jpeg - original]")
+            # acc, prec = test(jpeg_model, original_test_loader, f"jpeg {QF} - original")
+            # accuracies[2] = acc
+            # pricisions[2] = prec
+            # # save_result(current_model_name, f'JPEG', dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
 
             # Test with JPEG test dataset
             print("[jpeg - jpeg]")
@@ -303,36 +282,36 @@ def training_testing():
                 "#############################################################################"
             )
 
-            save_result(
-                current_model_name,
-                dataset_name,
-                dataset_name,
-                accuracies[0],
-                pricisions[0],
-                epochs,
-                batch_size,
-                QF,
-            )
-            save_result(
-                current_model_name,
-                dataset_name,
-                "JPEG",
-                accuracies[1],
-                pricisions[1],
-                epochs,
-                batch_size,
-                QF,
-            )
-            save_result(
-                current_model_name,
-                "JPEG",
-                dataset_name,
-                accuracies[2],
-                pricisions[1],
-                epochs,
-                batch_size,
-                QF,
-            )
+            # save_result(
+            #     current_model_name,
+            #     dataset_name,
+            #     dataset_name,
+            #     accuracies[0],
+            #     pricisions[0],
+            #     epochs,
+            #     batch_size,
+            #     QF,
+            # )
+            # save_result(
+            #     current_model_name,
+            #     dataset_name,
+            #     "JPEG",
+            #     accuracies[1],
+            #     pricisions[1],
+            #     epochs,
+            #     batch_size,
+            #     QF,
+            # )
+            # save_result(
+            #     current_model_name,
+            #     "JPEG",
+            #     dataset_name,
+            #     accuracies[2],
+            #     pricisions[1],
+            #     epochs,
+            #     batch_size,
+            #     QF,
+            # )
             save_result(
                 current_model_name,
                 "JPEG",
@@ -364,6 +343,9 @@ if __name__ == "__main__":
         if torch.cuda.is_available()
         else ("mps" if torch.backends.mps.is_available() else "cpu")
     )
+    
     print(device)
+    
+
 
     training_testing()
