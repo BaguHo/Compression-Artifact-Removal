@@ -12,18 +12,17 @@ from torchvision.transforms import ToPILImage
 from tqdm import tqdm
 from knockknock import slack_sender
 
-slack_webhook_url = ("https://hooks.slack.com/services/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")
+slack_webhook_url = (
+    "https://hooks.slack.com/services/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"
+)
+
+
+# TODO: test 데이터셋에 train데이터셋이 저자오디고 있음.  --> 수정 필요
 
 QFs = [80, 60, 40, 20]
 batch_size = 1
 num_classes = 20
 model_name = "PxT_y_channel_32x32.pth"
-
-transform = transforms.Compose(
-    [
-        transforms.ToTensor(),
-    ]
-)
 
 
 class Encoder(nn.Module):
@@ -240,7 +239,7 @@ if __name__ == "__main__":
             # print(f"test labels: {(labels)}")
             outputs = model(images)
             images = outputs
-            
+
             for image, label in zip(images, labels):
                 image = ToPILImage()(image.cpu())
                 class_dir = os.path.join(test_output_dir, f"{label}")
@@ -320,4 +319,3 @@ if __name__ == "__main__":
                     img_idx += 1
                     rgb_img.save(os.path.join(output_path, output_filename))
                     print(f"saved {os.path.join(output_path, output_filename)}")
-

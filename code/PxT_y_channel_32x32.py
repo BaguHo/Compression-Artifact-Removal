@@ -23,6 +23,9 @@ from tqdm import tqdm
 from knockknock import slack_sender
 from natsort import natsorted
 
+# TODO: test 데이터셋에 train데이터셋이 저자오디고 있음.  --> 수정 필요
+
+
 slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
@@ -171,29 +174,6 @@ def calculate_psnr(original_images, generated_images):
     return psnr_values, average_psnr
 
 
-def show_images(dataset, dataloader, length=5):
-    random_indices = torch.randperm(len(dataloader))[:length]
-
-    # 데이터 로더에서 배치 가져오기
-    data_iter = iter(dataloader)
-    images, labels = next(data_iter)
-
-    # 클래스 이름 정의 (예시)
-    class_names = dataset.classes
-
-    # 이미지 시각화 함수 정의
-    def imshow(img, label):
-        npimg = img.numpy()
-        plt.imshow(np.transpose(npimg, (1, 2, 0)))
-        plt.title(class_names[label])
-        plt.show()
-
-    # 몇 개의 이미지 시각화
-    num_images_to_show = 5
-    for i in range(num_images_to_show):
-        imshow(images[i], labels[i].item())
-
-
 # How to calculate the paramater?
 # Patch Embeding Paramaters: patch_size * patch_size * channels + embediing_dim
 # + Positional embeding = 1*64*64
@@ -239,9 +219,9 @@ class PxT(nn.Module):
         patch_size=1,
         in_channels=1,
         embed_dim=128,
-        num_heads=16, 
+        num_heads=16,
         num_layers=8,
-        mlp_dim=256,  
+        mlp_dim=256,
     ):
         super(PxT, self).__init__()
         self.img_size = img_size
@@ -379,8 +359,10 @@ def load_cifiar100():
                 y_channel_target_image = y_channel_target_image.astype(np.uint8)
                 train_target_dataset.append(np.array(y_channel_target_image))
 
-                print(f"train_shape: {np.array(y_channel_train_image).shape}, target_shape: {np.array(y_channel_target_image).shape}")
-                
+                print(
+                    f"train_shape: {np.array(y_channel_train_image).shape}, target_shape: {np.array(y_channel_target_image).shape}"
+                )
+
         # 테스트 데이터 로드
         for i in range(num_classes):
             test_path = os.path.join(test_input_dir, str(i))
@@ -419,7 +401,7 @@ def load_cifiar100():
         train_input_dataset, train_target_dataset, transform=transform
     )
     test_dataset = CIFAR100Dataset(
-        test_input_dataset, test_target_dataset, transform=tranfsform
+        test_input_dataset, test_target_dataset, transform=transform
     )
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)

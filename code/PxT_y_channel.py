@@ -34,7 +34,7 @@ dataset_name = "CIFAR100"
 model_name = "PxT_y_channel"
 num_workers = 64
 image_type = "YCbCr"
-num_classes = 20
+num_classes = 100
 QFs = [80, 60, 40, 20]
 
 
@@ -168,29 +168,6 @@ def calculate_psnr(original_images, generated_images):
     return psnr_values, average_psnr
 
 
-def show_images(dataset, dataloader, length=5):
-    random_indices = torch.randperm(len(dataloader))[:length]
-
-    # 데이터 로더에서 배치 가져오기
-    data_iter = iter(dataloader)
-    images, labels = next(data_iter)
-
-    # 클래스 이름 정의 (예시)
-    class_names = dataset.classes
-
-    # 이미지 시각화 함수 정의
-    def imshow(img, label):
-        npimg = img.numpy()
-        plt.imshow(np.transpose(npimg, (1, 2, 0)))
-        plt.title(class_names[label])
-        plt.show()
-
-    # 몇 개의 이미지 시각화
-    num_images_to_show = 5
-    for i in range(num_images_to_show):
-        imshow(images[i], labels[i].item())
-
-
 # How to calculate the paramater?
 # Patch Embeding Paramaters: patch_size * patch_size * channels + embediing_dim
 # + Positional embeding = 1*64*64
@@ -235,10 +212,10 @@ class PxT(nn.Module):
         img_size=8,
         patch_size=1,
         in_channels=1,
-        embed_dim=256,  # 128에서 256으로 증가
-        num_heads=32,  # 16에서 32으로 증가
-        num_layers=16,  # 8에서 16로 증가
-        mlp_dim=512,  # 256에서 512으로 증가
+        embed_dim=128,  # 128에서 256으로 증가
+        num_heads=16,  # 16에서 32으로 증가
+        num_layers=8,  # 8에서 16로 증가
+        mlp_dim=256,  # 256에서 512으로 증가
     ):
         super(PxT, self).__init__()
         self.img_size = img_size
@@ -365,14 +342,6 @@ def load_images_from_8x8():
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = Image.open(train_image_path).convert("YCbCr")
                     y_channel_train_image = np.array(train_image)[:, :, 0]
-                    # y_channel_train_image = np.expand_dims(
-                    #     y_channel_train_image, axis=0
-                    # )
-                    # print(f"y_channel_train_image: {y_channel_train_image}")
-                    # print(f"y_channel_train_image shape: {y_channel_train_image.shape}")
-                    # print(f"type(y_channel_train_image): {type(y_channel_train_image)}")
-                    # input()
-
                     y_channel_train_image = y_channel_train_image.astype(np.uint8)
                     train_input_dataset.append(np.array(y_channel_train_image))
 
@@ -380,9 +349,6 @@ def load_images_from_8x8():
                     target_image_path = os.path.join(target_train_path, target_file)
                     target_image = Image.open(target_image_path).convert("YCbCr")
                     y_channel_target_image = np.array(target_image)[:, :, 0]
-                    # y_channel_target_image = np.expand_dims(
-                    #     y_channel_target_image, axis=0
-                    # )
                     y_channel_target_image = y_channel_target_image.astype(np.uint8)
                     train_target_dataset.append(np.array(y_channel_target_image))
                 else:
@@ -410,7 +376,6 @@ def load_images_from_8x8():
                     test_image_path = os.path.join(test_path, test_file)
                     test_image = Image.open(test_image_path).convert("YCbCr")
                     y_channel_test_image = np.array(test_image)[:, :, 0]
-                    # y_channel_test_image = np.expand_dims(y_channel_test_image, axis=0)
                     y_channel_test_image = y_channel_test_image.astype(np.uint8)
                     test_input_dataset.append(np.array(y_channel_test_image))
 
@@ -418,9 +383,6 @@ def load_images_from_8x8():
                     target_image_path = os.path.join(target_test_path, target_file)
                     target_image = Image.open(target_image_path).convert("YCbCr")
                     y_channel_target_image = np.array(target_image)[:, :, 0]
-                    # y_channel_target_image = np.expand_dims(
-                    #     y_channel_target_image, axis=0
-                    # )
                     y_channel_target_image = y_channel_target_image.astype(np.uint8)
                     test_target_dataset.append(np.array(target_image))
                 else:
@@ -474,9 +436,9 @@ def merge_8x8_to_32x32_y_channel(QF):
                 )
                 print(f"output_path: {output_path}")
 
-                images_names = natsorted(os.listdir(input_image_path))
+                image_names = natsorted(os.listdir(input_image_path))
 
-                for image_name in images_names:
+                for image_name in image_names:
                     image = plt.imread(os.path.join(input_image_path, image_name))
                     input_images.append(image)
 
@@ -495,9 +457,6 @@ def merge_8x8_to_32x32_y_channel(QF):
 
                     output_image = Image.fromarray(big_image)
 
-                    # plt.imshow(output_image)
-                    # plt.show()
-                    # input()
                     os.makedirs(output_path, exist_ok=True)
                     output_images.append(output_image)
                     output_image_names.append(
@@ -579,8 +538,6 @@ def combine_y_with_cbcr(QF):
 
 
 # training & testing for each QF
-
-
 @slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def training_testing():
     # save_CIFAR100()
@@ -598,12 +555,7 @@ def training_testing():
     # load dataset [training, target] = [jpeg, original] as 8x8
     print("Loading dataset and dataloader...")
     train_dataset, test_dataset, train_loader, test_loader = load_images_from_8x8()
-    # print(f'train loader: {train_loader}')
-    # print(f"test loader: {test_loader}")
     print("Done")
-
-    # print(f'''train shape: {train_dataset.shape}''')
-    # print(f'''test shape: {test_dataset.shape}''')
 
     removal_model = PxT().to(device)
     # If multiple GPUs are available, use DataParallel
@@ -666,5 +618,5 @@ if __name__ == "__main__":
         combine_y_with_cbcr(QF)
 
     # 프로그램 종료 후 컴퓨터 종료
-    if device == "cuda" and os.name == "posix":
-        os.system("sudo shutdown")
+    # if device == "cuda" and os.name == "posix":
+    #     os.system("sudo shutdown")
