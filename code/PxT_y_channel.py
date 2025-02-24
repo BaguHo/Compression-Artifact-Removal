@@ -4,19 +4,12 @@ import re
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 from PIL import Image
-from sklearn.metrics import confusion_matrix, precision_score
-from sklearn.model_selection import train_test_split
 import torch
-from torch.autograd import Variable
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.nn.init
 import torch.optim as optim
-from torch.utils.data import ConcatDataset, DataLoader, Dataset
-import torchvision.datasets as datasets
-from torchvision import models
+from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
 from torchvision.transforms import ToPILImage
 from tqdm import tqdm
@@ -34,7 +27,7 @@ dataset_name = "CIFAR100"
 model_name = "PxT_y_channel"
 num_workers = 64
 image_type = "YCbCr"
-num_classes = 100
+num_classes = 20
 QFs = [80, 60, 40, 20]
 
 
@@ -405,7 +398,7 @@ def load_images_from_8x8():
 
 
 # merge 8x8 to 32x32
-@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
+# @slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def merge_8x8_to_32x32_y_channel(QF):
     for QF in QFs:
         for i in range(num_classes):
@@ -472,7 +465,7 @@ def merge_8x8_to_32x32_y_channel(QF):
 
 
 # combine y channel with cbcr
-@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
+# @slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def combine_y_with_cbcr(QF):
     for QF in QFs:
         for i in range(num_classes):
@@ -538,7 +531,7 @@ def combine_y_with_cbcr(QF):
 
 
 # training & testing for each QF
-@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
+# @slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def training_testing():
     # save_CIFAR100()
     # make_8x8_image_from_original_dataset()
