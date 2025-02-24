@@ -212,10 +212,10 @@ class PxT(nn.Module):
         img_size=8,
         patch_size=1,
         in_channels=1,
-        embed_dim=128,  # 128에서 256으로 증가
-        num_heads=16,  # 16에서 32으로 증가
-        num_layers=8,  # 8에서 16로 증가
-        mlp_dim=256,  # 256에서 512으로 증가
+        embed_dim=128,
+        num_heads=4,
+        num_layers=8,
+        mlp_dim=512,
     ):
         super(PxT, self).__init__()
         self.img_size = img_size
