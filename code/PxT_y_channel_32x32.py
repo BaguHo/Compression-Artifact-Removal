@@ -25,11 +25,6 @@ from natsort import natsorted
 
 # TODO: test 데이터셋에 train데이터셋이 저자오디고 있음.  --> 수정 필요
 
-
-slack_webhook_url = (
-    "https://hooks.slack.com/services/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"
-)
-
 learning_rate = 1e-5
 epochs = 30
 batch_size = 64  # 512
