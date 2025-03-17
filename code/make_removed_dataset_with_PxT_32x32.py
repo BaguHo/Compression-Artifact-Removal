@@ -12,11 +12,6 @@ from torchvision.transforms import ToPILImage
 from tqdm import tqdm
 from knockknock import slack_sender
 
-slack_webhook_url = (
-    "https://hooks.slack.com/services/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"
-)
-
-
 # TODO: test 데이터셋에 train데이터셋이 저자오디고 있음.  --> 수정 필요
 
 QFs = [80, 60, 40, 20]
