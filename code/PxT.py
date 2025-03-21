@@ -1,4 +1,4 @@
-# TODO: it should be run in the root directory of the project
+# It should be run in the root directory of the project
 import os
 import re
 import matplotlib.pyplot as plt
@@ -249,41 +249,6 @@ def load_jpeg_datasets(QF):
 
     return train_dataset, test_dataset, train_dataloader, test_dataloader
 
-
-def show_images(dataset, dataloader, length=5):
-    random_indices = torch.randperm(len(dataloader))[:length]
-
-    # 데이터 로더에서 배치 가져오기
-    data_iter = iter(dataloader)
-    images, labels = next(data_iter)
-
-    # 클래스 이름 정의 (예시)
-    class_names = dataset.classes
-
-    # 이미지 시각화 함수 정의
-    def imshow(img, label):
-        npimg = img.numpy()
-        plt.imshow(np.transpose(npimg, (1, 2, 0)))
-        plt.title(class_names[label])
-        plt.show()
-
-    # 몇 개의 이미지 시각화
-    num_images_to_show = 5
-    for i in range(num_images_to_show):
-        imshow(images[i], labels[i].item())
-
-
-# Paramater
-# Patch Embeding Paramaters: patch_size * patch_size * channels + embediing_dim
-# + Positional embeding = 1*64*64
-# + Layer norm Paramaters = 2 * embeding_dim = 2 * 64
-# MultiheadAttention Paramaters =  3 * 64 (3×(64×64+64))+(64×64+64) = 16640
-# MLP block = (64×128+128)+(128×64+64) = 16576
-# Encoder Paramaters = 4×33472=133888
-# Decoder Paramaters = (64×3)+3=192+3=195
-# Total Paramaters = Patch Embedding: 256 + Position Embeddings: 4096 + Encoder Layers:  133888 + Decoder Layer:  195 = 138435
-
-
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
@@ -509,15 +474,6 @@ def load_images_from_8x8():
 
 # training & testing for each QF
 def training_testing():
-    # save_CIFAR100()
-    # make_8x8_image_from_original_dataset()
-
-    # for QF in QFs:
-    #     # jpeg image 8x8로 저장
-    #     print("making the 8x8 image..")
-    #     make_8x8_jpeg_image(QF)
-    #     print("Done")
-
     # FIx random seed
     torch.manual_seed(0)
 
@@ -558,13 +514,6 @@ def training_testing():
     print(
         "#############################################################################"
     )
-
-    # print(f"[test removal model]")
-    # accuracy, precision = test(removal_model, test_loader, criterion, f"Removal {QF}")
-    # save_result(model_name, dataset_name, dataset_name, accuracy, precision, QF)
-    # print(
-    #     "#############################################################################"
-    # )
 
 
 ################################################################################################################
