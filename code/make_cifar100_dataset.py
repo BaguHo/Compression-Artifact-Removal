@@ -5,9 +5,14 @@ import torchvision.transforms as transforms
 from torchvision import datasets
 import matplotlib.pyplot as plt
 from PIL import Image
+from knockknock import slack_sender
 
 dataset_name = "CIFAR100"
 num_classes = 100
+
+slack_webhook_url = (
+    "https://hooks.slack.com/services/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"
+)
 
 
 def crop_image(image, crop_size=8):

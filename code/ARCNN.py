@@ -19,7 +19,9 @@ logging.basicConfig(
 )
 
 dataset_name = "CIFAR100"
-
+slack_webhook_url = (
+    "https://hooks.slack.com/services/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"
+)
 epochs = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
