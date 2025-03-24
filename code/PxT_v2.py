@@ -101,9 +101,8 @@ def load_images():
                 desc=f"Loading class {i} train data (QF {QF})",
                 total=len(sorted_train_files),
             ):
-                if train_file.replace("jpeg", "png") == target_file:
+                if train_file == target_file:
                     # input 이미지 로드
-                    train_file.replace("jpeg", "png")
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = cv2.imread(train_image_path)
                     train_input_dataset.append(train_image)
@@ -132,9 +131,8 @@ def load_images():
             for test_file, target_file in zip(
                 sorted_test_files, sorted_target_test_files
             ):
-                if test_file.replace("jpeg", "png") == target_file:
+                if test_file == target_file:
                     # input 이미지 로드
-                    test_file.replace("jpeg", "png")
                     test_image_path = os.path.join(test_path, test_file)
                     test_image = cv2.imread(test_image_path)
                     test_input_dataset.append(test_image)
@@ -250,8 +248,6 @@ def save_metrics(metrics, filename):
         for i in range(len(metrics["PSNR"])):
             f.write(f"{metrics['PSNR'][i]},{metrics['SSIM'][i]}\n")
     print(f"Metrics saved to {filename}")
-
-
 
 
 if __name__ == "__main__":
