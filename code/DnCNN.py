@@ -10,6 +10,7 @@ import logging
 import cv2
 import tqdm
 import time
+from knockknock import slack_sender
 
 if len(sys.argv) < 5:
     print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
@@ -217,6 +218,18 @@ def save_metrics(metrics, filename):
     print(f"Metrics saved to {filename}")
 
 
+@slack_sender(slack_webhook_url, "Jiho Eum")
+def send_slack_notification(message):
+    import requests
+
+    payload = {"text": message}
+    response = requests.post(slack_webhook_url, json=payload)
+    if response.status_code != 200:
+        print(f"Failed to send notification: {response.status_code}, {response.text}")
+    else:
+        print("model training completed and notification sent to slack channel")
+
+
 if __name__ == "__main__":
     # Load the dataset
     train_dataset, test_dataset, train_loader, test_loader = load_images()
@@ -247,41 +260,41 @@ if __name__ == "__main__":
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    # !load model
-    model.load_state_dict(torch.load("./models/DnCNN_final.pth"))
+    # # !load model
+    # model.load_state_dict(torch.load("./models/DnCNN_final.pth"))
 
     start_time = time.time()
     print(f"Training started at {time.ctime(start_time)}")
     logging.info(f"Training started at {time.ctime(start_time)}")
     print(f"Training for {epochs} epochs")
-    # for epoch in range(epochs):
-    #     model.train()
-    #     running_loss = 0.0
-    #     for i, (input_images, target_images) in enumerate(
-    #         tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
-    #     ):
-    #         input_images = input_images.to(device)
-    #         target_images = target_images.to(device)
+    for epoch in range(epochs):
+        model.train()
+        running_loss = 0.0
+        for i, (input_images, target_images) in enumerate(
+            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+        ):
+            input_images = input_images.to(device)
+            target_images = target_images.to(device)
 
-    #         optimizer.zero_grad()
+            optimizer.zero_grad()
 
-    #         # Forward pass
-    #         outputs = model(input_images)
-    #         loss = criterion(outputs, target_images)
-    #         loss.backward()
-    #         optimizer.step()
-    #         running_loss += loss.item()
-    #     epoch_loss = running_loss / len(train_loader)
-    #     print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-    #     logging.info(
-    #         f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
-    #     )
+            # Forward pass
+            outputs = model(input_images)
+            loss = criterion(outputs, target_images)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        epoch_loss = running_loss / len(train_loader)
+        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+        logging.info(
+            f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+        )
 
-    #     # Save the model
-    #     if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
-    #         torch.save(model.state_dict(), f"DnCNN_{epoch+1}.pth")
-    #         print(f"Model saved at epoch {epoch+1}")
-    #         logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
+        # Save the model
+        if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
+            torch.save(model.state_dict(), f"DnCNN_{epoch+1}.pth")
+            print(f"Model saved at epoch {epoch+1}")
+            logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
 
     end_time = time.time()
     print(f"Training finished at {time.ctime(end_time)}")
@@ -383,3 +396,7 @@ if __name__ == "__main__":
     )
     print(f"Final model saved as {type(model).__name__}_final.pth")
     logging.info(f"Final model saved as {type(model).__name__}_final.pth")
+
+    # Send slack notification
+    message = f"Model training completed. Elapsed time: {elapsed_time:.2f} seconds"
+    send_slack_notification(message)
