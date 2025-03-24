@@ -279,31 +279,33 @@ if __name__ == "__main__":
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    for epoch in range(epochs):
-        model.train()
-        running_loss = 0.0
-        for i, (input_images, target_images) in enumerate(
-            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
-        ):
-            input_images = input_images.to(device)
-            target_images = target_images.to(device)
+    # for epoch in range(epochs):
+    #     model.train()
+    #     running_loss = 0.0
+    #     for i, (input_images, target_images) in enumerate(
+    #         tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+    #     ):
+    #         input_images = input_images.to(device)
+    #         target_images = target_images.to(device)
 
-            optimizer.zero_grad()
+    #         optimizer.zero_grad()
 
-            # Forward pass
-            outputs = model(input_images)
-            loss = criterion(outputs, target_images)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-        epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-        logging.info(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-        # Save the model
-        if (epoch + 1) % 10 == 0:
-            torch.save(model.state_dict(), f"DnCNN_{epoch+1}.pth")
-            print(f"Model saved at epoch {epoch+1}")
-            logging.info(f"Model saved at epoch {epoch+1}")
+    #         # Forward pass
+    #         outputs = model(input_images)
+    #         loss = criterion(outputs, target_images)
+    #         loss.backward()
+    #         optimizer.step()
+    #         running_loss += loss.item()
+    #     epoch_loss = running_loss / len(train_loader)
+    #     print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+    #     logging.info(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+    #     # Save the model
+    #     if (epoch + 1) % 10 == 0:
+    #         torch.save(model.state_dict(), f"DnCNN_{epoch+1}.pth")
+    #         print(f"Model saved at epoch {epoch+1}")
+    #         logging.info(f"Model saved at epoch {epoch+1}")
+
+    model.load_state_dict(torch.load(".pth"))
 
     # Test the model
     model.eval()
@@ -389,7 +391,7 @@ if __name__ == "__main__":
     # Save the final model
     torch.save(
         model.state_dict(),
-        os.path.join("datasets", f"{type(model).__name__}_final.pth"),
+        os.path.join("models", f"{type(model).__name__}_final.pth"),
     )
     print(f"Final model saved as {type(model).__name__}_final.pth")
     logging.info(f"Final model saved as {type(model).__name__}_final.pth")

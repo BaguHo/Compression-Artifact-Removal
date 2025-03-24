@@ -84,7 +84,9 @@ def load_images():
         target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
 
         # 학습 데이터 로드
-        for i in range(num_classes):
+        for i in tqdm.tqdm(
+            range(num_classes), desc=f"Loading train data (QF {QF})", total=num_classes
+        ):
             train_path = os.path.join(train_input_dir, str(i))
             target_train_path = os.path.join(target_train_dataset_dir, str(i))
 
@@ -95,10 +97,8 @@ def load_images():
             )
 
             # 두 디렉토리의 파일명이 같은지 확인하며 로드
-            for train_file, target_file in tqdm.tqdm(
-                zip(sorted_train_files, sorted_target_train_files),
-                desc=f"Loading class {i} train data (QF {QF})",
-                total=len(sorted_train_files),
+            for train_file, target_file in zip(
+                sorted_train_files, sorted_target_train_files
             ):
                 if train_file.replace("jpeg", "png") == target_file:
                     # input 이미지 로드
@@ -229,6 +229,7 @@ if __name__ == "__main__":
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+    # ! training code!! Do not delete this code
     for epoch in range(epochs):
         model.train()
         running_loss = 0.0
@@ -282,6 +283,8 @@ if __name__ == "__main__":
                 # [32,32,3]
                 print(f"target image shape: {target_images[i].shape}")
                 print(f"output image shape: {outputs[i].shape}")
+                input()
+
                 # Calculate PSNR
                 psnr = peak_signal_noise_ratio(
                     target_images[i], outputs[i], data_range=1.0
