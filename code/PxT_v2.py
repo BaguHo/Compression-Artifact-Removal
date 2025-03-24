@@ -298,12 +298,14 @@ if __name__ == "__main__":
             running_loss += loss.item()
         epoch_loss = running_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-        logging.info(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+        logging.info(
+            f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+        )
         # Save the model
         if (epoch + 1) % 10 == 0:
             torch.save(model.state_dict(), f"DnCNN_{epoch+1}.pth")
-            print(f"Model saved at epoch {epoch+1}")
-            logging.info(f"Model saved at epoch {epoch+1}")
+            print(f"{type(model).__name__} Model saved at epoch {epoch+1}")
+            logging.info(f"{type(model).__name__} Model saved at epoch {epoch+1}")
 
     # Test the model
     model.eval()
@@ -335,10 +337,13 @@ if __name__ == "__main__":
 
                 # outputs rgb to bgr and
                 bgr_image = cv2.cvtColor(outputs[i], cv2.COLOR_RGB2BGR)
-                os.makedirs("PxT_output", exist_ok=True)
+                os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
 
                 # Save the output image
-                cv2.imwrite(os.path.join("PxT_output", f"output_{i}.png"), bgr_image)
+                cv2.imwrite(
+                    os.path.join(f"{type(model).__name__}_output", f"output_{i}.png"),
+                    bgr_image,
+                )
 
                 # Calculate PSNR
                 psnr = peak_signal_noise_ratio(
@@ -361,23 +366,33 @@ if __name__ == "__main__":
                 # logging.info(
                 #     f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, PSNR-B: {psnr_b:.2f}"
                 # )
-                print(f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
-                logging.info(f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
+                print(f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
+                logging.info(
+                    f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
+                )
 
-            # Save the output images
-            for i in range(len(outputs)):
-                output_image = cv2.cvtColor(outputs[i], cv2.COLOR_RGB2BGR)
-                output_image_path = os.path.join("output", f"output_{i}.png")
-                cv2.imwrite(output_image_path, output_image)
-                print(f"Output image saved at {output_image_path}")
-            logging.info(f"Output image saved at {output_image_path}")
+            # # Save the output images
+            # for i in range(len(outputs)):
+            #     output_image = cv2.cvtColor(outputs[i], cv2.COLOR_RGB2BGR)
+            #     output_image_path = os.path.join("output", f"output_{i}.png")
+            #     cv2.imwrite(output_image_path, output_image)
+            #     print(
+            #         f"{type(model).__name__} Output image saved at {output_image_path}"
+            #     )
+            # logging.info(
+            #     f"{type(model).__name__} Output image saved at {output_image_path}"
+            # )
 
     # Calculate average metrics
     avg_test_loss = test_loss / len(test_loader)
     avg_psnr = np.mean(psnr_values)
 
-    print(f"Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB")
-    logging.info(f"Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB")
+    print(
+        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+    )
+    logging.info(
+        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+    )
 
     # Save metrics
     metrics = {

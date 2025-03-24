@@ -3,3 +3,6 @@
 ./SwinIR/*
 ./classification_checkpoint/*
 ./checkpoints/*
+./DnCNN_output/*
+./ARCNN_output/*
+./PxT_output/*

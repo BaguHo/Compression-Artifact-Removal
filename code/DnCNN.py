@@ -84,7 +84,9 @@ def load_images():
         target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
 
         # 학습 데이터 로드
-        for i in range(num_classes):
+        for i in tqdm.tqdm(
+            range(num_classes), desc=f"Loading train data (QF {QF})", total=num_classes
+        ):
             train_path = os.path.join(train_input_dir, str(i))
             target_train_path = os.path.join(target_train_dataset_dir, str(i))
 
@@ -95,13 +97,12 @@ def load_images():
             )
 
             # 두 디렉토리의 파일명이 같은지 확인하며 로드
-            for train_file, target_file in tqdm.tqdm(
-                zip(sorted_train_files, sorted_target_train_files),
-                desc=f"Loading class {i} train data (QF {QF})",
-                total=len(sorted_train_files),
+            for train_file, target_file in zip(
+                sorted_train_files, sorted_target_train_files
             ):
                 if train_file.replace("jpeg", "png") == target_file:
                     # input 이미지 로드
+                    train_file.replace("png", "jpeg")
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = cv2.imread(train_image_path)
                     train_input_dataset.append(train_image)
@@ -110,6 +111,13 @@ def load_images():
                     target_image_path = os.path.join(target_train_path, target_file)
                     target_image = cv2.imread(target_image_path)
                     train_target_dataset.append(target_image)
+
+                    # # test input, target 이미지 시각화
+                    # combined_image = cv2.hconcat([train_image, target_image])
+                    # cv2.imshow("test combined image", combined_image)
+                    # cv2.waitKey(0)
+                    # cv2.destroyAllWindows()
+
                 else:
                     print(
                         f"Warning: Mismatched files in training set: {train_file} and {target_file}"
@@ -132,6 +140,7 @@ def load_images():
             ):
                 if test_file.replace("jpeg", "png") == target_file:
                     # input 이미지 로드
+                    test_file.replace("png", "jpeg")
                     test_image_path = os.path.join(test_path, test_file)
                     test_image = cv2.imread(test_image_path)
                     test_input_dataset.append(test_image)
@@ -140,6 +149,13 @@ def load_images():
                     target_image_path = os.path.join(target_test_path, target_file)
                     target_image = cv2.imread(target_image_path)
                     test_target_dataset.append(target_image)
+
+                    # test input, target 이미지 시각화
+                    # combined_image = cv2.hconcat([test_image, target_image])
+                    # cv2.imshow("test combined image", combined_image)
+                    # cv2.waitKey(0)
+                    # cv2.destroyAllWindows()
+
                 else:
                     print(
                         f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
@@ -217,6 +233,7 @@ if __name__ == "__main__":
         if torch.cuda.is_available()
         else "mps" if torch.backends.mps.is_available() else "cpu"
     )
+
     # use multiple GPUs if available
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
@@ -225,35 +242,41 @@ if __name__ == "__main__":
     model.to(device)
     print(f"Model device: {device}")
 
-    # train the model
+    # # train the model
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    for epoch in range(epochs):
-        model.train()
-        running_loss = 0.0
-        for i, (input_images, target_images) in enumerate(
-            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
-        ):
-            input_images = input_images.to(device)
-            target_images = target_images.to(device)
+    # !load model
+    model.load_state_dict(torch.load("./models/DnCNN_final.pth"))
 
-            optimizer.zero_grad()
+    # for epoch in range(epochs):
+    #     model.train()
+    #     running_loss = 0.0
+    #     for i, (input_images, target_images) in enumerate(
+    #         tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+    #     ):
+    #         input_images = input_images.to(device)
+    #         target_images = target_images.to(device)
 
-            # Forward pass
-            outputs = model(input_images)
-            loss = criterion(outputs, target_images)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-        epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-        logging.info(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-        # Save the model
-        if (epoch + 1) % 10 == 0:
-            torch.save(model.state_dict(), f"DnCNN_{epoch+1}.pth")
-            print(f"Model saved at epoch {epoch+1}")
-            logging.info(f"Model saved at epoch {epoch+1}")
+    #         optimizer.zero_grad()
+
+    #         # Forward pass
+    #         outputs = model(input_images)
+    #         loss = criterion(outputs, target_images)
+    #         loss.backward()
+    #         optimizer.step()
+    #         running_loss += loss.item()
+    #     epoch_loss = running_loss / len(train_loader)
+    #     print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+    #     logging.info(
+    #         f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+    #     )
+
+    #     # Save the model
+    #     if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
+    #         torch.save(model.state_dict(), f"DnCNN_{epoch+1}.pth")
+    #         print(f"Model saved at epoch {epoch+1}")
+    #         logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
 
     # Test the model
     model.eval()
@@ -274,52 +297,64 @@ if __name__ == "__main__":
             loss = criterion(outputs, target_images)
             test_loss += loss.item()
 
-            # bgr tensor to rgb image ndarray
-            target_images = target_images.permute(0, 2, 3, 1).cpu().numpy()
-            outputs = outputs.permute(0, 2, 3, 1).cpu().numpy()
-
+            idx = 0
             for i in range(len(outputs)):
-                # [32,32,3]
-                print(f"target image shape: {target_images[i].shape}")
-                print(f"output image shape: {outputs[i].shape}")
+
+                rgb_target = target_images[i].cpu().numpy()
+                rgb_output = outputs[i].cpu().numpy()
+
                 # Calculate PSNR
-                psnr = peak_signal_noise_ratio(
-                    target_images[i], outputs[i], data_range=1.0
-                )
+                psnr = peak_signal_noise_ratio(rgb_target, rgb_output, data_range=1.0)
 
                 # Calculate SSIM
                 ssim = structural_similarity(
-                    target_images[i],
-                    outputs[i],
+                    rgb_target,
+                    rgb_output,
                     multichannel=True,
                     data_range=1.0,
-                    channel_axis=2,
+                    channel_axis=0,
                 )
 
                 psnr_values.append(psnr)
                 ssim_values.append(ssim)
-                # psnr_b_values.append(psnr_b)
-                # print(f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, PSNR-B: {psnr_b:.2f}")
-                # logging.info(
-                #     f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, PSNR-B: {psnr_b:.2f}"
-                # )
-                print(f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
-                logging.info(f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
+                print(f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
+                logging.info(
+                    f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
+                )
 
-            # Save the output images
-            for i in range(len(outputs)):
-                output_image = cv2.cvtColor(outputs[i], cv2.COLOR_RGB2BGR)
-                output_image_path = os.path.join("output", f"output_{i}.png")
-                cv2.imwrite(output_image_path, output_image)
-                print(f"Output image saved at {output_image_path}")
-            logging.info(f"Output image saved at {output_image_path}")
+                # save the output images
+                os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
+                output_image_path = os.path.join(
+                    f"{type(model).__name__}_output", f"output{idx}.png"
+                )
+                rgb_output = outputs[i].permute(1, 2, 0).cpu().numpy()
+                print(f"output image shape: {rgb_output.shape}")
+                cv2.imshow(
+                    "Output Image",
+                    rgb_output,
+                )
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+
+                cv2.imwrite(
+                    output_image_path,
+                    rgb_output,
+                )
+                logging.info(
+                    f"{type(model).__name__} Output image saved at {output_image_path}"
+                )
+                idx += 1
 
     # Calculate average metrics
     avg_test_loss = test_loss / len(test_loader)
     avg_psnr = np.mean(psnr_values)
 
-    print(f"Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB")
-    logging.info(f"Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB")
+    print(
+        f"{type(model).__name__}, Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+    )
+    logging.info(
+        f"{type(model).__name__}, Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+    )
 
     # Save metrics
     metrics = {
@@ -328,10 +363,11 @@ if __name__ == "__main__":
         "SSIM": ssim_values,
     }
     save_metrics(metrics, "dncnn_metrics.csv")
+
     # Save the final model
     torch.save(
         model.state_dict(),
-        os.path.join("datasets", f"{type(model).__name__}_final.pth"),
+        os.path.join("models", f"{type(model).__name__}_final.pth"),
     )
     print(f"Final model saved as {type(model).__name__}_final.pth")
     logging.info(f"Final model saved as {type(model).__name__}_final.pth")

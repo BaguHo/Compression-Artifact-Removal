@@ -294,45 +294,53 @@ if __name__ == "__main__":
             loss = criterion(outputs, target_images)
             test_loss += loss.item()
 
-            # bgr tensor to rgb image ndarray
-            target_images = target_images.permute(0, 2, 3, 1).cpu().numpy()
-            outputs = outputs.permute(0, 2, 3, 1).cpu().numpy()
-
+            idx = 0
             for i in range(len(outputs)):
-                # [32,32,3]
-                print(f"target image shape: {target_images[i].shape}")
-                print(f"output image shape: {outputs[i].shape}")
+
+                rgb_target = target_images[i].cpu().numpy()
+                rgb_output = outputs[i].cpu().numpy()
+
                 # Calculate PSNR
-                psnr = peak_signal_noise_ratio(
-                    target_images[i], outputs[i], data_range=1.0
-                )
+                psnr = peak_signal_noise_ratio(rgb_target, rgb_output, data_range=1.0)
 
                 # Calculate SSIM
                 ssim = structural_similarity(
-                    target_images[i],
-                    outputs[i],
+                    rgb_target,
+                    rgb_output,
                     multichannel=True,
                     data_range=1.0,
-                    channel_axis=2,
+                    channel_axis=0,
                 )
 
                 psnr_values.append(psnr)
                 ssim_values.append(ssim)
-                # psnr_b_values.append(psnr_b)
-                # print(f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, PSNR-B: {psnr_b:.2f}")
-                # logging.info(
-                #     f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, PSNR-B: {psnr_b:.2f}"
-                # )
-                print(f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
-                logging.info(f"PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
+                print(f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
+                logging.info(
+                    f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
+                )
 
-            # Save the output images
-            for i in range(len(outputs)):
-                output_image = cv2.cvtColor(outputs[i], cv2.COLOR_RGB2BGR)
-                output_image_path = os.path.join("output", f"output_{i}.png")
-                cv2.imwrite(output_image_path, output_image)
-                print(f"Output image saved at {output_image_path}")
-            logging.info(f"Output image saved at {output_image_path}")
+                # save the output images
+                os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
+                output_image_path = os.path.join(
+                    f"{type(model).__name__}_output", f"output{idx}.png"
+                )
+                rgb_output = outputs[i].permute(1, 2, 0).cpu().numpy()
+                print(f"output image shape: {rgb_output.shape}")
+                cv2.imshow(
+                    "Output Image",
+                    rgb_output,
+                )
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+
+                cv2.imwrite(
+                    output_image_path,
+                    rgb_output,
+                )
+                logging.info(
+                    f"{type(model).__name__} Output image saved at {output_image_path}"
+                )
+                idx += 1
 
     # Calculate average metrics
     avg_test_loss = test_loss / len(test_loader)
