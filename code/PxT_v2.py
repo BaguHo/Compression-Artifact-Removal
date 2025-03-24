@@ -85,7 +85,9 @@ def load_images():
         target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
 
         # 학습 데이터 로드
-        for i in tqdm.tqdm(range(num_classes), desc=f"Loa,ding train data (QF {QF})", total=num_classes):
+        for i in tqdm.tqdm(
+            range(num_classes), desc=f"Loa,ding train data (QF {QF})", total=num_classes
+        ):
             train_path = os.path.join(train_input_dir, str(i))
             target_train_path = os.path.join(target_train_dataset_dir, str(i))
 
@@ -413,4 +415,3 @@ if __name__ == "__main__":
 
     # Send slack notification
     message = f"Model training completed. Elapsed time: {elapsed_time:.2f} seconds"
-    send_slack_notification(message)

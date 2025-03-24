@@ -378,4 +378,3 @@ if __name__ == "__main__":
 
     # Send slack notification
     message = f"Model training completed. Elapsed time: {elapsed_time:.2f} seconds"
-    send_slack_notification(message)
