@@ -10,7 +10,6 @@ import logging
 import cv2
 import tqdm
 import time
-from knockknock import slack_sender
 
 if len(sys.argv) < 5:
     print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
@@ -220,18 +219,6 @@ def save_metrics(metrics, filename):
         for i in range(len(metrics["PSNR"])):
             f.write(f"{metrics['PSNR'][i]},{metrics['SSIM'][i]}\n")
     print(f"Metrics saved to {filename}")
-
-
-@slack_sender(slack_webhook_url, "Jiho Eum")
-def send_slack_notification(message):
-    import requests
-
-    payload = {"text": message}
-    response = requests.post(slack_webhook_url, json=payload)
-    if response.status_code != 200:
-        print(f"Failed to send notification: {response.status_code}, {response.text}")
-    else:
-        print("model training completed and notification sent to slack channel")
 
 
 if __name__ == "__main__":
