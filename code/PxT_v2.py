@@ -9,6 +9,7 @@ import os, sys, re
 import logging
 import cv2
 import tqdm
+import time
 
 if len(sys.argv) < 5:
     print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
@@ -279,6 +280,11 @@ if __name__ == "__main__":
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+    start_time = time.time()
+    print(f"Training started at {time.ctime(start_time)}")
+    logging.info(f"Training started at {time.ctime(start_time)}")
+    print(f"Training for {epochs} epochs")
+
     for epoch in range(epochs):
         model.train()
         running_loss = 0.0
@@ -306,6 +312,13 @@ if __name__ == "__main__":
             torch.save(model.state_dict(), f"DnCNN_{epoch+1}.pth")
             print(f"{type(model).__name__} Model saved at epoch {epoch+1}")
             logging.info(f"{type(model).__name__} Model saved at epoch {epoch+1}")
+
+    end_time = time.time()
+    print(f"Training finished at {time.ctime(end_time)}")
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    logging.info(f"Training finished at {time.ctime(end_time)}")
+    logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
     # Test the model
     model.eval()
