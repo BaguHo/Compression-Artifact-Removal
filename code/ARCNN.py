@@ -276,7 +276,7 @@ if __name__ == "__main__":
         logging.info(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
         # Save the model
         if (epoch + 1) % 10 == 0:
-            torch.save(model.state_dict(), f"ARCNN_{epoch+1}.pth")
+            torch.save(model.state_dict(), f"{type(model).__name__}_{epoch+1}.pth")
             print(f"Model saved at epoch {epoch+1}")
             logging.info(f"Model saved at epoch {epoch+1}")
 
@@ -337,13 +337,6 @@ if __name__ == "__main__":
                     f"{type(model).__name__}_output", f"output{idx}.png"
                 )
                 rgb_output = outputs[i].permute(1, 2, 0).cpu().numpy()
-                print(f"output image shape: {rgb_output.shape}")
-                cv2.imshow(
-                    "Output Image",
-                    rgb_output,
-                )
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
 
                 cv2.imwrite(
                     output_image_path,
@@ -367,7 +360,7 @@ if __name__ == "__main__":
         "PSNR": psnr_values,
         "SSIM": ssim_values,
     }
-    save_metrics(metrics, "metrics.csv")
+    save_metrics(metrics, f"{type(model).__name__}_metrics.csv")
     # Save the final model
     torch.save(
         model.state_dict(),
