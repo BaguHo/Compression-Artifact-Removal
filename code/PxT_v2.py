@@ -326,7 +326,7 @@ if __name__ == "__main__":
     test_loss = 0.0
     psnr_values = []
     ssim_values = []
-    
+
     with torch.no_grad():
         for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
             input_images = input_images.to(device)
@@ -368,11 +368,15 @@ if __name__ == "__main__":
                 output_image_path = os.path.join(
                     f"{type(model).__name__}_output", f"output{idx}.png"
                 )
-                rgb_output = outputs[i].permute(1, 2, 0).cpu().numpy()
+
+                bgr_target = np.transpose(rgb_target, (1, 2, 0))
+                bgr_output = (np.transpose(rgb_output, (1, 2, 0)) * 255).astype(
+                    np.uint8
+                )
 
                 cv2.imwrite(
                     output_image_path,
-                    rgb_output,
+                    bgr_output,
                 )
                 logging.info(
                     f"{type(model).__name__} Output image saved at {output_image_path}"
@@ -389,6 +393,3 @@ if __name__ == "__main__":
     logging.info(
         f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
     )
-
-    # Send slack notification
-    message = f"Model training completed. Elapsed time: {elapsed_time:.2f} seconds"

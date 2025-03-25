@@ -312,47 +312,47 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # # !load model
-    # model.load_state_dict(torch.load("./models/DnCNN_final.pth"))
+    model.load_state_dict(torch.load("./models/DnCNN_30.pth"))
 
-    start_time = time.time()
-    print(f"Training started at {time.ctime(start_time)}")
-    logging.info(f"Training started at {time.ctime(start_time)}")
-    print(f"Training for {epochs} epochs")
-    for epoch in range(epochs):
-        model.train()
-        running_loss = 0.0
-        for i, (input_images, target_images) in enumerate(
-            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
-        ):
-            input_images = input_images.to(device)
-            target_images = target_images.to(device)
+    # start_time = time.time()
+    # print(f"Training started at {time.ctime(start_time)}")
+    # logging.info(f"Training started at {time.ctime(start_time)}")
+    # print(f"Training for {epochs} epochs")
+    # for epoch in range(epochs):
+    #     model.train()
+    #     running_loss = 0.0
+    #     for i, (input_images, target_images) in enumerate(
+    #         tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+    #     ):
+    #         input_images = input_images.to(device)
+    #         target_images = target_images.to(device)
 
-            optimizer.zero_grad()
+    #         optimizer.zero_grad()
 
-            # Forward pass
-            outputs = model(input_images)
-            loss = criterion(outputs, target_images)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-        epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-        logging.info(
-            f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
-        )
+    #         # Forward pass
+    #         outputs = model(input_images)
+    #         loss = criterion(outputs, target_images)
+    #         loss.backward()
+    #         optimizer.step()
+    #         running_loss += loss.item()
+    #     epoch_loss = running_loss / len(train_loader)
+    #     print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+    #     logging.info(
+    #         f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+    #     )
 
-        # Save the model
-        if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
-            torch.save(model.state_dict(), f"{type(model).__name__}_{epoch+1}.pth")
-            print(f"Model saved at epoch {epoch+1}")
-            logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
+    #     # Save the model
+    #     if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
+    #         torch.save(model.state_dict(), f"{type(model).__name__}_{epoch+1}.pth")
+    #         print(f"Model saved at epoch {epoch+1}")
+    #         logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
 
-    end_time = time.time()
-    print(f"Training finished at {time.ctime(end_time)}")
-    elapsed_time = end_time - start_time
-    print(f"Elapsed time: {elapsed_time:.2f} seconds")
-    logging.info(f"Training finished at {time.ctime(end_time)}")
-    logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
+    # end_time = time.time()
+    # print(f"Training finished at {time.ctime(end_time)}")
+    # elapsed_time = end_time - start_time
+    # print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    # logging.info(f"Training finished at {time.ctime(end_time)}")
+    # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
     # Test the model
     model.eval()
@@ -403,11 +403,14 @@ if __name__ == "__main__":
                 output_image_path = os.path.join(
                     f"{type(model).__name__}_output", f"output{idx}.png"
                 )
-                rgb_output = outputs[i].permute(1, 2, 0).cpu().numpy()
+                bgr_target = np.transpose(rgb_target, (1, 2, 0))
+                bgr_output = (np.transpose(rgb_output, (1, 2, 0)) * 255).astype(
+                    np.uint8
+                )
 
                 cv2.imwrite(
                     output_image_path,
-                    rgb_output,
+                    bgr_output,
                 )
                 logging.info(
                     f"{type(model).__name__} Output image saved at {output_image_path}"
@@ -440,6 +443,3 @@ if __name__ == "__main__":
     )
     print(f"Final model saved as {type(model).__name__}_final.pth")
     logging.info(f"Final model saved as {type(model).__name__}_final.pth")
-
-    # Send slack notification
-    message = f"Model training completed. Elapsed time: {elapsed_time:.2f} seconds"
