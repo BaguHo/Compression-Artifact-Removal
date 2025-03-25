@@ -11,8 +11,10 @@ import cv2
 import tqdm
 import time
 
-if len(sys.argv) < 5:
-    print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
+if len(sys.argv) < 6:
+    print(
+        "Usage: python script.py <model_name> <epoch> <batch_size> <num_workers> <num_classes>"
+    )
     sys.exit(1)
 
 logging.basicConfig(
@@ -23,10 +25,11 @@ dataset_name = "CIFAR100"
 slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
-epochs = int(sys.argv[1])
-batch_size = int(sys.argv[2])
-num_workers = int(sys.argv[3])
-num_classes = int(sys.argv[4])
+model_name = sys.argv[1]
+epochs = int(sys.argv[2])
+batch_size = int(sys.argv[3])
+num_workers = int(sys.argv[4])
+num_classes = int(sys.argv[5])
 
 
 def sort_key(filename):
@@ -182,6 +185,8 @@ class ARCNN(nn.Module):
         return x
 
 
+
+
 class FastARCNN(nn.Module):
     def __init__(self):
         super(FastARCNN, self).__init__()
@@ -211,6 +216,40 @@ class FastARCNN(nn.Module):
         x = self.last(x)
         return x
 
+class DnCNN(nn.Module):
+    def __init__(self, num_layers=17, num_features=64):
+        super(DnCNN, self).__init__()
+        layers = [
+            nn.Sequential(
+                nn.Conv2d(3, num_features, kernel_size=3, stride=1, padding=1),
+                nn.ReLU(inplace=True),
+            )
+        ]
+        for i in range(num_layers - 2):
+            layers.append(
+                nn.Sequential(
+                    nn.Conv2d(num_features, num_features, kernel_size=3, padding=1),
+                    nn.BatchNorm2d(num_features),
+                    nn.ReLU(inplace=True),
+                )
+            )
+        layers.append(nn.Conv2d(num_features, 3, kernel_size=3, padding=1))
+        self.layers = nn.Sequential(*layers)
+
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+
+    def forward(self, inputs):
+        y = inputs
+        residual = self.layers(y)
+        return y - residual
 
 # test를 돌릴 때 psnr, ssim 를 평균으로 저장하는 함수 (.csv로 저장)
 def save_metrics(metrics, filename):
@@ -230,7 +269,12 @@ if __name__ == "__main__":
     print(f"Test dataset size: {len(test_dataset)}")
 
     # Initialize the model
-    model = ARCNN()
+    if model_name == "ARCNN":
+        model = ARCNN()
+    elif model_name == "FastARCNN":
+        model = FastARCNN()
+    elif model_name == "DnCNN":
+        model = DnCNN()
     print(model)
 
     device = torch.device(
@@ -238,6 +282,7 @@ if __name__ == "__main__":
         if torch.cuda.is_available()
         else "mps" if torch.backends.mps.is_available() else "cpu"
     )
+
     # use multiple GPUs if available
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
@@ -246,14 +291,18 @@ if __name__ == "__main__":
     model.to(device)
     print(f"Model device: {device}")
 
-    # train the model
+    # # train the model
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    # # !load model
+    # model.load_state_dict(torch.load("./models/DnCNN_final.pth"))
 
     start_time = time.time()
     print(f"Training started at {time.ctime(start_time)}")
     logging.info(f"Training started at {time.ctime(start_time)}")
     print(f"Training for {epochs} epochs")
+
     for epoch in range(epochs):
         model.train()
         running_loss = 0.0
@@ -273,12 +322,18 @@ if __name__ == "__main__":
             running_loss += loss.item()
         epoch_loss = running_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-        logging.info(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+        logging.info(
+            f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+        )
+
         # Save the model
-        if (epoch + 1) % 10 == 0:
-            torch.save(model.state_dict(), f"{type(model).__name__}_{epoch+1}.pth")
+        if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
+            torch.save(
+                model.state_dict(),
+                os.path.join("models", f"{type(model).__name__}_{epoch+1}.pth"),
+            )
             print(f"Model saved at epoch {epoch+1}")
-            logging.info(f"Model saved at epoch {epoch+1}")
+            logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
 
     end_time = time.time()
     print(f"Training finished at {time.ctime(end_time)}")
@@ -289,6 +344,7 @@ if __name__ == "__main__":
 
     # Test the model
     model.eval()
+    idx = 0
     test_loss = 0.0
     psnr_values = []
     ssim_values = []
@@ -306,7 +362,6 @@ if __name__ == "__main__":
             loss = criterion(outputs, target_images)
             test_loss += loss.item()
 
-            idx = 0
             for i in range(len(outputs)):
 
                 rgb_target = target_images[i].cpu().numpy()
@@ -326,7 +381,7 @@ if __name__ == "__main__":
 
                 psnr_values.append(psnr)
                 ssim_values.append(ssim)
-                print(f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
+                # print(f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
                 logging.info(
                     f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
                 )
@@ -351,8 +406,12 @@ if __name__ == "__main__":
     avg_test_loss = test_loss / len(test_loader)
     avg_psnr = np.mean(psnr_values)
 
-    print(f"Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB")
-    logging.info(f"Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB")
+    print(
+        f"{type(model).__name__}, Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+    )
+    logging.info(
+        f"{type(model).__name__}, Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+    )
 
     # Save metrics
     metrics = {
@@ -361,10 +420,11 @@ if __name__ == "__main__":
         "SSIM": ssim_values,
     }
     save_metrics(metrics, f"{type(model).__name__}_metrics.csv")
+
     # Save the final model
     torch.save(
         model.state_dict(),
-        os.path.join("datasets", f"{type(model).__name__}_final.pth"),
+        os.path.join("models", f"{type(model).__name__}_final.pth"),
     )
     print(f"Final model saved as {type(model).__name__}_final.pth")
     logging.info(f"Final model saved as {type(model).__name__}_final.pth")

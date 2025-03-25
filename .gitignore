@@ -6,3 +6,4 @@
 ./DnCNN_output/*
 ./ARCNN_output/*
 ./PxT_output/*
+./models/*

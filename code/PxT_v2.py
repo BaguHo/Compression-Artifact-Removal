@@ -322,11 +322,11 @@ if __name__ == "__main__":
 
     # Test the model
     model.eval()
+    idx = 0
     test_loss = 0.0
     psnr_values = []
     ssim_values = []
-    psnr_b_values = []
-
+    
     with torch.no_grad():
         for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
             input_images = input_images.to(device)
@@ -339,7 +339,6 @@ if __name__ == "__main__":
             loss = criterion(outputs, target_images)
             test_loss += loss.item()
 
-            idx = 0
             for i in range(len(outputs)):
 
                 rgb_target = target_images[i].cpu().numpy()
@@ -359,7 +358,7 @@ if __name__ == "__main__":
 
                 psnr_values.append(psnr)
                 ssim_values.append(ssim)
-                print(f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
+                # print(f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
                 logging.info(
                     f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
                 )
@@ -370,7 +369,6 @@ if __name__ == "__main__":
                     f"{type(model).__name__}_output", f"output{idx}.png"
                 )
                 rgb_output = outputs[i].permute(1, 2, 0).cpu().numpy()
-                print(f"output image shape: {rgb_output.shape}")
 
                 cv2.imwrite(
                     output_image_path,
@@ -391,21 +389,6 @@ if __name__ == "__main__":
     logging.info(
         f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
     )
-
-    # Save metrics
-    metrics = {
-        "Test Loss": [avg_test_loss],
-        "PSNR": psnr_values,
-        "SSIM": ssim_values,
-    }
-    save_metrics(metrics, f"{type(model).__name__}_metrics.csv")
-    # Save the final model
-    torch.save(
-        model.state_dict(),
-        os.path.join("datasets", f"{type(model).__name__}_final.pth"),
-    )
-    print(f"Final model saved as {type(model).__name__}_final.pth")
-    logging.info(f"Final model saved as {type(model).__name__}_final.pth")
 
     # Send slack notification
     message = f"Model training completed. Elapsed time: {elapsed_time:.2f} seconds"
