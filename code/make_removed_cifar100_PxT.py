@@ -280,24 +280,67 @@ if __name__ == "__main__":
     model.to(device)
     print(f"Model device: {device}")
 
-    # train the model
+    # # train the model
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    # Load the model
-    torch.load(
-        os.path.join("models", f"{type(model).__name__}_final.pth"),
-    )
+    # # !load model
+    model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth"))
+
+    start_time = time.time()
+    print(f"Training started at {time.ctime(start_time)}")
+    logging.info(f"Training started at {time.ctime(start_time)}")
+    print(f"Training for {epochs} epochs")
+    for epoch in range(epochs):
+        model.train()
+        running_loss = 0.0
+        for i, (input_images, target_images) in enumerate(
+            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+        ):
+            input_images = input_images.to(device)
+            target_images = target_images.to(device)
+
+            optimizer.zero_grad()
+
+            # Forward pass
+            outputs = model(input_images)
+            loss = criterion(outputs, target_images)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        epoch_loss = running_loss / len(train_loader)
+        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+        logging.info(
+            f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+        )
+
+        # Save the model
+        if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
+            torch.save(model.state_dict(), f"{type(model).__name__}_{epoch+1}.pth")
+            print(f"Model saved at epoch {epoch+1}")
+            logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
+
+    end_time = time.time()
+    print(f"Training finished at {time.ctime(end_time)}")
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    logging.info(f"Training finished at {time.ctime(end_time)}")
+    logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
     # Test the model
     model.eval()
-    idx = 0
+    image_name_idx = 0
     test_loss = 0.0
     psnr_values = []
     ssim_values = []
     psnr_b_values = []
 
     with torch.no_grad():
+        combined_target_images = []
+        combined_output_images = []
+        rgb_target_patches = []
+        rgb_output_patches = []
+
         for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
             input_images = input_images.to(device)
             target_images = target_images.to(device)
@@ -310,54 +353,78 @@ if __name__ == "__main__":
             test_loss += loss.item()
 
             for i in range(len(outputs)):
-
                 rgb_target = target_images[i].cpu().numpy()
                 rgb_output = outputs[i].cpu().numpy()
+                np.clip(rgb_target, 0, 1, out=rgb_target)
+                np.clip(rgb_output, 0, 1, out=rgb_output)
+                rgb_target = np.transpose(rgb_target, (1, 2, 0)) * 255
+                rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                rgb_target_patches.append(rgb_target)
+                rgb_output_patches.append(rgb_output)
+                patch_idx += 1
 
-                # Calculate PSNR
-                psnr = peak_signal_noise_ratio(rgb_target, rgb_output, data_range=1.0)
+                # 8x8 이미지들을 32x32로 합치기
+                if patch_idx % 16 == 0 and patch_idx > 0:
+                    patch_idx = 0
+                    combined_target_image = np.zeros((32, 32, 3), dtype=np.uint8)
+                    combined_output_image = np.zeros((32, 32, 3), dtype=np.uint8)
 
-                # Calculate SSIM
-                ssim = structural_similarity(
-                    rgb_target,
-                    rgb_output,
-                    multichannel=True,
-                    data_range=1.0,
-                    channel_axis=0,
-                )
+                    for j in range(4):
+                        for k in range(4):
+                            idx = j * 4 + k
+                            combined_target_image[
+                                j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
+                            ] = rgb_target_patches[idx]
+                    rgb_target_patches.clear()
 
-                psnr_values.append(psnr)
-                ssim_values.append(ssim)
-                # print(f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
-                logging.info(
-                    f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
-                )
+                    for j in range(4):
+                        for k in range(4):
+                            idx = j * 4 + k
+                            combined_output_image[
+                                j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
+                            ] = rgb_output_patches[idx]
 
-                # save the output images
-                os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
-                output_image_path = os.path.join(
-                    f"{type(model).__name__}_output", f"output{idx}.png"
-                )
-                rgb_output = outputs[i].permute(1, 2, 0).cpu().numpy()
+                    rgb_output_patches.clear()
+                    combined_target_images.append(combined_target_image)
+                    combined_output_images.append(combined_output_image)
 
-                cv2.imwrite(
-                    output_image_path,
-                    rgb_output,
-                )
-                logging.info(
-                    f"{type(model).__name__} Output image saved at {output_image_path}"
-                )
-                idx += 1
+                    # Calculate PSNR and SSIM
+                    psnr = peak_signal_noise_ratio(
+                        rgb_target, rgb_output, data_range=255
+                    )
+                    ssim = structural_similarity(
+                        rgb_target,
+                        rgb_output,
+                        multichannel=True,
+                        data_range=255,
+                        channel_axis=0,
+                    )
+                    psnr_values.append(psnr)
+                    ssim_values.append(ssim)
+                    logging.info(
+                        f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
+                    )
+
+                    # 저장
+                    combined_image_path = os.path.join(
+                        f"{type(model).__name__}_output",
+                        f"combined_output{image_name_idx}.png",
+                    )
+                    cv2.imwrite(combined_image_path, combined_output_image)
+                    logging.info(
+                        f"{type(model).__name__} Combined image saved at {combined_image_path}"
+                    )
+                    image_name_idx += 1
 
     # Calculate average metrics
     avg_test_loss = test_loss / len(test_loader)
     avg_psnr = np.mean(psnr_values)
 
     print(
-        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+        f"{type(model).__name__}, Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
     )
     logging.info(
-        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+        f"{type(model).__name__}, Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
     )
 
     # Save metrics
@@ -367,10 +434,11 @@ if __name__ == "__main__":
         "SSIM": ssim_values,
     }
     save_metrics(metrics, f"{type(model).__name__}_metrics.csv")
+
     # Save the final model
     torch.save(
         model.state_dict(),
-        os.path.join("datasets", f"{type(model).__name__}_final.pth"),
+        os.path.join("models", f"{type(model).__name__}_final.pth"),
     )
     print(f"Final model saved as {type(model).__name__}_final.pth")
     logging.info(f"Final model saved as {type(model).__name__}_final.pth")
