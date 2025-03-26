@@ -385,13 +385,15 @@ if __name__ == "__main__":
                     combined_target_images.append(combined_target_image)
                     combined_output_images.append(combined_output_image)
 
+                    print(f"combind target image shape: {combined_target_image.shape}")
+                    print(f"combind output image shape: {combined_output_image.shape}")
                     # Calculate PSNR and SSIM
                     psnr = peak_signal_noise_ratio(
-                        rgb_target, rgb_output, data_range=255
+                        combined_target_image, combined_output_image, data_range=255
                     )
                     ssim = structural_similarity(
-                        rgb_target,
-                        rgb_output,
+                        combined_target_image,
+                        combined_output_image,
                         multichannel=True,
                         data_range=255,
                         channel_axis=0,
