@@ -11,10 +11,8 @@ import cv2
 import tqdm
 import time
 
-if len(sys.argv) < 6:
-    print(
-        "Usage: python script.py <model_path> <epoch> <batch_size> <num_workers> <num_classes>"
-    )
+if len(sys.argv) < 5:
+    print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
     sys.exit(1)
 
 logging.basicConfig(
@@ -26,11 +24,10 @@ slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
 
-model_path = sys.argv[1]
-epochs = int(sys.argv[2])
-batch_size = int(sys.argv[3])
-num_workers = int(sys.argv[4])
-num_classes = int(sys.argv[5])
+epochs = int(sys.argv[1])
+batch_size = int(sys.argv[2])
+num_workers = int(sys.argv[3])
+num_classes = int(sys.argv[4])
 
 
 def sort_key(filename):
@@ -287,45 +284,44 @@ if __name__ == "__main__":
     # # !load model
     model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth"))
 
-    start_time = time.time()
-    print(f"Training started at {time.ctime(start_time)}")
-    logging.info(f"Training started at {time.ctime(start_time)}")
-    print(f"Training for {epochs} epochs")
-    for epoch in range(epochs):
-        model.train()
-        running_loss = 0.0
-        for i, (input_images, target_images) in enumerate(
-            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
-        ):
-            input_images = input_images.to(device)
-            target_images = target_images.to(device)
+    # start_time = time.time()
+    # print(f"Training started at {time.ctime(start_time)}")
+    # logging.info(f"Training started at {time.ctime(start_time)}")
+    # print(f"Training for {epochs} epochs")
+    # for epoch in range(epochs):
+    #     model.train()
+    #     running_loss = 0.0
+    #     for i, (input_images, target_images) in enumerate(
+    #         tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+    #     ):
+    #         input_images = input_images.to(device)
+    #         target_images = target_images.to(device)
 
-            optimizer.zero_grad()
+    #         optimizer.zero_grad()
 
-            # Forward pass
-            outputs = model(input_images)
-            loss = criterion(outputs, target_images)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-        epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-        logging.info(
-            f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
-        )
+    #         # Forward pass
+    #         outputs = model(input_images)
+    #         loss = criterion(outputs, target_images)
+    #         loss.backward()
+    #         optimizer.step()
+    #         running_loss += loss.item()
+    #     epoch_loss = running_loss / len(train_loader)
+    #     print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+    #     logging.info(
+    #         f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+    #     )
+    #     # Save the model
+    #     if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
+    #         torch.save(model.state_dict(), f"{type(model).__name__}_{epoch+1}.pth")
+    #         print(f"Model saved at epoch {epoch+1}")
+    #         logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
 
-        # Save the model
-        if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
-            torch.save(model.state_dict(), f"{type(model).__name__}_{epoch+1}.pth")
-            print(f"Model saved at epoch {epoch+1}")
-            logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
-
-    end_time = time.time()
-    print(f"Training finished at {time.ctime(end_time)}")
-    elapsed_time = end_time - start_time
-    print(f"Elapsed time: {elapsed_time:.2f} seconds")
-    logging.info(f"Training finished at {time.ctime(end_time)}")
-    logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
+    # end_time = time.time()
+    # print(f"Training finished at {time.ctime(end_time)}")
+    # elapsed_time = end_time - start_time
+    # print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    # logging.info(f"Training finished at {time.ctime(end_time)}")
+    # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
     # Test the model
     model.eval()
