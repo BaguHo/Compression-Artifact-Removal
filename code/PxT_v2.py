@@ -309,7 +309,10 @@ if __name__ == "__main__":
         )
         # Save the model
         if (epoch + 1) % 10 == 0:
-            torch.save(model.state_dict(), f"{type(model).__name__}_{epoch+1}.pth")
+            torch.save(
+                model.state_dict(),
+                os.path.join("models", f"{type(model).__name__}_{epoch+1}.pth"),
+            )
             print(f"{type(model).__name__} Model saved at epoch {epoch+1}")
             logging.info(f"{type(model).__name__} Model saved at epoch {epoch+1}")
 
