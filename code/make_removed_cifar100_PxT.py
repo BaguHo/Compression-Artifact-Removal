@@ -336,6 +336,7 @@ if __name__ == "__main__":
         combined_output_images = []
         rgb_target_patches = []
         rgb_output_patches = []
+        patch_idx = 0
 
         for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
             input_images = input_images.to(device)
