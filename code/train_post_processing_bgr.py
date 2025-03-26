@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
 import numpy as np
 from torch import nn
+from torch.nn import functional as F
 import torch
 import os, sys, re
 import logging
@@ -278,17 +279,17 @@ class BottleNeck(nn.Module):
 
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
-        out = self.relu(out)
+        out = F.relu(out)
 
         out = self.conv3(out)
         out = self.bn3(out)
 
         out += residual
-        out = self.relu(out)
+        out = F.relu(out)
 
         return out
 
@@ -297,25 +298,28 @@ class BlockCNN(nn.Module):
     def __init__(self):
         super(BlockCNN, self).__init__()
         k = 64
-
-        self.conv_1 = nn.Conv2d(3, k, (3, 5), (1, 1), bias=False)
+        self.conv_1 = nn.Conv2d(3, k, (3, 5), (1, 1), padding=(1, 2), bias=False)
         self.bn1 = nn.BatchNorm2d(k)
 
         self.layer_1 = BottleNeck(k, k)
         self.layer_2 = BottleNeck(k, k)
 
-        self.conv_2 = nn.Conv2d(k, k * 2, (3, 5), (1, 1), bias=False)
+        self.conv_2 = nn.Conv2d(k, k * 2, (3, 5), (1, 1), padding=(1, 2), bias=False)
         self.bn2 = nn.BatchNorm2d(k * 2)
 
         self.layer_3 = BottleNeck(k * 2, k * 2)
 
-        self.conv_3 = nn.Conv2d(k * 2, k * 4, (1, 5), (1, 1), bias=False)
+        self.conv_3 = nn.Conv2d(
+            k * 2, k * 4, (1, 5), (1, 1), padding=(0, 2), bias=False
+        )
         self.bn3 = nn.BatchNorm2d(k * 4)
 
         self.layer_4 = BottleNeck(k * 4, k * 4)
         self.layer_5 = BottleNeck(k * 4, k * 4)
 
-        self.conv_4 = nn.Conv2d(k * 4, k * 8, (1, 1), (1, 1), bias=False)
+        self.conv_4 = nn.Conv2d(
+            k * 4, k * 8, (1, 1), (1, 1), padding=(0, 0), bias=False
+        )
         self.bn4 = nn.BatchNorm2d(k * 8)
 
         self.layer_6 = BottleNeck(k * 8, k * 8)
@@ -341,27 +345,30 @@ class BlockCNN(nn.Module):
         self.relu = nn.LeakyReLU(0.1)
 
     def forward(self, x):
-        x = self.relu(self.bn1(self.conv_1(x)))
-        x = self.layer_1(x)
-        x = self.layer_2(x)
-        x = self.relu(self.bn2(self.conv_2(x)))
-        x = self.layer_3(x)
-        x = self.relu(self.bn3(self.conv_3(x)))
-        x = self.layer_4(x)
-        x = self.layer_5(x)
-        x = self.relu(self.bn4(self.conv_4(x)))
-        x = self.layer_6(x)
-        x = self.relu(self.bn5(self.conv_5(x)))
-        x = self.layer_7(x)
-        x = self.relu(self.bn6(self.conv_6(x)))
-        x = self.layer_8(x)
-        x = self.relu(self.bn7(self.conv_7(x)))
-        x = self.layer_9(x)
-        x = self.conv_8(x)
-        x = self.sig(x)
-        x = x * 255.0
+        x = x.squeeze(1)
+        out = F.relu(self.bn1(self.conv_1(x)))
+        out = self.layer_1(out)
+        out = self.layer_2(out)
+        out = F.relu(self.bn2(self.conv_2(out)))
+        out = self.layer_3(out)
+        out = F.relu(self.bn3(self.conv_3(out)))
+        out = self.layer_4(out)
+        out = self.layer_5(out)
+        out = F.relu(self.bn4(self.conv_4(out)))
+        out = self.layer_6(out)
+        out = F.relu(self.bn5(self.conv_5(out)))
+        out = self.layer_7(out)
+        out = F.relu(self.bn6(self.conv_6(out)))
+        out = self.layer_8(out)
+        out = F.relu(self.bn7(self.conv_7(out)))
+        out = self.layer_9(out)
+        out = self.conv_8(out)
+        out = self.sig(out)
+        out = out * 255
 
-        return x
+        # out = torch.sigmoid(self.conv_8(out))
+
+        return out
 
 
 # test를 돌릴 때 psnr, ssim 를 평균으로 저장하는 함수 (.csv로 저장)
@@ -411,7 +418,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # # !load model
-    model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth"))
+    # model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth"))
 
     start_time = time.time()
     print(f"Training started at {time.ctime(start_time)}")
@@ -434,6 +441,7 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+
         epoch_loss = running_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
         logging.info(
@@ -442,7 +450,10 @@ if __name__ == "__main__":
 
         # Save the model
         if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
-            torch.save(model.state_dict(), f"{type(model).__name__}_{epoch+1}.pth")
+            torch.save(
+                model.state_dict(),
+                os.path.join("models", f"{type(model).__name__}_{epoch+1}.pth"),
+            )
             print(f"Model saved at epoch {epoch+1}")
             logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
 
@@ -451,7 +462,7 @@ if __name__ == "__main__":
     elapsed_time = end_time - start_time
     print(f"Elapsed time: {elapsed_time:.2f} seconds")
     logging.info(f"Training finished at {time.ctime(end_time)}")
-    logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
+    # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
     # Test the model
     model.eval()
@@ -504,7 +515,6 @@ if __name__ == "__main__":
                 np.clip(rgb_output, 0, 1, out=rgb_output)
                 rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
                 cv2.imwrite(output_image_path, rgb_output)
-
                 logging.info(
                     f"{type(model).__name__} Output image saved at {output_image_path}"
                 )
@@ -527,7 +537,10 @@ if __name__ == "__main__":
         "PSNR": psnr_values,
         "SSIM": ssim_values,
     }
-    save_metrics(metrics, f"{type(model).__name__}_metrics.csv")
+    os.makedirs("metrics", exist_ok=True)
+    save_metrics(
+        metrics, os.path.join("metrics", f"{type(model).__name__}_metrics.csv")
+    )
 
     # Save the final model
     torch.save(
