@@ -387,13 +387,16 @@ if __name__ == "__main__":
 
                     print(f"combind target image shape: {combined_target_image.shape}")
                     print(f"combind output image shape: {combined_output_image.shape}")
+
                     # Calculate PSNR and SSIM
                     psnr = peak_signal_noise_ratio(
-                        combined_target_image, combined_output_image, data_range=255
+                        combined_target_image.transpose(2, 0, 1),
+                        combined_output_image.transpose(2, 0, 1),
+                        data_range=255,
                     )
                     ssim = structural_similarity(
-                        combined_target_image,
-                        combined_output_image,
+                        combined_target_image.transpose(2, 0, 1),
+                        combined_output_image.transpose(2, 0, 1),
                         multichannel=True,
                         data_range=255,
                         channel_axis=0,
