@@ -475,5 +475,5 @@ if __name__ == "__main__":
                             f"{type(model).__name__}_cifar100/test/image_{image_idx}.png",
                             rgb_output,
                         )
-                        if image_idx % 500 == 0 and image_idx > 0:
+                        if image_idx % 100 == 0 and image_idx > 0:
                             image_idx = 0
