@@ -10,21 +10,27 @@ import pandas as pd
 import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.metrics import precision_score
-import os
+import os, sys, re
 import timm
-import re
 from knockknock import slack_sender
 
-slack_webhook_url = ("https://hooks.slack.com/services/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")
+slack_webhook_url = (
+    "https://hooks.slack.com/services/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"
+)
 
 learning_rate = 0.001
-epochs = 40
+epochs = 60
 batch_size = 512
 dataset_name = "combined_ycbcr_32x32"
 model_list = ["efficientnet_b3", "mobilenetv2_100", "vgg19"]
-num_workers = 12
 image_type = "RGB"
-num_classes = 20
+
+
+dataset_path = sys.argv[1]
+epoches = int(sys.argv[2])
+batch_size = int(sys.argv[3])
+num_workers = int(sys.argv[4])
+num_classes = int(sys.argv[5])
 
 QFs = [80, 60, 40, 20]
 
@@ -173,6 +179,7 @@ def sort_key(filename):
     crop_number = int(crop_match.group(1)) if crop_match else float("inf")
 
     return (image_number, crop_number)
+
 
 # train and test the models for each QF
 @slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
@@ -343,9 +350,7 @@ if __name__ == "__main__":
         if torch.cuda.is_available()
         else ("mps" if torch.backends.mps.is_available() else "cpu")
     )
-    
-    print(device)
-    
 
+    print(device)
 
     training_testing()

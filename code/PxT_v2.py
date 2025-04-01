@@ -325,12 +325,20 @@ if __name__ == "__main__":
 
     # Test the model
     model.eval()
-    idx = 0
+    image_name_idx = 0
+    combined_image_idx = 0
+    combined_output_images = []
     test_loss = 0.0
     psnr_values = []
     ssim_values = []
 
     with torch.no_grad():
+        combined_target_images = []
+        combined_output_images = []
+        rgb_target_patches = []
+        rgb_output_patches = []
+        patch_idx = 0
+
         for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
             input_images = input_images.to(device)
             target_images = target_images.to(device)
@@ -343,48 +351,71 @@ if __name__ == "__main__":
             test_loss += loss.item()
 
             for i in range(len(outputs)):
-
                 rgb_target = target_images[i].cpu().numpy()
                 rgb_output = outputs[i].cpu().numpy()
+                np.clip(rgb_target, 0, 1, out=rgb_target)
+                np.clip(rgb_output, 0, 1, out=rgb_output)
+                rgb_target = np.transpose(rgb_target, (1, 2, 0)) * 255
+                rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                rgb_target_patches.append(rgb_target)
+                rgb_output_patches.append(rgb_output)
+                patch_idx += 1
 
-                # Calculate PSNR
-                psnr = peak_signal_noise_ratio(rgb_target, rgb_output, data_range=1.0)
+                # 8x8 이미지들을 32x32로 합치기
+                if patch_idx % 16 == 0 and patch_idx > 0:
+                    patch_idx = 0
+                    combined_target_image = np.zeros((32, 32, 3), dtype=np.uint8)
+                    combined_output_image = np.zeros((32, 32, 3), dtype=np.uint8)
 
-                # Calculate SSIM
-                ssim = structural_similarity(
-                    rgb_target,
-                    rgb_output,
-                    multichannel=True,
-                    data_range=1.0,
-                    channel_axis=0,
-                )
+                    for j in range(4):
+                        for k in range(4):
+                            idx = j * 4 + k
+                            combined_target_image[
+                                j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
+                            ] = rgb_target_patches[idx]
+                    rgb_target_patches.clear()
 
-                psnr_values.append(psnr)
-                ssim_values.append(ssim)
-                # print(f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}")
-                logging.info(
-                    f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
-                )
+                    for j in range(4):
+                        for k in range(4):
+                            idx = j * 4 + k
+                            combined_output_image[
+                                j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
+                            ] = rgb_output_patches[idx]
 
-                # save the output images
-                os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
-                output_image_path = os.path.join(
-                    f"{type(model).__name__}_output", f"output{idx}.png"
-                )
+                    rgb_output_patches.clear()
+                    combined_target_images.append(combined_target_image)
+                    combined_output_images.append(combined_output_image)
 
-                bgr_target = np.transpose(rgb_target, (1, 2, 0))
-                bgr_output = (np.transpose(rgb_output, (1, 2, 0)) * 255).astype(
-                    np.uint8
-                )
+                    # Calculate PSNR and SSIM
+                    psnr = peak_signal_noise_ratio(
+                        combined_target_image.transpose(2, 0, 1),
+                        combined_output_image.transpose(2, 0, 1),
+                        data_range=255,
+                    )
+                    ssim = structural_similarity(
+                        combined_target_image.transpose(2, 0, 1),
+                        combined_output_image.transpose(2, 0, 1),
+                        multichannel=True,
+                        data_range=255,
+                        channel_axis=0,
+                    )
+                    psnr_values.append(psnr)
+                    ssim_values.append(ssim)
+                    logging.info(
+                        f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
+                    )
 
-                cv2.imwrite(
-                    output_image_path,
-                    bgr_output,
-                )
-                logging.info(
-                    f"{type(model).__name__} Output image saved at {output_image_path}"
-                )
-                idx += 1
+                    # 합쳐진 이미지 저장
+                    os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
+                    combined_image_path = os.path.join(
+                        f"{type(model).__name__}_output",
+                        f"combined_output{image_name_idx}.png",
+                    )
+                    cv2.imwrite(combined_image_path, combined_output_image)
+                    logging.info(
+                        f"{type(model).__name__} Combined image saved at {combined_image_path}"
+                    )
+                    image_name_idx += 1
 
     # Calculate average metrics
     avg_test_loss = test_loss / len(test_loader)
