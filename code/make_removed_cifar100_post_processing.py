@@ -11,8 +11,8 @@ import cv2
 import tqdm
 import time
 
-if len(sys.argv) < 6:
-    print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
+if len(sys.argv) < 4:
+    print("Usage: python script.py <batch_size> <num_workers> <num_classes>")
     sys.exit(1)
 
 logging.basicConfig(
@@ -29,9 +29,9 @@ model_names = [
     "DnCNN",
     "BlockCNN",
 ]
-batch_size = int(sys.argv[2])
-num_workers = int(sys.argv[3])
-num_classes = int(sys.argv[4])
+batch_size = int(sys.argv[1])
+num_workers = int(sys.argv[2])
+num_classes = int(sys.argv[3])
 
 
 def sort_key(filename):
@@ -73,7 +73,7 @@ class CIFAR100Dataset(Dataset):
 def load_images():
     QFs = [80, 60, 40, 20]
     dataset_name = "CIFAR100"
-    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original")
+    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original_size")
 
     train_input_dataset = []
     test_input_dataset = []
