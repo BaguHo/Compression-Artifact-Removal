@@ -143,7 +143,7 @@ def load_images(QF):
     train_dataset = CIFAR100Dataset(train_input_dataset, train_target_dataset)
     test_dataset = CIFAR100Dataset(test_input_dataset, test_target_dataset)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_dataset, test_dataset, train_loader, test_loader
@@ -352,7 +352,8 @@ if __name__ == "__main__":
                             exist_ok=True,
                         )
                         combined_image_path = os.path.join(
-                            "datasets" f"{type(model).__name__}_cifar100",
+                            "datasets",
+                            f"{type(model).__name__}_cifar100",
                             f"JPEG{QF}",
                             "train",
                             f"{class_idx}",
