@@ -3,7 +3,8 @@ from torchmetrics.image import PeakSignalNoiseRatioWithBlockedEffect
 from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
 import numpy as np
-from torch import nn, functional as F
+from torch import nn
+from torch.nn import functional as F
 import torch
 import os, sys, re
 import logging
@@ -106,7 +107,7 @@ def load_images():
             for train_file, target_file in zip(
                 sorted_train_files, sorted_target_train_files
             ):
-                if train_file == target_file:
+                if train_file.replace("jpeg", "png") == target_file:
                     # input 이미지 로드
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = cv2.imread(train_image_path)
@@ -136,7 +137,7 @@ def load_images():
             for test_file, target_file in zip(
                 sorted_test_files, sorted_target_test_files
             ):
-                if test_file == target_file:
+                if test_file.replace("jpeg", "png") == target_file:
                     # input 이미지 로드
                     test_image_path = os.path.join(test_path, test_file)
                     test_image = cv2.imread(test_image_path)
@@ -399,6 +400,7 @@ if __name__ == "__main__":
             if torch.cuda.is_available()
             else "mps" if torch.backends.mps.is_available() else "cpu"
         )
+        # device = torch.device("cpu")
 
         # use multiple GPUs if available
         if torch.cuda.device_count() > 1:
@@ -426,6 +428,7 @@ if __name__ == "__main__":
             rgb_train_images = []
             rgb_test_images = []
             image_idx = 0
+            class_idx = 0
 
             for input_images, target_images in tqdm.tqdm(
                 train_loader, desc="Making Train Images"
@@ -446,34 +449,42 @@ if __name__ == "__main__":
                     rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
                     rgb_train_images.append(rgb_output)
                     image_idx += 1
-                    os.makedirs(f"{type(model).__name__}_cifar100/train", exist_ok=True)
+                    os.makedirs(
+                        f"datasets/{type(model).__name__}_cifar100/train/{class_idx}",
+                        exist_ok=True,
+                    )
                     cv2.imwrite(
-                        f"{type(model).__name__}_cifar100/train/image_{image_idx}.png",
+                        f"datasets/{type(model).__name__}_cifar100/train/{class_idx}/image_{image_idx}.png",
                         rgb_output,
                     )
                     if image_idx % 500 == 0 and image_idx > 0:
                         image_idx = 0
+                        class_idx += 1
 
-                for input_images, target_images in tqdm.tqdm(
-                    test_loader, desc="Making Train Images"
-                ):
-                    input_images = input_images.to(device)
+            image_idx = 0
+            class_idx = 0
+            for input_images, target_images in tqdm.tqdm(
+                test_loader, desc="Making Train Images"
+            ):
+                input_images = input_images.to(device)
 
-                    # Forward pass
-                    outputs = model(input_images)
+                # Forward pass
+                outputs = model(input_images)
 
-                    for i in range(len(outputs)):
-                        rgb_output = outputs[i].cpu().numpy()
-                        np.clip(rgb_output, 0, 1, out=rgb_output)
-                        rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
-                        rgb_test_images.append(rgb_output)
-                        image_idx += 1
-                        os.makedirs(
-                            f"{type(model).__name__}_cifar100/test", exist_ok=True
-                        )
-                        cv2.imwrite(
-                            f"{type(model).__name__}_cifar100/test/image_{image_idx}.png",
-                            rgb_output,
-                        )
-                        if image_idx % 100 == 0 and image_idx > 0:
-                            image_idx = 0
+                for i in range(len(outputs)):
+                    rgb_output = outputs[i].cpu().numpy()
+                    np.clip(rgb_output, 0, 1, out=rgb_output)
+                    rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                    rgb_test_images.append(rgb_output)
+                    image_idx += 1
+                    os.makedirs(
+                        f"datasets/{type(model).__name__}_cifar100/test/{class_idx}",
+                        exist_ok=True,
+                    )
+                    cv2.imwrite(
+                        f"datasets/{type(model).__name__}_cifar100/test/{class_idx}/image_{image_idx}.png",
+                        rgb_output,
+                    )
+                    if image_idx % 100 == 0 and image_idx > 0:
+                        image_idx = 0
+                        class_idx += 1
