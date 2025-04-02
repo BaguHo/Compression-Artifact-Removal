@@ -409,7 +409,7 @@ if __name__ == "__main__":
             optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
             # # !load model
-            model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth"))
+            model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth", map_location=device))
 
             # Test the model
             model.eval()
