@@ -91,7 +91,7 @@ def load_images(QF):
 
     # 학습 데이터 로드
     for i in tqdm.tqdm(
-        range(num_classes), desc=f"Loa,ding train data (QF {QF})", total=num_classes
+        range(num_classes), desc=f"Loading train data (QF {QF})", total=num_classes
     ):
         train_path = os.path.join(train_input_dir, str(i))
         target_train_path = os.path.join(target_train_dataset_dir, str(i))
@@ -409,7 +409,11 @@ if __name__ == "__main__":
             optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
             # # !load model
-            model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth", map_location=device))
+            model.load_state_dict(
+                torch.load(
+                    f"./models/{type(model).__name__}_30.pth", map_location=device
+                )
+            )
 
             # Test the model
             model.eval()
@@ -458,7 +462,7 @@ if __name__ == "__main__":
                 image_idx = 0
                 class_idx = 0
                 for input_images, target_images in tqdm.tqdm(
-                    test_loader, desc="Making Train Images"
+                    test_loader, desc="Making Test Images"
                 ):
                     input_images = input_images.to(device)
 
