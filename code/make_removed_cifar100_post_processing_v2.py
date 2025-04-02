@@ -389,12 +389,7 @@ if __name__ == "__main__":
                 model = BlockCNN()
             print(model)
 
-            device = torch.device(
-                "cuda"
-                if torch.cuda.is_available()
-                else "mps" if torch.backends.mps.is_available() else "cpu"
-            )
-            # device = torch.device("cpu")
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
             # use multiple GPUs if available
             if torch.cuda.device_count() > 1:
@@ -452,7 +447,7 @@ if __name__ == "__main__":
                             exist_ok=True,
                         )
                         cv2.imwrite(
-                            f"datasets/{type(model).__name__}_cifar100/train/JPEG{QF}/{class_idx}/image_{image_idx}.png",
+                            f"datasets/{type(model).__name__}_cifar100/JPEG{QF}/train/{class_idx}/image_{image_idx}.png",
                             rgb_output,
                         )
                         if image_idx % 500 == 0 and image_idx > 0:
