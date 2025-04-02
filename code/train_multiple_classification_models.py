@@ -13,26 +13,31 @@ from sklearn.metrics import precision_score
 import os, sys, re
 import timm
 from knockknock import slack_sender
+import logging
 
 slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
 
+if len(sys.argv) < 5:
+    print("Usage: python script.py <epochs> <batch_size> <num_workers> <num_classes>")
+    sys.exit(1)
+
+logging.basicConfig(
+    filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
+)
+
 learning_rate = 0.001
-epochs = 60
-batch_size = 512
-dataset_name = "combined_ycbcr_32x32"
+dataset_name = ["ARCNN_cifar100", "BlockCNN_cifar100", "DnCNN_cifar100"]
 model_list = ["efficientnet_b3", "mobilenetv2_100", "vgg19"]
+QFs = [80, 60, 40, 20]
 image_type = "RGB"
 
 
-dataset_path = sys.argv[1]
-epoches = int(sys.argv[2])
-batch_size = int(sys.argv[3])
-num_workers = int(sys.argv[4])
-num_classes = int(sys.argv[5])
-
-QFs = [80, 60, 40, 20]
+epochs = int(sys.argv[1])
+batch_size = int(sys.argv[2])
+num_workers = int(sys.argv[3])
+num_classes = int(sys.argv[4])
 
 
 # 디렉토리 생성
@@ -43,7 +48,7 @@ def makedir(path):
 
 # save model
 def save_model(model, filename):
-    path = os.path.join(os.getcwd(), "classification_models")
+    path = os.path.join(os.getcwd(), "models")
     os.makedirs(path, exist_ok=True)
     model_path = os.path.join(path, filename)
     torch.save(model, model_path)
@@ -58,7 +63,7 @@ def train(current_model_name, model, train_loader, criterion, optimizer):
     for epoch in range(epochs):
         running_loss = 0.0
         for images, labels in tqdm(
-            train_loader, desc=f"Epoch {epoch+1}/{epochs}", leave=False
+            train_loader, desc=f"{current_model_name} Epoch {epoch+1}/{epochs}"
         ):
             images, labels = images.to(device), labels.to(device)
 
@@ -157,9 +162,6 @@ def load_jpeg_datasets(QF, transform):
 
     train_dataset = datasets.ImageFolder(jpeg_train_dir, transform=transform)
     test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
-
-    # print(f'train_dataset shape: {train_dataset}')
-    # print(f'test_dataset shape: {test_dataset}')
 
     train_dataloader = DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
