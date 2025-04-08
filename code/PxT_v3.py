@@ -187,10 +187,10 @@ class PxT_v3(nn.Module):
         img_size=32,
         patch_size=1,
         in_channels=3,
-        embed_dim=64,
-        num_heads=16,
+        embed_dim=32,
+        num_heads=8,
         num_layers=8,
-        mlp_dim=128,
+        mlp_dim=64,
     ):
         super(PxT_v3, self).__init__()
         self.img_size = img_size
