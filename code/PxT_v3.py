@@ -101,8 +101,9 @@ def load_images():
             for train_file, target_file in zip(
                 sorted_train_files, sorted_target_train_files
             ):
-                if train_file == target_file:
+                if train_file.replace("jpeg", "png") == target_file:
                     # input 이미지 로드
+                    train_file.replace("png", "jpeg")
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = cv2.imread(train_image_path)
                     train_input_dataset.append(train_image)
@@ -131,8 +132,9 @@ def load_images():
             for test_file, target_file in zip(
                 sorted_test_files, sorted_target_test_files
             ):
-                if test_file == target_file:
+                if test_file.replace("jpeg", "png") == target_file:
                     # input 이미지 로드
+                    test_file.replace("png", "jpeg")
                     test_image_path = os.path.join(test_path, test_file)
                     test_image = cv2.imread(test_image_path)
                     test_input_dataset.append(test_image)
