@@ -47,12 +47,12 @@ def makedir(path):
 
 
 # save model
-def save_model(model, filename):
-    path = os.path.join(os.getcwd(), "models")
-    os.makedirs(path, exist_ok=True)
-    model_path = os.path.join(path, filename)
-    torch.save(model, model_path)
-    print(f"Model saved to {model_path}")
+# def save_model(model, filename):
+#     path = os.path.join(os.getcwd(), "models")
+#     os.makedirs(path, exist_ok=True)
+#     model_path = os.path.join(path, filename)
+#     # torch.save(model, model_path)
+#     print(f"Model saved to {model_path}")
 
 
 # model training
@@ -78,10 +78,10 @@ def train(current_model_name, model, train_loader, criterion, optimizer):
             running_loss += loss.item()
 
         # save the original model on 'classification_models' directory as state_dict
-        save_model(
-            model.state_dict(),
-            f"{current_model_name}_epoch_{epochs}.pth",
-        )
+        # save_model(
+        #     model.state_dict(),
+        #     f"{current_model_name}_epoch_{epochs}.pth",
+        # )
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}")
 
 
