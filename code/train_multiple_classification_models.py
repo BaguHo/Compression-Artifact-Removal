@@ -181,8 +181,8 @@ if __name__ == "__main__":
 
                 all_targets.extend(labels.cpu().numpy())
                 all_predictions.extend(predicted.cpu().numpy())
-            accuracy = 100 * correct / total
-            precision = precision_score(all_targets, all_predictions, average="macro")
+        accuracy = 100 * correct / total
+        precision = precision_score(all_targets, all_predictions, average="macro")
         os.makedirs("metrics", exist_ok=True)
         results_df = pd.DataFrame(
             {
@@ -233,10 +233,10 @@ if __name__ == "__main__":
 
                         all_targets.extend(labels.cpu().numpy())
                         all_predictions.extend(predicted.cpu().numpy())
-                    accuracy = 100 * correct / total
-                    precision = precision_score(
-                        all_targets, all_predictions, average="macro"
-                    )
+                accuracy = 100 * correct / total
+                precision = precision_score(
+                    all_targets, all_predictions, average="macro"
+                )
 
                 # model, dataset_name, QF, accuracy, precision르ㄹ metrics/classification_results.csv에 저장
                 os.makedirs("metrics", exist_ok=True)
