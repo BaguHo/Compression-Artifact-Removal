@@ -24,7 +24,7 @@ logging.basicConfig(
 
 learning_rate = 0.001
 dataset_names = ["ARCNN_cifar100", "BlockCNN_cifar100", "DnCNN_cifar100"]
-model_list = ["resnet18_cifar100", "resnet50_cifar100", "mobilenetv2_100"]
+model_list = ["resnet18", "efficientnetv2_l", "mobilenetv2_100"]
 QFs = [80, 60, 40, 20]
 
 epochs = int(sys.argv[1])
@@ -108,14 +108,13 @@ if __name__ == "__main__":
 
         # cifar100 모델 정의
         model = timm.create_model(
-            current_model, pretrained=False, num_classes=num_classes
+            current_model, pretrained=True, num_classes=num_classes
         ).to(device)
 
         # cifar100 모델 손실함수 정의
         criterion = nn.CrossEntropyLoss()
         # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
         optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-
         if torch.cuda.device_count() > 1:
             print(f"Using {torch.cuda.device_count()} GPUs!")
             model = nn.DataParallel(model)
