@@ -35,7 +35,27 @@ num_classes = 100
 
 
 # JPEG 데이터셋 로드
-def load_jpeg_datasets(QF, transform, dataset_name):
+def load_jpeg_datasets(QF, transform):
+    jpeg_test_dir = os.path.join(
+        os.getcwd(),
+        "datasets",
+        "CIFAR100",
+        "original_size",
+        f"jpeg{QF}",
+        "test",
+    )
+
+    test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
+
+    test_dataloader = DataLoader(
+        test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+    )
+
+    return test_dataset, test_dataloader
+
+
+# JPEG 데이터셋 로드
+def load_post_processed_jpeg_datasets(QF, transform, dataset_name):
     jpeg_test_dir = os.path.join(
         os.getcwd(), "datasets", "removed_cifar100", dataset_name, f"JPEG{QF}", "test"
     )
@@ -207,8 +227,54 @@ if __name__ == "__main__":
 
         # JPEG 데이터셋 로드 및 모델 테스트
         for QF in QFs:
+            test_dataset, test_loader = load_jpeg_datasets(QF, transform)
+            model.eval()
+            correct = 0
+            total = 0
+            all_targets = []
+            all_predictions = []
+            with torch.no_grad():
+                for images, labels in tqdm(
+                    test_loader,
+                    desc=f"{current_model} jpeg compressed {QF} testing",
+                    leave=False,
+                ):
+                    images, labels = images.to(device), labels.to(device)
+
+                    outputs = model(images)
+                    _, predicted = torch.max(outputs.data, 1)
+                    total += labels.size(0)
+                    correct += (predicted == labels).sum().item()
+
+                    all_targets.extend(labels.cpu().numpy())
+                    all_predictions.extend(predicted.cpu().numpy())
+            accuracy = 100 * correct / total
+            precision = precision_score(all_targets, all_predictions, average="macro")
+            # model, dataset_name, QF, accuracy, precision르ㄹ metrics/classification_results.csv에 저장
+            results_df = pd.DataFrame(
+                {
+                    "model": [current_model],
+                    "dataset_name": ["JPEG compressed"],
+                    "QF": [QF],
+                    "accuracy": [accuracy],
+                    "precision": [precision],
+                }
+            )
+            results_df.to_csv(
+                "metrics/classification_results.csv",
+                mode="a+",
+                header=not os.path.exists("metrics/classification_results.csv"),
+                index=False,
+            )
+            logging.info(
+                f"Model: {current_model}, Dataset: JPEG compressed QF: {QF}, Epoch: {epoch + 1}, Accuracy: {accuracy:.2f}%, Precision: {precision:.2f}"
+            )
+            print(
+                f"Model: {current_model}, Dataset: JPEG compressed QF: {QF}, Epoch: {epoch + 1}, Accuracy: {accuracy:.2f}%, Precision: {precision:.2f}"
+            )
+
             for dataset_name in dataset_names:
-                test_dataset, test_loader = load_jpeg_datasets(
+                test_dataset, test_loader = load_post_processed_jpeg_datasets(
                     QF, transform, dataset_name
                 )
                 model.eval()
@@ -218,7 +284,9 @@ if __name__ == "__main__":
                 all_predictions = []
                 with torch.no_grad():
                     for images, labels in tqdm(
-                        test_loader, desc=f"{current_model} testing", leave=False
+                        test_loader,
+                        desc=f"{current_model} jpeg {QF}testing",
+                        leave=False,
                     ):
                         images, labels = images.to(device), labels.to(device)
 
