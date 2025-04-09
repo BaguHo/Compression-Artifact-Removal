@@ -12,7 +12,6 @@ import torch.nn.functional as F
 from sklearn.metrics import precision_score
 import os, sys, re
 import timm
-from knockknock import slack_sender
 import logging
 
 if len(sys.argv) < 5:
