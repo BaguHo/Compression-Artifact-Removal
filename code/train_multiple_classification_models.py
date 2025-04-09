@@ -24,15 +24,14 @@ logging.basicConfig(
 
 learning_rate = 0.001
 dataset_names = ["ARCNN_cifar100", "BlockCNN_cifar100", "DnCNN_cifar100"]
-model_list = ["efficientnet_b3", "mobilenetv2_100", "vgg19"]
+model_list = ["resnet18", "mobilenetv2_100", "vgg19"]
 QFs = [80, 60, 40, 20]
-image_type = "RGB"
-
 
 epochs = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 num_classes = int(sys.argv[4])
+num_classes = 100
 
 
 # JPEG 데이터셋 로드
@@ -114,7 +113,8 @@ if __name__ == "__main__":
 
         # cifar100 모델 손실함수 정의
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+        # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+        optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
 
         if torch.cuda.device_count() > 1:
             print(f"Using {torch.cuda.device_count()} GPUs!")
