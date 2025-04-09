@@ -24,7 +24,7 @@ logging.basicConfig(
 
 learning_rate = 0.001
 dataset_names = ["ARCNN_cifar100", "BlockCNN_cifar100", "DnCNN_cifar100"]
-model_list = ["resnet18", "efficientnetv2_l", "mobilenetv2_100"]
+model_list = ["resnet18", "efficientnet_b3", "mobilenetv2_100"]
 QFs = [80, 60, 40, 20]
 
 epochs = int(sys.argv[1])
@@ -216,12 +216,9 @@ if __name__ == "__main__":
                 total = 0
                 all_targets = []
                 all_predictions = []
-
                 with torch.no_grad():
                     for images, labels in tqdm(
-                        test_loader,
-                        desc=f"{current_model} testing {dataset_name}",
-                        leave=False,
+                        test_loader, desc=f"{current_model} testing", leave=False
                     ):
                         images, labels = images.to(device), labels.to(device)
 
@@ -236,7 +233,7 @@ if __name__ == "__main__":
                 precision = precision_score(
                     all_targets, all_predictions, average="macro"
                 )
-
+                os.makedirs("metrics", exist_ok=True)
                 # model, dataset_name, QF, accuracy, precision르ㄹ metrics/classification_results.csv에 저장
                 os.makedirs("metrics", exist_ok=True)
                 results_df = pd.DataFrame(
