@@ -363,30 +363,8 @@ if __name__ == "__main__":
                 rgb_output_patches.append(rgb_output)
                 patch_idx += 1
 
-                # # 8x8 이미지들을 32x32로 합치기
-                # if patch_idx % 16 == 0 and patch_idx > 0:
-                #     patch_idx = 0
-                #     combined_target_image = np.zeros((32, 32, 3), dtype=np.uint8)
-                #     combined_output_image = np.zeros((32, 32, 3), dtype=np.uint8)
-
-                #     for j in range(4):
-                #         for k in range(4):
-                #             idx = j * 4 + k
-                #             combined_target_image[
-                #                 j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
-                #             ] = rgb_target_patches[idx]
-
-                #     for j in range(4):
-                #         for k in range(4):
-                #             idx = j * 4 + k
-                #             combined_output_image[
-                #                 j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
-                #             ] = rgb_output_patches[idx]
-
                 rgb_target_patches.clear()
                 rgb_output_patches.clear()
-                # combined_target_images.append(combined_target_image)
-                # combined_output_images.append(combined_output_image)
 
                 # Calculate PSNR and SSIM
                 psnr = peak_signal_noise_ratio(
@@ -409,13 +387,13 @@ if __name__ == "__main__":
 
                 # 합쳐진 이미지 저장
                 os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
-                combined_image_path = os.path.join(
+                output_image_path = os.path.join(
                     f"{type(model).__name__}_output",
                     f"combined_output{image_name_idx}.png",
                 )
-                cv2.imwrite(combined_image_path, combined_output_image)
+                cv2.imwrite(output_image_path, rgb_output)
                 logging.info(
-                    f"{type(model).__name__} Combined image saved at {combined_image_path}"
+                    f"{type(model).__name__} Combined image saved at {output_image_path}"
                 )
                 image_name_idx += 1
 

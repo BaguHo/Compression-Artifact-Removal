@@ -15,10 +15,6 @@ import timm
 from knockknock import slack_sender
 import logging
 
-slack_webhook_url = (
-    "https://hooks.slack.com/services/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"
-)
-
 if len(sys.argv) < 5:
     print("Usage: python script.py <epochs> <batch_size> <num_workers> <num_classes>")
     sys.exit(1)
@@ -28,7 +24,7 @@ logging.basicConfig(
 )
 
 learning_rate = 0.001
-dataset_name = ["ARCNN_cifar100", "BlockCNN_cifar100", "DnCNN_cifar100"]
+dataset_names = ["ARCNN_cifar100", "BlockCNN_cifar100", "DnCNN_cifar100"]
 model_list = ["efficientnet_b3", "mobilenetv2_100", "vgg19"]
 QFs = [80, 60, 40, 20]
 image_type = "RGB"
@@ -40,53 +36,7 @@ num_workers = int(sys.argv[3])
 num_classes = int(sys.argv[4])
 
 
-# 디렉토리 생성
-def makedir(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-
-# save model
-# def save_model(model, filename):
-#     path = os.path.join(os.getcwd(), "models")
-#     os.makedirs(path, exist_ok=True)
-#     model_path = os.path.join(path, filename)
-#     # torch.save(model, model_path)
-#     print(f"Model saved to {model_path}")
-
-
-# model training
-@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
-def train(current_model_name, model, train_loader, criterion, optimizer):
-    model.train()
-
-    for epoch in range(epochs):
-        running_loss = 0.0
-        for images, labels in tqdm(
-            train_loader, desc=f"{current_model_name} Epoch {epoch+1}/{epochs}"
-        ):
-            images, labels = images.to(device), labels.to(device)
-
-            optimizer.zero_grad()
-
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-
-            loss.backward()
-            optimizer.step()
-
-            running_loss += loss.item()
-
-        # save the original model on 'classification_models' directory as state_dict
-        # save_model(
-        #     model.state_dict(),
-        #     f"{current_model_name}_epoch_{epochs}.pth",
-        # )
-        print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}")
-
-
 # evaluate model
-@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
 def test(model, test_loader, msg):
     model.eval()
     correct = 0
@@ -115,62 +65,19 @@ def test(model, test_loader, msg):
     return accuracy, precision_avg
 
 
-# save result
-def save_result(
-    model_name=None,
-    train_dataset=None,
-    test_dataset=None,
-    accuracy=None,
-    precision=None,
-    epochs=None,
-    batch_size=None,
-    QF=None,
-):
-    results_df = pd.DataFrame(
-        {
-            "Model Name": [model_name],
-            "Channel": [3],
-            "Train Dataset": [train_dataset],
-            "Test Dataset": [test_dataset],
-            "Accuracy": [accuracy],
-            "Precision": [precision],
-            "Epoch": [epochs],
-            "Batch Size": [batch_size],
-            "QF": [QF],
-        }
-    )
-    file_path = os.path.join(
-        os.getcwd(), "results", f"num_classes_{num_classes}_epochs_{epochs}_result.csv"
-    )
-
-    if os.path.isfile(file_path):
-        results_df.to_csv(file_path, mode="a", index=False, header=False)
-    else:
-        results_df.to_csv(file_path, mode="w", index=False)
-
-    # print(f"Results saved to '{file_path}'")
-
-
 # JPEG 데이터셋 로드
-def load_jpeg_datasets(QF, transform):
-    jpeg_train_dir = os.path.join(
-        os.getcwd(), "datasets", dataset_name, f"QF_{QF}", "train"
-    )
+def load_jpeg_datasets(QF, transform, dataset_name):
     jpeg_test_dir = os.path.join(
-        os.getcwd(), "datasets", dataset_name, f"QF_{QF}", "test"
+        os.getcwd(), "datasets", "removed_cifar100", dataset_name, f"JPEG{QF}", "test"
     )
 
-    train_dataset = datasets.ImageFolder(jpeg_train_dir, transform=transform)
     test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
 
-    train_dataloader = DataLoader(
-        train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
-    )
     test_dataloader = DataLoader(
         test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
     )
 
-    return train_dataset, test_dataset, train_dataloader, test_dataloader
+    return test_dataset, test_dataloader
 
 
 def sort_key(filename):
@@ -181,157 +88,6 @@ def sort_key(filename):
     crop_number = int(crop_match.group(1)) if crop_match else float("inf")
 
     return (image_number, crop_number)
-
-
-# train and test the models for each QF
-@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
-def training_testing():
-    QFs = [80, 60, 40, 20]
-
-    # load original dataset
-    # original_train_dir = os.path.join(
-    #     os.getcwd(), "datasets", "CIFAR100", "original_size", "original", "train"
-    # )
-    # original_test_dir = os.path.join(
-    #     os.getcwd(), "datasets", "CIFAR100", "original_size", "original", "test"
-    # )
-    # original_train_dataset = datasets.ImageFolder(
-    #     original_train_dir, transform=transform
-    # )
-    # original_test_dataset = datasets.ImageFolder(original_test_dir, transform=transform)
-
-    # # keep only 0~4 folder classes
-    # train_indices = [
-    #     i for i, (_, c) in enumerate(original_train_dataset.samples) if c < 5
-    # ]
-    # test_indices = [
-    #     i for i, (_, c) in enumerate(original_test_dataset.samples) if c < 5
-    # ]
-
-    for current_model_name in model_list:
-        print(f"[Current Model: {current_model_name}]")
-        # original_model = timm.create_model(
-        #     current_model_name, pretrained=True, num_classes=num_classes
-        # ).to(device)
-
-        # criterion = nn.CrossEntropyLoss()
-        # optimizer = optim.Adam(original_model.parameters(), lr=learning_rate)
-
-        # # original dataset model tarining
-        # print("[train the original model]")
-        # train(
-        #     current_model_name,
-        #     original_model,
-        #     original_train_loader,
-        #     criterion,
-        #     optimizer,
-        # )
-        print(
-            "#############################################################################"
-        )
-
-        for QF in QFs:
-            accuracies = [0.0] * 4
-            pricisions = [0.0] * 4
-            # load JPEG  datasets
-            _, _, jpeg_train_loader, jpeg_test_loader = load_jpeg_datasets(
-                QF, transform
-            )
-
-            # # test with original dataset test dataset
-            # print("[original - original]")
-            # acc, prec = test(
-            #     original_model, original_test_loader, "original - original"
-            # )
-            # accuracies[0] = acc
-            # pricisions[0] = prec
-            # save_result(current_model_name, dataset_name,  dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
-
-            # #  test with JPEG test dataset
-            # print("[original - jpeg]")
-            # acc, prec = test(original_model, jpeg_test_loader, f"original - jpeg {QF}")
-            # accuracies[1] = acc
-            # pricisions[1] = prec
-            # save_result(current_model_name, dataset_name, f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
-
-            # Tarining with JPEG dataset.
-            print(f"[Current Model: {current_model_name}]")
-            jpeg_model = timm.create_model(
-                current_model_name, pretrained=True, num_classes=5
-            ).to(device)
-
-            # JPEG model 손실함수 정의
-            criterion = nn.CrossEntropyLoss()
-            optimizer = optim.Adam(jpeg_model.parameters(), lr=learning_rate)
-
-            if torch.cuda.device_count() > 1:
-                print(f"Using {torch.cuda.device_count()} GPUs!")
-                jpeg_model = nn.DataParallel(jpeg_model)
-
-            # train the jpeg model
-            print("[train the jpeg model]")
-            train(
-                current_model_name, jpeg_model, jpeg_train_loader, criterion, optimizer
-            )
-
-            # # test with original test dataset
-            # print("[jpeg - original]")
-            # acc, prec = test(jpeg_model, original_test_loader, f"jpeg {QF} - original")
-            # accuracies[2] = acc
-            # pricisions[2] = prec
-            # # save_result(current_model_name, f'JPEG', dataset_name, accuracy, precision, epochs, batch_size, QF=QF)
-
-            # Test with JPEG test dataset
-            print("[jpeg - jpeg]")
-            acc, prec = test(jpeg_model, jpeg_test_loader, f"jpeg {QF} - jpeg {QF}")
-            accuracies[3] = acc
-            pricisions[3] = prec
-            # save_result(current_model_name, f'JPEG', f'JPEG', accuracy, precision, epochs, batch_size, QF=QF)
-            print(
-                "#############################################################################"
-            )
-
-            # save_result(
-            #     current_model_name,
-            #     dataset_name,
-            #     dataset_name,
-            #     accuracies[0],
-            #     pricisions[0],
-            #     epochs,
-            #     batch_size,
-            #     QF,
-            # )
-            # save_result(
-            #     current_model_name,
-            #     dataset_name,
-            #     "JPEG",
-            #     accuracies[1],
-            #     pricisions[1],
-            #     epochs,
-            #     batch_size,
-            #     QF,
-            # )
-            # save_result(
-            #     current_model_name,
-            #     "JPEG",
-            #     dataset_name,
-            #     accuracies[2],
-            #     pricisions[1],
-            #     epochs,
-            #     batch_size,
-            #     QF,
-            # )
-            save_result(
-                current_model_name,
-                "JPEG",
-                "JPEG",
-                accuracies[3],
-                pricisions[3],
-                epochs,
-                batch_size,
-                QF,
-            )
-            print("saved results")
 
 
 ################################################################################################################
@@ -352,7 +108,154 @@ if __name__ == "__main__":
         if torch.cuda.is_available()
         else ("mps" if torch.backends.mps.is_available() else "cpu")
     )
-
     print(device)
 
-    training_testing()
+    # cifar100 데이터셋 로드
+    cifar100_train = datasets.CIFAR100(
+        root=os.path.join(os.getcwd(), "datasets"),
+        train=True,
+        download=True,
+        transform=transform,
+    )
+    cifar100_test = datasets.CIFAR100(
+        root=os.path.join(os.getcwd(), "datasets"),
+        train=False,
+        download=True,
+        transform=transform,
+    )
+    cifar100_train_loader = DataLoader(
+        cifar100_train, batch_size=batch_size, shuffle=True, num_workers=num_workers
+    )
+    cifar100_test_loader = DataLoader(
+        cifar100_test, batch_size=batch_size, shuffle=False, num_workers=num_workers
+    )
+
+    for current_model in model_list:
+        print(f"[Current Model: {current_model}]")
+        logging.info(f"[Current Model: {current_model}]")
+        print(
+            "#############################################################################"
+        )
+
+        # cifar100 모델 정의
+        model = timm.create_model(
+            current_model, pretrained=False, num_classes=num_classes
+        ).to(device)
+
+        # cifar100 모델 손실함수 정의
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+        if torch.cuda.device_count() > 1:
+            print(f"Using {torch.cuda.device_count()} GPUs!")
+            model = nn.DataParallel(model)
+
+        # cifar100 모델 학습
+        for epoch in range(epochs):
+            model.train()
+            running_loss = 0.0
+
+            # tqdm을 배치 루프에 적용 (에포크당 진행률 표시)
+            batch_iter = tqdm(
+                cifar100_train_loader,
+                desc=f"{current_model} Epoch {epoch+1}/{epochs}",
+                leave=True,
+            )
+
+            for images, labels in batch_iter:
+                images, labels = images.to(device), labels.to(device)
+
+                optimizer.zero_grad()
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+
+                running_loss += loss.item()
+
+                # 배치별 실시간 손실 표시
+                batch_iter.set_postfix({"Batch Loss": f"{loss.item():.4f}"})
+
+            # 에포크 종료 후 평균 손실 계산
+            epoch_loss = running_loss / len(cifar100_train_loader)
+            print(f"\nEpoch [{epoch + 1}/{epochs}], Loss: {epoch_loss:.4f}")
+            logging.info(f"Epoch [{epoch + 1}/{epochs}], Loss: {epoch_loss:.4f}")
+
+            # 모델 저장 (마지막 에포크에서만)
+            if epoch + 1 == epochs:
+                torch.save(
+                    model.state_dict(),
+                    os.path.join(
+                        os.getcwd(),
+                        "models",
+                        f"{current_model}_cifar100_epoch_{epoch + 1}.pth",
+                    ),
+                )
+
+        # cifar100 모델 테스트
+        model.eval()
+        correct = 0
+        total = 0
+        all_targets = []
+        all_predictions = []
+        with torch.no_grad():
+            for images, labels in tqdm(
+                cifar100_test_loader, desc=f"{current_model} testing", leave=False
+            ):
+                images, labels = images.to(device), labels.to(device)
+
+                outputs = model(images)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+                all_targets.extend(labels.cpu().numpy())
+                all_predictions.extend(predicted.cpu().numpy())
+                accuracy = 100 * correct / total
+                precision = precision_score(
+                    all_targets, all_predictions, average="macro"
+                )
+        logging.info(
+            f"Model: {current_model}, Dataset: CIFAR100, Epoch: {epoch + 1}, Accuracy: {accuracy:.2f}%, Precision: {precision:.2f}"
+        )
+        print(
+            f"Model: {current_model}, Dataset: CIFAR100, Epoch: {epoch + 1}, Accuracy: {accuracy:.2f}%, Precision: {precision:.2f}"
+        )
+
+        # JPEG 데이터셋 로드 및 모델 테스트
+        for QF in QFs:
+            for dataset_name in dataset_names:
+                test_dataset, test_loader = load_jpeg_datasets(
+                    QF, transform, dataset_name
+                )
+
+                # 모델 테스트
+                accuracy, precision = test(
+                    model,
+                    test_loader,
+                    f"{current_model} - QF: {QF} - Epoch: {epoch + 1}",
+                )
+
+                # model, dataset_name, QF, accuracy, precision르ㄹ metrics/classification_results.csv에 저장
+                os.makedirs("metrics", exist_ok=True)
+                results_df = pd.DataFrame(
+                    {
+                        "model": [current_model],
+                        "dataset_name": [dataset_name],
+                        "QF": [QF],
+                        "accuracy": [accuracy],
+                        "precision": [precision],
+                    }
+                )
+                results_df.to_csv(
+                    "metrics/classification_results.csv",
+                    mode="a+",
+                    header=not os.path.exists("metrics/classification_results.csv"),
+                    index=False,
+                )
+                logging.info(
+                    f"Model: {current_model}, Dataset:{dataset_name} QF: {QF}, Epoch: {epoch + 1}, Accuracy: {accuracy:.2f}%, Precision: {precision:.2f}"
+                )
+                print(
+                    f"Model: {current_model}, Dataset:{dataset_name} QF: {QF}, Epoch: {epoch + 1}, Accuracy: {accuracy:.2f}%, Precision: {precision:.2f}"
+                )
