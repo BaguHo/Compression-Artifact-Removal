@@ -35,35 +35,6 @@ num_workers = int(sys.argv[3])
 num_classes = int(sys.argv[4])
 
 
-# evaluate model
-def test(model, test_loader, msg):
-    model.eval()
-    correct = 0
-    total = 0
-    all_targets = []
-    all_predictions = []
-
-    with torch.no_grad():
-        for images, labels in tqdm(test_loader, desc="Testing", leave=False):
-            images, labels = images.to(device), labels.to(device)
-
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-            all_targets.extend(labels.cpu().numpy())
-            all_predictions.extend(predicted.cpu().numpy())
-
-    accuracy = 100 * correct / total
-    precision_per_class = precision_score(all_targets, all_predictions, average=None)
-    precision_avg = precision_score(all_targets, all_predictions, average="macro")
-
-    print(f"Accuracy of the model on the test images -- {msg}: {accuracy:.2f}%")
-
-    return accuracy, precision_avg
-
-
 # JPEG 데이터셋 로드
 def load_jpeg_datasets(QF, transform, dataset_name):
     jpeg_test_dir = os.path.join(
@@ -210,10 +181,24 @@ if __name__ == "__main__":
 
                 all_targets.extend(labels.cpu().numpy())
                 all_predictions.extend(predicted.cpu().numpy())
-                accuracy = 100 * correct / total
-                precision = precision_score(
-                    all_targets, all_predictions, average="macro"
-                )
+            accuracy = 100 * correct / total
+            precision = precision_score(all_targets, all_predictions, average="macro")
+        os.makedirs("metrics", exist_ok=True)
+        results_df = pd.DataFrame(
+            {
+                "model": [current_model],
+                "dataset_name": ["CIFAR100"],
+                "QF": ["original"],
+                "accuracy": [accuracy],
+                "precision": [precision],
+            }
+        )
+        results_df.to_csv(
+            "metrics/classification_results.csv",
+            mode="a+",
+            header=not os.path.exists("metrics/classification_results.csv"),
+            index=False,
+        )
         logging.info(
             f"Model: {current_model}, Dataset: CIFAR100, Epoch: {epoch + 1}, Accuracy: {accuracy:.2f}%, Precision: {precision:.2f}"
         )
@@ -227,13 +212,31 @@ if __name__ == "__main__":
                 test_dataset, test_loader = load_jpeg_datasets(
                     QF, transform, dataset_name
                 )
+                model.eval()
+                correct = 0
+                total = 0
+                all_targets = []
+                all_predictions = []
 
-                # 모델 테스트
-                accuracy, precision = test(
-                    model,
-                    test_loader,
-                    f"{current_model} - QF: {QF} - Epoch: {epoch + 1}",
-                )
+                with torch.no_grad():
+                    for images, labels in tqdm(
+                        test_loader,
+                        desc=f"{current_model} testing {dataset_name}",
+                        leave=False,
+                    ):
+                        images, labels = images.to(device), labels.to(device)
+
+                        outputs = model(images)
+                        _, predicted = torch.max(outputs.data, 1)
+                        total += labels.size(0)
+                        correct += (predicted == labels).sum().item()
+
+                        all_targets.extend(labels.cpu().numpy())
+                        all_predictions.extend(predicted.cpu().numpy())
+                    accuracy = 100 * correct / total
+                    precision = precision_score(
+                        all_targets, all_predictions, average="macro"
+                    )
 
                 # model, dataset_name, QF, accuracy, precision르ㄹ metrics/classification_results.csv에 저장
                 os.makedirs("metrics", exist_ok=True)
