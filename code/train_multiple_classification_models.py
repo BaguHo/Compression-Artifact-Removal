@@ -23,7 +23,12 @@ logging.basicConfig(
 )
 
 learning_rate = 0.001
-dataset_names = ["ARCNN_cifar100", "BlockCNN_cifar100", "DnCNN_cifar100"]
+dataset_names = [
+    "ARCNN_cifar100",
+    "BlockCNN_cifar100",
+    "DnCNN_cifar100",
+    "PxT_cifar100",
+]
 model_list = ["resnet18", "mobilenetv2_100", "vgg19"]
 QFs = [80, 60, 40, 20]
 
