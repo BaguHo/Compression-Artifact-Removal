@@ -101,10 +101,10 @@ if __name__ == "__main__":
 
     # cifar100 데이터셋 로드
     cifar100_train_dir = os.path.join(
-        os.getcwd(), "datasets", "CIFAR100", "original_size", "train"
+        os.getcwd(), "datasets", "CIFAR100", "original_size", "original", "train"
     )
     cifar100_test_dir = os.path.join(
-        os.getcwd(), "datasets", "CIFAR100", "original_size", "test"
+        os.getcwd(), "datasets", "CIFAR100", "original_size", "original", "test"
     )
     cifar100_train = datasets.ImageFolder(cifar100_train_dir, transform=transform)
     cifar100_test = datasets.ImageFolder(cifar100_test_dir, transform=transform)
