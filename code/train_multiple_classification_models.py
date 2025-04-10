@@ -153,8 +153,8 @@ if __name__ == "__main__":
 
         # cifar100 모델 손실함수 정의
         criterion = nn.CrossEntropyLoss()
-        # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-        optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+        # optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
         if torch.cuda.device_count() > 1:
             print(f"Using {torch.cuda.device_count()} GPUs!")
             model = nn.DataParallel(model)
