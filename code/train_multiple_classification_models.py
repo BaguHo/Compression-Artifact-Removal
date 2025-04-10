@@ -100,24 +100,39 @@ if __name__ == "__main__":
     print(device)
 
     # cifar100 데이터셋 로드
-    cifar100_train = datasets.CIFAR100(
-        root=os.path.join(os.getcwd(), "datasets"),
-        train=True,
-        download=True,
-        transform=transform,
+    cifar100_train_dir = os.path.join(
+        os.getcwd(), "datasets", "CIFAR100", "original_size", "train"
     )
-    cifar100_test = datasets.CIFAR100(
-        root=os.path.join(os.getcwd(), "datasets"),
-        train=False,
-        download=True,
-        transform=transform,
+    cifar100_test_dir = os.path.join(
+        os.getcwd(), "datasets", "CIFAR100", "original_size", "test"
     )
+    cifar100_train = datasets.ImageFolder(cifar100_train_dir, transform=transform)
+    cifar100_test = datasets.ImageFolder(cifar100_test_dir, transform=transform)
     cifar100_train_loader = DataLoader(
         cifar100_train, batch_size=batch_size, shuffle=True, num_workers=num_workers
     )
     cifar100_test_loader = DataLoader(
         cifar100_test, batch_size=batch_size, shuffle=False, num_workers=num_workers
     )
+
+    # cifar100_train = datasets.CIFAR100(
+    #     root=os.path.join(os.getcwd(), "datasets"),
+    #     train=True,
+    #     download=True,
+    #     transform=transform,
+    # )
+    # cifar100_test = datasets.CIFAR100(
+    #     root=os.path.join(os.getcwd(), "datasets"),
+    #     train=False,
+    #     download=True,
+    #     transform=transform,
+    # )
+    # cifar100_train_loader = DataLoader(
+    #     cifar100_train, batch_size=batch_size, shuffle=True, num_workers=num_workers
+    # )
+    # cifar100_test_loader = DataLoader(
+    #     cifar100_test, batch_size=batch_size, shuffle=False, num_workers=num_workers
+    # )
 
     for current_model in model_list:
         print(f"[Current Model: {current_model}]")
