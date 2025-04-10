@@ -29,7 +29,7 @@ dataset_names = [
     "DnCNN_cifar100",
     "PxT_cifar100",
 ]
-model_list = ["efficientnet_b3", "mobilenetv2_100", "vgg19"]
+model_list = ["resnet50", "mobilenetv2_100", "vgg19"]
 QFs = [80, 60, 40, 20]
 
 epochs = int(sys.argv[1])
