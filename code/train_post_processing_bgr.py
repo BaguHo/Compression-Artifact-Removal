@@ -489,6 +489,14 @@ if __name__ == "__main__":
             test_loss += loss.item()
 
             for i in range(len(outputs)):
+                # Calculate LPIPS
+                lpips_alex = lpips_alex_model(
+                    rgb_output, rgb_target, normalize=True
+                ).item()
+                lpips_vgg = lpips_vgg_model(
+                    rgb_output, rgb_target, normalize=True
+                ).item()
+
                 rgb_target = target_images[i].cpu().numpy()
                 rgb_output = outputs[i].cpu().numpy()
 
@@ -503,14 +511,6 @@ if __name__ == "__main__":
                     data_range=1.0,
                     channel_axis=0,
                 )
-
-                # Calculate LPIPS
-                lpips_alex = lpips_alex_model(
-                    rgb_output, rgb_target, normalize=True
-                ).item()
-                lpips_vgg = lpips_vgg_model(
-                    rgb_output, rgb_target, normalize=True
-                ).item()
 
                 lpips_alex_values.append(lpips_alex)
                 lpips_vgg_values.append(lpips_vgg)
