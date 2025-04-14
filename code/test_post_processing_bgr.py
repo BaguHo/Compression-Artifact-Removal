@@ -16,8 +16,10 @@ import lpips
 # !warning: BlockCNN does not work
 
 
-if len(sys.argv) < 6:
-    print("Usage: python script.py <batch_size> <num_workers> <num_classes>")
+if len(sys.argv) < 5:
+    print(
+        "Usage: python script.py <model_name> <batch_size> <num_workers> <num_classes>"
+    )
     sys.exit(1)
 
 logging.basicConfig(
@@ -28,9 +30,10 @@ dataset_name = "CIFAR100"
 slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
-batch_size = int(sys.argv[1])
-num_workers = int(sys.argv[2])
-num_classes = int(sys.argv[3])
+model_name = sys.argv[1]
+batch_size = int(sys.argv[2])
+num_workers = int(sys.argv[3])
+num_classes = int(sys.argv[4])
 
 
 def sort_key(filename):
@@ -335,7 +338,7 @@ if __name__ == "__main__":
     QFs = [100, 80, 60, 40, 20]
     dataset_name = "CIFAR100"
 
-    model_names = ["ARCNN", "DnCNN", "BlockCNN"]
+    # model_names = ["ARCNN", "DnCNN", "BlockCNN"]
     # Load the dataset
 
     for QF in QFs:
