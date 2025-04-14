@@ -326,10 +326,10 @@ class BlockCNN(nn.Module):
 # test를 돌릴 때 psnr, ssim 를 평균으로 저장하는 함수 (.csv로 저장)
 def save_metrics(metrics, filename):
     with open(filename, "w") as f:
-        f.write("PSNR,SSIM,LPIPS VGG,LPIPS Alex\n")
+        f.write("PSNR,SSIM,LPIPS Alex\n")
         for i in range(len(metrics["PSNR"])):
             f.write(
-                f"{metrics['PSNR'][i]},{metrics['SSIM'][i]},{metrics['LPIPS VGG'][i]},{metrics['LPIPS Alex'][i]}\n"
+                f"{metrics['PSNR'][i]},{metrics['SSIM'][i]},{metrics['LPIPS Alex'][i]}\n"
             )
     print(f"Metrics saved to {filename}")
 
@@ -431,13 +431,12 @@ if __name__ == "__main__":
                         channel_axis=0,
                     )
 
-                    lpips_vgg_values.append(lpips_vgg_value.item())
                     lpips_alex_values.append(lpips_alex_value.item())
                     psnr_values.append(psnr)
                     ssim_values.append(ssim)
 
                     logging.info(
-                        f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, LPIPS VGG: {lpips_vgg_value.item():.4f}, LPIPS Alex: {lpips_alex_value.item():.4f}"
+                        f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f},  LPIPS Alex: {lpips_alex_value.item():.4f}"
                     )
 
                     # save the output images
@@ -461,10 +460,10 @@ if __name__ == "__main__":
         avg_lpips_alex = np.mean(lpips_alex_values)
 
         print(
-            f"Model: {type(model).__name__},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS VGG: {avg_lpips_vgg:.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}"
+            f"Model: {type(model).__name__},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
         )
         logging.info(
-            f"Model: {type(model).__name__},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS VGG: {avg_lpips_vgg:.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}"
+            f"Model: {type(model).__name__},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
         )
 
         # Save metrics
@@ -472,8 +471,7 @@ if __name__ == "__main__":
             "Test Loss": [avg_test_loss],
             "PSNR": psnr_values,
             "SSIM": ssim_values,
-            "LPIPS VGG": lpips_vgg_values,
-            "LPIPS Alex": lpips_alex_values,
+            "LPIPS": lpips_alex_values,
             "QF": [QF],
         }
         os.makedirs("metrics", exist_ok=True)

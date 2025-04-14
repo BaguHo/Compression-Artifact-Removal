@@ -66,6 +66,59 @@ class CIFAR100Dataset(Dataset):
         return input_image, target_image
 
 
+def load_test_images(QF):
+
+    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original_size")
+
+    train_input_dataset = []
+    test_input_dataset = []
+    train_target_dataset = []
+    test_target_dataset = []
+
+    # input images
+    train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
+    test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
+
+    # target images (original)
+    target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
+    target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
+
+    # 테스트 데이터 로드
+    for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
+        test_path = os.path.join(test_input_dir, str(i))
+        target_test_path = os.path.join(target_test_dataset_dir, str(i))
+
+        # test_path 내 파일을 정렬된 순서로 불러오기
+        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
+        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+
+        # 두 디렉토리의 파일명이 같은지 확인하며 로드
+        for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
+            if test_file.replace("jpeg", "png") == target_file:
+                # input 이미지 로드
+                test_file.replace("png", "jpeg")
+                test_image_path = os.path.join(test_path, test_file)
+                test_image = cv2.imread(test_image_path)
+                test_input_dataset.append(test_image)
+
+                # target 이미지 로드
+                target_image_path = os.path.join(target_test_path, target_file)
+                target_image = cv2.imread(target_image_path)
+                test_target_dataset.append(target_image)
+
+            else:
+                print(
+                    f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
+                )
+
+    # Dataset과 DataLoader 생성
+    test_dataset = CIFAR100Dataset(test_input_dataset, test_target_dataset)
+
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return test_dataset, test_loader
+
+
 def load_images():
     QFs = [100, 80, 60, 40, 20]
     dataset_name = "CIFAR100"
@@ -382,6 +435,8 @@ def save_metrics(metrics, filename):
 
 
 if __name__ == "__main__":
+    QFs = [100, 80, 60, 40, 20]
+
     # Load the dataset
     train_dataset, test_dataset, train_loader, test_loader = load_images()
 
@@ -465,102 +520,6 @@ if __name__ == "__main__":
     logging.info(f"Training finished at {time.ctime(end_time)}")
     # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
-    # Test the model
-    model.eval()
-    idx = 0
-    test_loss = 0.0
-    psnr_values = []
-    ssim_values = []
-    lpips_alex_values = []
-    lpips_vgg_values = []
-    lpips_alex_model = lpips.LPIPS(net="alex").to(device)
-    lpips_vgg_model = lpips.LPIPS(net="vgg").to(device)
-
-    with torch.no_grad():
-        for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
-            input_images = input_images.to(device)
-            target_images = target_images.to(device)
-
-            # Forward pass
-            outputs = model(input_images)
-
-            # Calculate MSE loss
-            loss = criterion(outputs, target_images)
-            test_loss += loss.item()
-
-            for i in range(len(outputs)):
-                # Calculate LPIPS
-                lpips_alex = lpips_alex_model(
-                    target_images[i], outputs[i], normalize=True
-                ).item()
-                lpips_vgg = lpips_vgg_model(
-                    target_images[i], outputs[i], normalize=True
-                ).item()
-
-                rgb_target = target_images[i].cpu().numpy()
-                rgb_output = outputs[i].cpu().numpy()
-
-                # Calculate PSNR
-                psnr = peak_signal_noise_ratio(rgb_target, rgb_output, data_range=1.0)
-
-                # Calculate SSIM
-                ssim = structural_similarity(
-                    rgb_target,
-                    rgb_output,
-                    multichannel=True,
-                    data_range=1.0,
-                    channel_axis=0,
-                )
-
-                lpips_alex_values.append(lpips_alex)
-                lpips_vgg_values.append(lpips_vgg)
-                psnr_values.append(psnr)
-                ssim_values.append(ssim)
-
-                logging.info(
-                    f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, LPIPS Alex: {lpips_alex:.4f}, LPIPS VGG: {lpips_vgg:.4f}"
-                )
-
-                # save the output images
-                os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
-                output_image_path = os.path.join(
-                    f"{type(model).__name__}_output", f"output{idx}.png"
-                )
-                np.clip(rgb_output, 0, 1, out=rgb_output)
-                rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
-                cv2.imwrite(output_image_path, rgb_output)
-                logging.info(
-                    f"{type(model).__name__} Output image saved at {output_image_path}"
-                )
-                idx += 1
-
-    # Calculate average metrics
-    avg_test_loss = test_loss / len(test_loader)
-    avg_psnr = np.mean(psnr_values)
-    avg_ssim = np.mean(ssim_values)
-    avg_lpips_alex = np.mean(lpips_alex_values)
-    avg_lpips_vgg = np.mean(lpips_vgg_values)
-
-    print(
-        f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}, Average LPIPS VGG: {avg_lpips_vgg:.4f}"
-    )
-    logging.info(
-        f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}, Average LPIPS VGG: {avg_lpips_vgg:.4f}"
-    )
-
-    # Save metrics
-    metrics = {
-        "Test Loss": [avg_test_loss],
-        "PSNR": psnr_values,
-        "SSIM": ssim_values,
-        "LPIPS Alex": lpips_alex_values,
-        "LPIPS VGG": lpips_vgg_values,
-    }
-    os.makedirs("metrics", exist_ok=True)
-    save_metrics(
-        metrics, os.path.join("metrics", f"{type(model).__name__}_test_metrics.csv")
-    )
-
     # Save the final model
     torch.save(
         model.state_dict(),
@@ -568,3 +527,97 @@ if __name__ == "__main__":
     )
     print(f"Final model saved as {type(model).__name__}_final.pth")
     logging.info(f"Final model saved as {type(model).__name__}_final.pth")
+
+    for QF in QFs:
+        # Test the model
+        model.eval()
+        idx = 0
+        test_loss = 0.0
+        psnr_values = []
+        ssim_values = []
+        lpips_alex_values = []
+        lpips_alex_model = lpips.LPIPS(net="alex").to(device)
+
+        with torch.no_grad():
+            for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
+                input_images = input_images.to(device)
+                target_images = target_images.to(device)
+
+                # Forward pass
+                outputs = model(input_images)
+
+                # Calculate MSE loss
+                loss = criterion(outputs, target_images)
+                test_loss += loss.item()
+
+                for i in range(len(outputs)):
+                    # Calculate LPIPS
+                    lpips_alex = lpips_alex_model(
+                        target_images[i], outputs[i], normalize=True
+                    ).item()
+
+                    rgb_target = target_images[i].cpu().numpy()
+                    rgb_output = outputs[i].cpu().numpy()
+
+                    # Calculate PSNR
+                    psnr = peak_signal_noise_ratio(
+                        rgb_target, rgb_output, data_range=1.0
+                    )
+
+                    # Calculate SSIM
+                    ssim = structural_similarity(
+                        rgb_target,
+                        rgb_output,
+                        multichannel=True,
+                        data_range=1.0,
+                        channel_axis=0,
+                    )
+
+                    lpips_alex_values.append(lpips_alex)
+                    psnr_values.append(psnr)
+                    ssim_values.append(ssim)
+
+                    logging.info(
+                        f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, LPIPS Alex: {lpips_alex:.4f}"
+                    )
+
+                    # save the output images
+                    os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
+                    output_image_path = os.path.join(
+                        f"{type(model).__name__}_output",
+                        f"JPEG{QF}",
+                        f"output{idx}.png",
+                    )
+                    np.clip(rgb_output, 0, 1, out=rgb_output)
+                    rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                    cv2.imwrite(output_image_path, rgb_output)
+                    logging.info(
+                        f"{type(model).__name__} Output image saved at {output_image_path}"
+                    )
+                    idx += 1
+
+        # Calculate average metrics
+        avg_test_loss = test_loss / len(test_loader)
+        avg_psnr = np.mean(psnr_values)
+        avg_ssim = np.mean(ssim_values)
+        avg_lpips_alex = np.mean(lpips_alex_values)
+
+        print(
+            f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}"
+        )
+        logging.info(
+            f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}"
+        )
+
+        # Save metrics
+        metrics = {
+            "QF": QF,
+            "Test Loss": [avg_test_loss],
+            "PSNR": psnr_values,
+            "SSIM": ssim_values,
+            "LPIPS Alex": lpips_alex_values,
+        }
+        os.makedirs("metrics", exist_ok=True)
+        save_metrics(
+            metrics, os.path.join("metrics", f"{type(model).__name__}_test_metrics.csv")
+        )
