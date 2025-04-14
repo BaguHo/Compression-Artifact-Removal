@@ -491,10 +491,10 @@ if __name__ == "__main__":
             for i in range(len(outputs)):
                 # Calculate LPIPS
                 lpips_alex = lpips_alex_model(
-                    rgb_output, rgb_target, normalize=True
+                    target_images[i], outputs[i], normalize=True
                 ).item()
                 lpips_vgg = lpips_vgg_model(
-                    rgb_output, rgb_target, normalize=True
+                    target_images[i], outputs[i], normalize=True
                 ).item()
 
                 rgb_target = target_images[i].cpu().numpy()
