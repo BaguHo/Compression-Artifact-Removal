@@ -423,10 +423,10 @@ class BlockCNN(nn.Module):
 # test를 돌릴 때 psnr, ssim 를 평균으로 저장하는 함수 (.csv로 저장)
 def save_metrics(metrics, filename):
     with open(filename, "w") as f:
-        f.write("PSNR,SSIM,LPIPS Alex,LPIPS VGG\n")
+        f.write("PSNR,SSIM,LPIPS Alex\n")
         for i in range(len(metrics["PSNR"])):
             f.write(
-                f"{metrics['PSNR'][i]},{metrics['SSIM'][i]},{metrics['LPIPS Alex'][i]},{metrics['LPIPS VGG'][i]}\n"
+                f"{metrics['PSNR'][i]},{metrics['SSIM'][i]},{metrics['LPIPS Alex'][i]}\n"
             )
     print(f"Metrics saved to {filename}")
 
@@ -440,7 +440,8 @@ if __name__ == "__main__":
     model_names = [
         "ARCNN",
         "DnCNN",
-        "BlockCNN",]
+        "BlockCNN",
+    ]
     # # Initialize the model
     # if model_name == "ARCNN":
     #     model = ARCNN()
@@ -485,7 +486,9 @@ if __name__ == "__main__":
 
         start_time = time.time()
         print(f"Training started at {time.ctime(start_time)}")
-        logging.info(f"{type(model).__name__} Training started at {time.ctime(start_time)}")
+        logging.info(
+            f"{type(model).__name__} Training started at {time.ctime(start_time)}"
+        )
         print(f"Training for {epochs} epochs")
         for epoch in range(epochs):
             model.train()
@@ -546,7 +549,9 @@ if __name__ == "__main__":
             lpips_alex_model = lpips.LPIPS(net="alex").to(device)
 
             with torch.no_grad():
-                for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
+                for input_images, target_images in tqdm.tqdm(
+                    test_loader, desc="Testing"
+                ):
                     input_images = input_images.to(device)
                     target_images = target_images.to(device)
 
@@ -626,5 +631,6 @@ if __name__ == "__main__":
             }
             os.makedirs("metrics", exist_ok=True)
             save_metrics(
-                metrics, os.path.join("metrics", f"{type(model).__name__}_test_metrics.csv")
+                metrics,
+                os.path.join("metrics", f"{type(model).__name__}_test_metrics.csv"),
             )
