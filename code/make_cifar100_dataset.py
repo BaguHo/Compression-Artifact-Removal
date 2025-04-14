@@ -245,7 +245,7 @@ def make_8x8_jpeg_image(QF):
 
 
 if __name__ == "__main__":
-    QFs = [80, 60, 40, 20]
+    QFs = [100]
     save_CIFAR100()
     make_8x8_image_from_original_dataset()
     for QF in QFs:

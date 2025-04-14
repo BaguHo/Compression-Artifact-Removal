@@ -10,6 +10,7 @@ import logging
 import cv2
 import tqdm
 import time
+import lpips
 
 if len(sys.argv) < 5:
     print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
@@ -331,6 +332,10 @@ if __name__ == "__main__":
     test_loss = 0.0
     psnr_values = []
     ssim_values = []
+    lpips_loss_alex = lpips.LPIPS(net="alex").to(device)
+    lpips_loss_vgg = lpips.LPIPS(net="vgg").to(device)
+    lpips_alex_loss_values = []
+    lpips_vgg_loss_values = []
 
     with torch.no_grad():
         combined_target_images = []
@@ -399,8 +404,28 @@ if __name__ == "__main__":
                         data_range=255,
                         channel_axis=0,
                     )
+                    lpips_alex_loss = lpips_loss_alex(
+                        torch.from_numpy(combined_output_image)
+                        .permute(2, 0, 1)
+                        .to(device),
+                        torch.from_numpy(combined_target_image)
+                        .permute(2, 0, 1)
+                        .to(device),
+                    )
+                    lpips_vgg_loss = lpips_loss_alex(
+                        torch.from_numpy(combined_output_image)
+                        .permute(2, 0, 1)
+                        .to(device),
+                        torch.from_numpy(combined_target_image)
+                        .permute(2, 0, 1)
+                        .to(device),
+                    )
+
+                    lpips_alex_loss_values.append(lpips_alex_loss.item())
+                    lpips_vgg_loss_values.append(lpips_vgg_loss.item())
                     psnr_values.append(psnr)
                     ssim_values.append(ssim)
+
                     logging.info(
                         f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
                     )
@@ -420,10 +445,13 @@ if __name__ == "__main__":
     # Calculate average metrics
     avg_test_loss = test_loss / len(test_loader)
     avg_psnr = np.mean(psnr_values)
+    avg_ssim = np.mean(ssim_values)
+    avg_lpips_alex = np.mean(lpips_alex_loss_values)
+    avg_lpips_vgg = np.mean(lpips_vgg_loss_values)
 
     print(
-        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}, LPIPS VGG: {np.mean(lpips_vgg_loss_values):.4f}"
     )
     logging.info(
-        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB"
+        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}, LPIPS VGG: {np.mean(lpips_vgg_loss_values):.4f}"
     )

@@ -11,6 +11,7 @@ import logging
 import cv2
 import tqdm
 import time
+import lpips
 
 # !warning: BlockCNN does not work
 
@@ -58,12 +59,6 @@ class CIFAR100Dataset(Dataset):
         input_image = self.input_images[idx]
         target_image = self.target_images[idx]
 
-        # input_image = cv2.imread(input_image)
-        # target_image = cv2.imread(target_image)
-        # ! warning: The following lines are commented out to avoid PIL dependency
-        # input_image = Image.fromarray(input_image)
-        # target_image = Image.fromarray(target_image)
-
         if self.transform:
             input_image = self.transform(input_image)
             target_image = self.transform(target_image)
@@ -72,7 +67,7 @@ class CIFAR100Dataset(Dataset):
 
 
 def load_images():
-    QFs = [80, 60, 40, 20]
+    QFs = [100, 80, 60, 40, 20]
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original_size")
 
@@ -378,9 +373,11 @@ class BlockCNN(nn.Module):
 # test를 돌릴 때 psnr, ssim 를 평균으로 저장하는 함수 (.csv로 저장)
 def save_metrics(metrics, filename):
     with open(filename, "w") as f:
-        f.write("PSNR,SSIM\n")
+        f.write("PSNR,SSIM,LPIPS Alex,LPIPS VGG\n")
         for i in range(len(metrics["PSNR"])):
-            f.write(f"{metrics['PSNR'][i]},{metrics['SSIM'][i]}\n")
+            f.write(
+                f"{metrics['PSNR'][i]},{metrics['SSIM'][i]},{metrics['LPIPS Alex'][i]},{metrics['LPIPS VGG'][i]}\n"
+            )
     print(f"Metrics saved to {filename}")
 
 
@@ -474,7 +471,10 @@ if __name__ == "__main__":
     test_loss = 0.0
     psnr_values = []
     ssim_values = []
-    psnr_b_values = []
+    lpips_alex_values = []
+    lpips_vgg_values = []
+    lpips_alex_model = lpips.LPIPS(net="alex").to(device)
+    lpips_vgg_model = lpips.LPIPS(net="vgg").to(device)
 
     with torch.no_grad():
         for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
@@ -504,11 +504,21 @@ if __name__ == "__main__":
                     channel_axis=0,
                 )
 
+                # Calculate LPIPS
+                lpips_alex = lpips_alex_model(
+                    rgb_output, rgb_target, normalize=True
+                ).item()
+                lpips_vgg = lpips_vgg_model(
+                    rgb_output, rgb_target, normalize=True
+                ).item()
+
+                lpips_alex_values.append(lpips_alex)
+                lpips_vgg_values.append(lpips_vgg)
                 psnr_values.append(psnr)
                 ssim_values.append(ssim)
 
                 logging.info(
-                    f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
+                    f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, LPIPS Alex: {lpips_alex:.4f}, LPIPS VGG: {lpips_vgg:.4f}"
                 )
 
                 # save the output images
@@ -527,12 +537,15 @@ if __name__ == "__main__":
     # Calculate average metrics
     avg_test_loss = test_loss / len(test_loader)
     avg_psnr = np.mean(psnr_values)
+    avg_ssim = np.mean(ssim_values)
+    avg_lpips_alex = np.mean(lpips_alex_values)
+    avg_lpips_vgg = np.mean(lpips_vgg_values)
 
     print(
-        f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}"
+        f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}, Average LPIPS VGG: {avg_lpips_vgg:.4f}"
     )
     logging.info(
-        f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}"
+        f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}, Average LPIPS VGG: {avg_lpips_vgg:.4f}"
     )
 
     # Save metrics
@@ -540,10 +553,12 @@ if __name__ == "__main__":
         "Test Loss": [avg_test_loss],
         "PSNR": psnr_values,
         "SSIM": ssim_values,
+        "LPIPS Alex": lpips_alex_values,
+        "LPIPS VGG": lpips_vgg_values,
     }
     os.makedirs("metrics", exist_ok=True)
     save_metrics(
-        metrics, os.path.join("metrics", f"{type(model).__name__}_metrics.csv")
+        metrics, os.path.join("metrics", f"{type(model).__name__}_test_metrics.csv")
     )
 
     # Save the final model
