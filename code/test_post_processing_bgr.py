@@ -392,6 +392,7 @@ if __name__ == "__main__":
 
         with torch.no_grad():
             for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
+
                 input_images = input_images.to(device)
                 target_images = target_images.to(device)
 
@@ -403,6 +404,16 @@ if __name__ == "__main__":
                 test_loss += loss.item()
 
                 for i in range(len(outputs)):
+                    #  Calculate LPIPS
+                    lpips_vgg_value = lpips_vgg(
+                        target_images[i],
+                        outputs[i],
+                    )
+                    lpips_alex_value = lpips_alex(
+                        target_images[i],
+                        outputs[i],
+                    )
+
                     rgb_target = target_images[i].cpu().numpy()
                     rgb_output = outputs[i].cpu().numpy()
 
@@ -418,16 +429,6 @@ if __name__ == "__main__":
                         multichannel=True,
                         data_range=1.0,
                         channel_axis=0,
-                    )
-
-                    #  Calculate LPIPS
-                    lpips_vgg_value = lpips_vgg(
-                        torch.from_numpy(rgb_output).unsqueeze(0).to(device),
-                        torch.from_numpy(rgb_target).unsqueeze(0).to(device),
-                    )
-                    lpips_alex_value = lpips_alex(
-                        torch.from_numpy(rgb_output).unsqueeze(0).to(device),
-                        torch.from_numpy(rgb_target).unsqueeze(0).to(device),
                     )
 
                     lpips_vgg_values.append(lpips_vgg_value.item())
