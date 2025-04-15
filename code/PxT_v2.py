@@ -61,7 +61,7 @@ class CIFAR100Dataset(Dataset):
 
 
 def load_images():
-    QFs = [80, 60, 40, 20]
+    QFs = [100, 80, 60, 40, 20]
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
 
@@ -149,6 +149,57 @@ def load_images():
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_dataset, test_dataset, train_loader, test_loader
+
+def load_test_images_each_QF(QF):
+    dataset_name = "CIFAR100"
+    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
+
+    train_input_dataset = []
+    test_input_dataset = []
+    train_target_dataset = []
+    test_target_dataset = []
+
+    # input images
+    test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
+
+    # target images (original)
+    target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
+
+    # 테스트 데이터 로드
+    for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
+        test_path = os.path.join(test_input_dir, str(i))
+        target_test_path = os.path.join(target_test_dataset_dir, str(i))
+
+        # test_path 내 파일을 정렬된 순서로 불러오기
+        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
+        sorted_target_test_files = sorted(
+            os.listdir(target_test_path), key=sort_key
+        )
+
+        # 두 디렉토리의 파일명이 같은지 확인하며 로드
+        for test_file, target_file in zip(
+            sorted_test_files, sorted_target_test_files
+        ):
+            if test_file == target_file:
+                # input 이미지 로드
+                test_image_path = os.path.join(test_path, test_file)
+                test_image = cv2.imread(test_image_path)
+                test_input_dataset.append(test_image)
+
+                # target 이미지 로드
+                target_image_path = os.path.join(target_test_path, target_file)
+                target_image = cv2.imread(target_image_path)
+                test_target_dataset.append(target_image)
+            else:
+                print(
+                    f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
+                )
+
+    # Dataset과 DataLoader 생성
+    test_dataset = CIFAR100Dataset(test_input_dataset, test_target_dataset)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return test_dataset, test_loader
 
 
 class Encoder(nn.Module):
@@ -249,10 +300,6 @@ if __name__ == "__main__":
     # Load the dataset
     train_dataset, test_dataset, train_loader, test_loader = load_images()
 
-    # Print dataset sizes
-    print(f"Train dataset size: {len(train_dataset)}")
-    print(f"Test dataset size: {len(test_dataset)}")
-
     # Initialize the model
     model = PxT()
     print(model)
@@ -329,111 +376,112 @@ if __name__ == "__main__":
     lpips_loss_alex = lpips.LPIPS(net="alex").to(device)
     lpips_alex_loss_values = []
 
-    with torch.no_grad():
-        combined_target_images = []
-        combined_output_images = []
-        rgb_target_patches = []
-        rgb_output_patches = []
-        patch_idx = 0
+    for QF in [100, 80, 60, 40, 20]:
+        with torch.no_grad():
+            combined_target_images = []
+            combined_output_images = []
+            rgb_target_patches = []
+            rgb_output_patches = []
+            patch_idx = 0
 
-        for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
-            input_images = input_images.to(device)
-            target_images = target_images.to(device)
+            for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
+                input_images = input_images.to(device)
+                target_images = target_images.to(device)
 
-            # Forward pass
-            outputs = model(input_images)
+                # Forward pass
+                outputs = model(input_images)
 
-            # Calculate MSE loss
-            loss = criterion(outputs, target_images)
-            test_loss += loss.item()
+                # Calculate MSE loss
+                loss = criterion(outputs, target_images)
+                test_loss += loss.item()
 
-            for i in range(len(outputs)):
-                rgb_target = target_images[i].cpu().numpy()
-                rgb_output = outputs[i].cpu().numpy()
-                np.clip(rgb_target, 0, 1, out=rgb_target)
-                np.clip(rgb_output, 0, 1, out=rgb_output)
-                rgb_target = np.transpose(rgb_target, (1, 2, 0)) * 255
-                rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
-                rgb_target_patches.append(rgb_target)
-                rgb_output_patches.append(rgb_output)
-                patch_idx += 1
+                for i in range(len(outputs)):
+                    rgb_target = target_images[i].cpu().numpy()
+                    rgb_output = outputs[i].cpu().numpy()
+                    np.clip(rgb_target, 0, 1, out=rgb_target)
+                    np.clip(rgb_output, 0, 1, out=rgb_output)
+                    rgb_target = np.transpose(rgb_target, (1, 2, 0)) * 255
+                    rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                    rgb_target_patches.append(rgb_target)
+                    rgb_output_patches.append(rgb_output)
+                    patch_idx += 1
 
-                # 8x8 이미지들을 32x32로 합치기
-                if patch_idx % 16 == 0 and patch_idx > 0:
-                    patch_idx = 0
-                    combined_target_image = np.zeros((32, 32, 3), dtype=np.uint8)
-                    combined_output_image = np.zeros((32, 32, 3), dtype=np.uint8)
+                    # 8x8 이미지들을 32x32로 합치기
+                    if patch_idx % 16 == 0 and patch_idx > 0:
+                        patch_idx = 0
+                        combined_target_image = np.zeros((32, 32, 3), dtype=np.uint8)
+                        combined_output_image = np.zeros((32, 32, 3), dtype=np.uint8)
 
-                    for j in range(4):
-                        for k in range(4):
-                            idx = j * 4 + k
-                            combined_target_image[
-                                j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
-                            ] = rgb_target_patches[idx]
-                    rgb_target_patches.clear()
+                        for j in range(4):
+                            for k in range(4):
+                                idx = j * 4 + k
+                                combined_target_image[
+                                    j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
+                                ] = rgb_target_patches[idx]
+                        rgb_target_patches.clear()
 
-                    for j in range(4):
-                        for k in range(4):
-                            idx = j * 4 + k
-                            combined_output_image[
-                                j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
-                            ] = rgb_output_patches[idx]
+                        for j in range(4):
+                            for k in range(4):
+                                idx = j * 4 + k
+                                combined_output_image[
+                                    j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
+                                ] = rgb_output_patches[idx]
 
-                    rgb_output_patches.clear()
-                    combined_target_images.append(combined_target_image)
-                    combined_output_images.append(combined_output_image)
+                        rgb_output_patches.clear()
+                        combined_target_images.append(combined_target_image)
+                        combined_output_images.append(combined_output_image)
 
-                    # Calculate PSNR and SSIM
-                    psnr = peak_signal_noise_ratio(
-                        combined_target_image.transpose(2, 0, 1),
-                        combined_output_image.transpose(2, 0, 1),
-                        data_range=255,
-                    )
-                    ssim = structural_similarity(
-                        combined_target_image.transpose(2, 0, 1),
-                        combined_output_image.transpose(2, 0, 1),
-                        multichannel=True,
-                        data_range=255,
-                        channel_axis=0,
-                    )
-                    lpips_alex_loss = lpips_loss_alex(
-                        torch.from_numpy(combined_output_image)
-                        .permute(2, 0, 1)
-                        .to(device),
-                        torch.from_numpy(combined_target_image)
-                        .permute(2, 0, 1)
-                        .to(device),
-                    )
+                        # Calculate PSNR and SSIM
+                        psnr = peak_signal_noise_ratio(
+                            combined_target_image.transpose(2, 0, 1),
+                            combined_output_image.transpose(2, 0, 1),
+                            data_range=255,
+                        )
+                        ssim = structural_similarity(
+                            combined_target_image.transpose(2, 0, 1),
+                            combined_output_image.transpose(2, 0, 1),
+                            multichannel=True,
+                            data_range=255,
+                            channel_axis=0,
+                        )
+                        lpips_alex_loss = lpips_loss_alex(
+                            torch.from_numpy(combined_output_image)
+                            .permute(2, 0, 1)
+                            .to(device),
+                            torch.from_numpy(combined_target_image)
+                            .permute(2, 0, 1)
+                            .to(device),
+                        )
 
-                    lpips_alex_loss_values.append(lpips_alex_loss.item())
-                    psnr_values.append(psnr)
-                    ssim_values.append(ssim)
+                        lpips_alex_loss_values.append(lpips_alex_loss.item())
+                        psnr_values.append(psnr)
+                        ssim_values.append(ssim)
 
-                    logging.info(
-                        f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
-                    )
+                        logging.info(
+                            f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
+                        )
 
-                    # 합쳐진 이미지 저장
-                    os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
-                    combined_image_path = os.path.join(
-                        f"{type(model).__name__}_output",
-                        f"combined_output{image_name_idx}.png",
-                    )
-                    cv2.imwrite(combined_image_path, combined_output_image)
-                    logging.info(
-                        f"{type(model).__name__} Combined image saved at {combined_image_path}"
-                    )
-                    image_name_idx += 1
+                        # 합쳐진 이미지 저장
+                        os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
+                        combined_image_path = os.path.join(
+                            f"{type(model).__name__}_output",
+                            f"combined_output{image_name_idx}.png",
+                        )
+                        cv2.imwrite(combined_image_path, combined_output_image)
+                        logging.info(
+                            f"{type(model).__name__} Combined image saved at {combined_image_path}"
+                        )
+                        image_name_idx += 1
 
-    # Calculate average metrics
-    avg_test_loss = test_loss / len(test_loader)
-    avg_psnr = np.mean(psnr_values)
-    avg_ssim = np.mean(ssim_values)
-    avg_lpips_alex = np.mean(lpips_alex_loss_values)
+        # Calculate average metrics
+        avg_test_loss = test_loss / len(test_loader)
+        avg_psnr = np.mean(psnr_values)
+        avg_ssim = np.mean(ssim_values)
+        avg_lpips_alex = np.mean(lpips_alex_loss_values)
 
-    print(
-        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
-    )
-    logging.info(
-        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
-    )
+        print(
+            f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+        )
+        logging.info(
+            f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+        )
