@@ -53,12 +53,6 @@ class CIFAR100Dataset(Dataset):
         input_image = self.input_images[idx]
         target_image = self.target_images[idx]
 
-        # input_image = cv2.imread(input_image)
-        # target_image = cv2.imread(target_image)
-        # ! warning: The following lines are commented out to avoid PIL dependency
-        # input_image = Image.fromarray(input_image)
-        # target_image = Image.fromarray(target_image)
-
         if self.transform:
             input_image = self.transform(input_image)
             target_image = self.transform(target_image)
@@ -333,9 +327,7 @@ if __name__ == "__main__":
     psnr_values = []
     ssim_values = []
     lpips_loss_alex = lpips.LPIPS(net="alex").to(device)
-    lpips_loss_vgg = lpips.LPIPS(net="vgg").to(device)
     lpips_alex_loss_values = []
-    lpips_vgg_loss_values = []
 
     with torch.no_grad():
         combined_target_images = []
@@ -412,17 +404,8 @@ if __name__ == "__main__":
                         .permute(2, 0, 1)
                         .to(device),
                     )
-                    lpips_vgg_loss = lpips_loss_alex(
-                        torch.from_numpy(combined_output_image)
-                        .permute(2, 0, 1)
-                        .to(device),
-                        torch.from_numpy(combined_target_image)
-                        .permute(2, 0, 1)
-                        .to(device),
-                    )
 
                     lpips_alex_loss_values.append(lpips_alex_loss.item())
-                    lpips_vgg_loss_values.append(lpips_vgg_loss.item())
                     psnr_values.append(psnr)
                     ssim_values.append(ssim)
 
@@ -447,11 +430,10 @@ if __name__ == "__main__":
     avg_psnr = np.mean(psnr_values)
     avg_ssim = np.mean(ssim_values)
     avg_lpips_alex = np.mean(lpips_alex_loss_values)
-    avg_lpips_vgg = np.mean(lpips_vgg_loss_values)
 
     print(
-        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}, LPIPS VGG: {np.mean(lpips_vgg_loss_values):.4f}"
+        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
     )
     logging.info(
-        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}, LPIPS VGG: {np.mean(lpips_vgg_loss_values):.4f}"
+        f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
     )
