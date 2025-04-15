@@ -111,44 +111,13 @@ def load_images():
                         f"Warning: Mismatched files in training set: {train_file} and {target_file}"
                     )
 
-        # 테스트 데이터 로드
-        for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
-            test_path = os.path.join(test_input_dir, str(i))
-            target_test_path = os.path.join(target_test_dataset_dir, str(i))
-
-            # test_path 내 파일을 정렬된 순서로 불러오기
-            sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-            sorted_target_test_files = sorted(
-                os.listdir(target_test_path), key=sort_key
-            )
-
-            # 두 디렉토리의 파일명이 같은지 확인하며 로드
-            for test_file, target_file in zip(
-                sorted_test_files, sorted_target_test_files
-            ):
-                if test_file == target_file:
-                    # input 이미지 로드
-                    test_image_path = os.path.join(test_path, test_file)
-                    test_image = cv2.imread(test_image_path)
-                    test_input_dataset.append(test_image)
-
-                    # target 이미지 로드
-                    target_image_path = os.path.join(target_test_path, target_file)
-                    target_image = cv2.imread(target_image_path)
-                    test_target_dataset.append(target_image)
-                else:
-                    print(
-                        f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
-                    )
-
     # Dataset과 DataLoader 생성
     train_dataset = CIFAR100Dataset(train_input_dataset, train_target_dataset)
-    test_dataset = CIFAR100Dataset(test_input_dataset, test_target_dataset)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    return train_dataset, test_dataset, train_loader, test_loader
+    return train_dataset, train_loader
+
 
 def load_test_images_each_QF(QF):
     dataset_name = "CIFAR100"
@@ -172,14 +141,10 @@ def load_test_images_each_QF(QF):
 
         # test_path 내 파일을 정렬된 순서로 불러오기
         sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-        sorted_target_test_files = sorted(
-            os.listdir(target_test_path), key=sort_key
-        )
+        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
 
         # 두 디렉토리의 파일명이 같은지 확인하며 로드
-        for test_file, target_file in zip(
-            sorted_test_files, sorted_target_test_files
-        ):
+        for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
             if test_file == target_file:
                 # input 이미지 로드
                 test_image_path = os.path.join(test_path, test_file)
@@ -298,7 +263,7 @@ def save_metrics(metrics, filename):
 
 if __name__ == "__main__":
     # Load the dataset
-    train_dataset, test_dataset, train_loader, test_loader = load_images()
+    train_dataset, train_loader = load_images()
 
     # Initialize the model
     model = PxT()
@@ -377,6 +342,7 @@ if __name__ == "__main__":
     lpips_alex_loss_values = []
 
     for QF in [100, 80, 60, 40, 20]:
+        test_dataset, test_loader = load_test_images_each_QF(QF)
         with torch.no_grad():
             combined_target_images = []
             combined_output_images = []
@@ -480,8 +446,8 @@ if __name__ == "__main__":
         avg_lpips_alex = np.mean(lpips_alex_loss_values)
 
         print(
-            f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"{type(model).__name__} QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )
         logging.info(
-            f"{type(model).__name__} Test Loss: {avg_test_loss:.4f}, PSNR: {avg_psnr:.2f} dB, SSIM: {np.mean(ssim_values):.4f}, LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"{type(model).__name__} QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )
