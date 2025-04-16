@@ -188,11 +188,8 @@ def train_model(model_name, epochs=epochs):
 
     # 저장한 JPEG 데이터셋 불러와서 테스트
     for QF in QFs:
-        jpeg_test_dataset = CIFAR100(
-            root=os.path.join("datasets", "cifar100", f"JPEG{QF}"),
-            train=False,
-            download=False,
-            transform=transform,
+        jpeg_test_dataset = Dataset.ImageFolder(
+            "datasets/cifar100/JPEG" + str(QF) + "/test"
         )
         jpeg_test_loader = DataLoader(
             jpeg_test_dataset,
