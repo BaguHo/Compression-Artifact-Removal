@@ -10,8 +10,8 @@ import torch.nn as nn
 import torch.optim as optim
 import sys, os
 import logging
-import os
 import re
+import torchvision.transforms as T
 import numpy as np
 from torchvision.utils import save_image
 from torchvision.datasets import CIFAR100
@@ -47,8 +47,6 @@ train_loader = DataLoader(
 test_loader = DataLoader(
     test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
 )
-
-import torchvision.transforms as T
 
 
 # Function to ensure directory exists
@@ -88,8 +86,8 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
 # print("Saving CIFAR-100 train dataset with different quality factors...")
 # save_cifar100_with_different_qf(train_dataset, "train")
 
-# print("Saving CIFAR-100 test dataset with different quality factors...")
-# save_cifar100_with_different_qf(test_dataset, "test")
+print("Saving CIFAR-100 test dataset with different quality factors...")
+save_cifar100_with_different_qf(test_dataset, "test")
 
 
 def sort_key(filename):
