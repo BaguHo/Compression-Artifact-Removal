@@ -34,11 +34,56 @@ num_workers = int(sys.argv[3])
 # 데이터 준비
 transform = transforms.Compose([transforms.ToTensor()])
 
-train_dataset = CIFAR100(
+# Define function to save CIFAR100 as PNG
+def save_cifar100_as_png(dataset, split):
+    output_dir = os.path.join("datasets", "cifar100_png", split)
+    ensure_dir(output_dir)
+    
+    for idx, (img, label) in enumerate(dataset):
+        # Create class directory if it doesn't exist
+        class_dir = os.path.join(output_dir, str(label))
+        ensure_dir(class_dir)
+        
+        # Convert to numpy and save as PNG
+        if isinstance(img, torch.Tensor):
+            img_np = img.permute(1, 2, 0).numpy() * 255.0
+            img_np = img_np.astype(np.uint8)
+            img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+        
+        img_path = os.path.join(class_dir, f"img_{idx}.png")
+        cv2.imwrite(img_path, img_np)
+        
+        if idx % 1000 == 0:
+            print(f"Saved {idx} images for {split} set")
+
+# Original CIFAR100 datasets
+cifar100_train = CIFAR100(
     root="./datasets", train=True, download=True, transform=transform
 )
-test_dataset = CIFAR100(
+cifar100_test = CIFAR100(
     root="./datasets", train=False, download=True, transform=transform
+)
+
+# Save as PNG if not already done
+png_train_dir = os.path.join("datasets", "cifar100_png", "train")
+png_test_dir = os.path.join("datasets", "cifar100_png", "test")
+
+if not os.path.exists(png_train_dir):
+    print("Saving CIFAR-100 train dataset as PNG...")
+    save_cifar100_as_png(cifar100_train, "train")
+    
+if not os.path.exists(png_test_dir):
+    print("Saving CIFAR-100 test dataset as PNG...")
+    save_cifar100_as_png(cifar100_test, "test")
+
+# Load PNG datasets
+train_dataset = datasets.ImageFolder(
+    png_train_dir,
+    transform=transform
+)
+test_dataset = datasets.ImageFolder(
+    png_test_dir,
+    transform=transform
 )
 
 train_loader = DataLoader(
