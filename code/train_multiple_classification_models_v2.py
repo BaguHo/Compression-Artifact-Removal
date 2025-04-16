@@ -53,7 +53,12 @@ test_loader = DataLoader(
 # JPEG 데이터셋 로드
 def load_post_processed_jpeg_datasets(QF, transform, dataset_name):
     jpeg_test_dir = os.path.join(
-        os.getcwd(), "datasets", "removed_cifar100", dataset_name, f"JPEG{QF}", "test"
+        os.getcwd(),
+        "datasets",
+        "removed_cifar100",
+        f"{dataset_name}_cifar100",
+        f"JPEG{QF}",
+        "test",
     )
 
     test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
