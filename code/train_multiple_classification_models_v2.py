@@ -92,8 +92,8 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
 # print("Saving CIFAR-100 train dataset with different quality factors...")
 # save_cifar100_with_different_qf(train_dataset, "train")
 
-print("Saving CIFAR-100 test dataset with different quality factors...")
-save_cifar100_with_different_qf(test_dataset, "test")
+# print("Saving CIFAR-100 test dataset with different quality factors...")
+# save_cifar100_with_different_qf(test_dataset, "test")
 
 
 def sort_key(filename):
