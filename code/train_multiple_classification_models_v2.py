@@ -61,6 +61,10 @@ def get_model(model_name):
 # 훈련 함수
 def train_model(model_name, epochs=epochs):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.device_count() > 1:
+        model = nn.DataParallel(get_model(model_name))
+        
+    print(f"Using {torch.cuda.device_count()} GPUs")
     model = get_model(model_name)
     model.to(device)
 
