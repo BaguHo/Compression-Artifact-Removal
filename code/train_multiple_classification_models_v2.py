@@ -16,6 +16,7 @@ import numpy as np
 from torchvision.utils import save_image
 from torchvision.datasets import CIFAR100
 import cv2
+from PIL import Image
 
 logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
@@ -45,17 +46,16 @@ def save_cifar100_as_png(dataset, split):
         class_dir = os.path.join(output_dir, str(label))
         os.makedirs(class_dir, exist_ok=True)
 
-        # Convert to numpy and save as PNG
+        # Convert to PIL Image if it's a tensor
         if isinstance(img, torch.Tensor):
-            img_np = img.permute(1, 2, 0).numpy() * 255.0
-            img_np = img_np.astype(np.uint8)
-            img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+            img = T.ToPILImage()(img)
 
+        # Save as PNG
         img_path = os.path.join(class_dir, f"img_{idx}.png")
-        cv2.imwrite(img_path, img_np)
+        img.save(img_path, "PNG")
 
         if idx % 1000 == 0:
-            print(f"Saved {idx} images for {split} set")
+            print(f"Processed {idx} images for {split} set")
 
 
 # Original CIFAR100 datasets
@@ -101,17 +101,13 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
             class_dir = os.path.join(output_dir, str(label))
             os.makedirs(class_dir, exist_ok=True)
 
-            # Convert to numpy array if it's a tensor
+            # Convert to PIL Image if it's a tensor
             if isinstance(img, torch.Tensor):
-                # Convert from [C,H,W] to [H,W,C] and from [0,1] to [0,255]
-                img_np = img.permute(1, 2, 0).numpy() * 255.0
-                img_np = img_np.astype(np.uint8)
-                # Convert from RGB to BGR (OpenCV format)
-                img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+                img = T.ToPILImage()(img)
 
             # Save with specific JPEG quality
             img_path = os.path.join(class_dir, f"img_{idx}.jpg")
-            cv2.imwrite(img_path, img_np, [cv2.IMWRITE_JPEG_QUALITY, qf])
+            img.save(img_path, "JPEG", quality=qf)
 
             if idx % 1000 == 0:
                 print(f"Processed {idx} images with QF={qf} for {split} set")
