@@ -81,10 +81,10 @@ def train_model(model_name, epochs=epochs):
 
     # 훈련 루프
     for epoch in range(epochs):
-        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}")
         model.train()
         running_loss = 0.0
-        for inputs, labels in train_loader:
+        pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}")
+        for inputs, labels in pbar:
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -92,6 +92,7 @@ def train_model(model_name, epochs=epochs):
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+            pbar.set_postfix({'loss': loss.item()})
 
         print(f"Epoch {epoch+1}, Loss: {running_loss / len(train_loader)}")
 
@@ -100,7 +101,7 @@ def train_model(model_name, epochs=epochs):
     correct = 0
     total = 0
     with torch.no_grad():
-        for inputs, labels in test_loader:
+        for inputs, labels in tqdm(test_loader, desc="Testing"):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             _, predicted = torch.max(outputs.data, 1)
