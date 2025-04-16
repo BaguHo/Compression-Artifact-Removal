@@ -10,6 +10,13 @@ import torch.nn as nn
 import torch.optim as optim
 import sys, os
 import logging
+import os
+import re
+import numpy as np
+from PIL import Image
+from torchvision.utils import save_image
+from torchvision.datasets import CIFAR100
+import cv2
 
 logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
@@ -49,25 +56,44 @@ test_loader = DataLoader(
     test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
 )
 
+import torchvision.transforms as T
 
-# JPEG 데이터셋 로드
-def load_post_processed_jpeg_datasets(QF, transform, dataset_name):
-    jpeg_test_dir = os.path.join(
-        os.getcwd(),
-        "datasets",
-        "removed_cifar100",
-        f"{dataset_name}_cifar100",
-        f"JPEG{QF}",
-        "test",
-    )
 
-    test_dataset = datasets.ImageFolder(jpeg_test_dir, transform=transform)
+# Function to ensure directory exists
+def ensure_dir(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-    test_dataloader = DataLoader(
-        test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
-    )
 
-    return test_dataset, test_dataloader
+# Function to save CIFAR-100 dataset with different JPEG quality factors
+def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
+    for qf in qfs:
+        output_dir = os.path.join("datasets", "cifar100", f"JPEG{qf}", split)
+        ensure_dir(output_dir)
+
+        for idx, (img, label) in enumerate(dataset):
+            # Create class directory if it doesn't exist
+            class_dir = os.path.join(output_dir, str(label))
+            ensure_dir(class_dir)
+
+            # Convert to PIL Image if it's a tensor
+            if isinstance(img, torch.Tensor):
+                img = T.ToPILImage()(img)
+
+            # Save with specific JPEG quality
+            img_path = os.path.join(class_dir, f"img_{idx}.jpg")
+            img.save(img_path, "JPEG", quality=qf)
+
+            if idx % 1000 == 0:
+                print(f"Processed {idx} images with QF={qf} for {split} set")
+
+
+# Save the original CIFAR-100 dataset with different JPEG quality factors
+print("Saving CIFAR-100 train dataset with different quality factors...")
+save_cifar100_with_different_qf(train_dataset, "train")
+
+print("Saving CIFAR-100 test dataset with different quality factors...")
+save_cifar100_with_different_qf(test_dataset, "test")
 
 
 def sort_key(filename):
@@ -158,31 +184,32 @@ def train_model(model_name, epochs=epochs):
     logging.info(f"Accuracy of {model_name} on CIFAR-100: {100 * correct / total:.2f}%")
 
     # JPEG 데이터셋에 대한 정확도 계산
-    QFs = [80, 60, 40, 20]
-    dataset_names = ["ARCNN", "BlockCNN", "DnCNN", "PxT"]
+    QFs = [100, 80, 60, 40, 20]
+
+    # 저장한 JPEG 데이터셋 불러와서 테스트
     for QF in QFs:
-        for dataset_name in dataset_names:
-            jpeg_test_dataset, jpeg_test_dataloader = load_post_processed_jpeg_datasets(
-                QF, transform, dataset_name
-            )
+        jpeg_test_dataset = CIFAR100(
+            root=os.path.join("datasets", "cifar100", f"JPEG{QF}"),
+            train=False,
+            download=False,
+            transform=transform,
+        )
+        jpeg_test_loader = DataLoader(
+            jpeg_test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+        )
 
-            correct = 0
-            total = 0
-            with torch.no_grad():
-                for inputs, labels in tqdm(jpeg_test_dataloader, desc="Testing"):
-                    inputs, labels = inputs.to(device), labels.to(device)
-                    outputs = model(inputs)
-                    _, predicted = torch.max(outputs.data, 1)
-                    total += labels.size(0)
-                    correct += (predicted == labels).sum().item()
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for inputs, labels in tqdm(jpeg_test_loader, desc=f"Testing JPEG QF={QF}"):
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
 
-            print(
-                f"Accuracy of {model_name} on CIFAR-100 JPEG QF {QF}: {100 * correct / total:.2f}%"
-            )
-            logging.info(
-                f"Accuracy of {model_name} on CIFAR-100 JPEG QF {QF}: {100 * correct / total:.2f}%"
-            )
-
+        print(f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%")
+        logging.info(f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%")
 
 # 실행 예시: 원하는 모델 이름을 입력하여 훈련 시작
 if __name__ == "__main__":
