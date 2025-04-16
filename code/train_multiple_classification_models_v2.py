@@ -32,9 +32,7 @@ batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 
 # 데이터 준비
-transform = transforms.Compose(
-    transforms.ToTensor(),
-)
+transform = transforms.Compose(transforms.ToTensor())
 
 train_dataset = CIFAR100(
     root="./datasets", train=True, download=True, transform=transform
