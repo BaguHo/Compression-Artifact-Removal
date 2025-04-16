@@ -154,12 +154,11 @@ def train_model(model_name, epochs=epochs):
 
     # model save
     torch.save(model.state_dict(), f"{model_name}_cifar100.pth")
-    print(f"Model {model_name} saved as {model_name}_cifar100.pth")
     print(f"Accuracy of {model_name} on CIFAR-100: {100 * correct / total:.2f}%")
     logging.info(f"Accuracy of {model_name} on CIFAR-100: {100 * correct / total:.2f}%")
 
     # JPEG 데이터셋에 대한 정확도 계산
-    QFs = [100, 80, 60, 40, 20]
+    QFs = [80, 60, 40, 20]
     dataset_names = ["ARCNN", "BlockCNN", "DnCNN", "PxT"]
     for QF in QFs:
         for dataset_name in dataset_names:
