@@ -89,8 +89,8 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
 
 
 # Save the original CIFAR-100 dataset with different JPEG quality factors
-print("Saving CIFAR-100 train dataset with different quality factors...")
-save_cifar100_with_different_qf(train_dataset, "train")
+# print("Saving CIFAR-100 train dataset with different quality factors...")
+# save_cifar100_with_different_qf(train_dataset, "train")
 
 print("Saving CIFAR-100 test dataset with different quality factors...")
 save_cifar100_with_different_qf(test_dataset, "test")
@@ -195,7 +195,10 @@ def train_model(model_name, epochs=epochs):
             transform=transform,
         )
         jpeg_test_loader = DataLoader(
-            jpeg_test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+            jpeg_test_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
         )
 
         correct = 0
@@ -208,8 +211,13 @@ def train_model(model_name, epochs=epochs):
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-        print(f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%")
-        logging.info(f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%")
+        print(
+            f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%"
+        )
+        logging.info(
+            f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%"
+        )
+
 
 # 실행 예시: 원하는 모델 이름을 입력하여 훈련 시작
 if __name__ == "__main__":
