@@ -6,6 +6,14 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
+import sys
+
+if len(sys.argv) < 3:
+    print("Usage: python train_multiple_classification_models.py <epochs> <batch_size>")
+    sys.exit(1)
+
+epochs = int(sys.argv[1])
+batch_size = int(sys.argv[2])
 
 # 데이터 준비
 transform = transforms.Compose(
@@ -24,8 +32,8 @@ test_dataset = CIFAR100(
     root="./datasets", train=False, download=True, transform=transform
 )
 
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
 # 모델 선택 함수
@@ -51,7 +59,7 @@ def get_model(model_name):
 
 
 # 훈련 함수
-def train_model(model_name, epochs=20):
+def train_model(model_name, epochs=epochs):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = get_model(model_name)
     model.to(device)
