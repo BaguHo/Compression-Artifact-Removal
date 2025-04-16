@@ -4,6 +4,7 @@ from torchvision.datasets import CIFAR100
 from torch.utils.data import DataLoader, Dataset
 from torchvision.models import efficientnet_b3, mobilenet_v2, vgg19
 from torch.utils.data import DataLoader
+import torchvision.datasets as datasets
 from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
