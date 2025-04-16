@@ -39,7 +39,7 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 # 모델 선택 함수
 def get_model(model_name):
     if model_name == "efficientnet_b3":
-        model = efficientnet_b3(weights=IMAGENET1K_V1)  # Pretrained weights 사용 가능
+        model = efficientnet_b3(weights=None)  # Pretrained weights 사용 가능
         model.classifier[1] = nn.Linear(
             model.classifier[1].in_features, 100
         )  # CIFAR-100에 맞게 수정
@@ -63,7 +63,7 @@ def train_model(model_name, epochs=epochs):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(get_model(model_name))
-        
+
     print(f"Using {torch.cuda.device_count()} GPUs")
     model = get_model(model_name)
     model.to(device)
