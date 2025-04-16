@@ -13,7 +13,6 @@ import logging
 import os
 import re
 import numpy as np
-from PIL import Image
 from torchvision.utils import save_image
 from torchvision.datasets import CIFAR100
 import cv2
@@ -34,12 +33,7 @@ num_workers = int(sys.argv[3])
 
 # 데이터 준비
 transform = transforms.Compose(
-    [
-        transforms.Resize(224),  # 모든 모델에 동일한 입력 크기로 조정
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ]
+    transforms.ToTensor(),
 )
 
 train_dataset = CIFAR100(
@@ -76,13 +70,17 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
             class_dir = os.path.join(output_dir, str(label))
             ensure_dir(class_dir)
 
-            # Convert to PIL Image if it's a tensor
+            # Convert to numpy array if it's a tensor
             if isinstance(img, torch.Tensor):
-                img = T.ToPILImage()(img)
+                # Convert from [C,H,W] to [H,W,C] and from [0,1] to [0,255]
+                img_np = img.permute(1, 2, 0).numpy() * 255.0
+                img_np = img_np.astype(np.uint8)
+                # Convert from RGB to BGR (OpenCV format)
+                img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
 
             # Save with specific JPEG quality
             img_path = os.path.join(class_dir, f"img_{idx}.jpg")
-            img.save(img_path, "JPEG", quality=qf)
+            cv2.imwrite(img_path, img_np, [cv2.IMWRITE_JPEG_QUALITY, qf])
 
             if idx % 1000 == 0:
                 print(f"Processed {idx} images with QF={qf} for {split} set")
