@@ -1,6 +1,7 @@
 import torch
 import torchvision.transforms as transforms
 from torchvision.datasets import CIFAR100
+from torch.utils.data import DataLoader, Dataset
 from torchvision.models import efficientnet_b3, mobilenet_v2, vgg19
 from torch.utils.data import DataLoader
 from tqdm import tqdm
