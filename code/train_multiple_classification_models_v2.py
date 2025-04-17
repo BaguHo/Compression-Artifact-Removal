@@ -153,9 +153,11 @@ def get_model(model_name):
         model = efficientnet_b3(
             weights=EfficientNet_B3_Weights
         )  # Pretrained weights 사용 가능
+        model._fc = 
         num_ftrs = model.classifier[1].in_features
-        model._fc = nn.Sequential(
-            nn.Linear(num_ftrs, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 100)
+        model.classifier = nn.Sequential(
+            nn.Linear(num_ftrs, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 2048),
+            nn.Linear(2048, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 100)
         )
     elif model_name == "mobilenetv2_100":
         model = mobilenet_v2(weights=None)  # Pretrained weights 사용 가능
