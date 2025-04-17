@@ -156,7 +156,9 @@ def get_model(model_name):
         num_ftrs = model.classifier[1].in_features
         model.classifier = nn.Linear(num_ftrs, 100)
     elif model_name == "mobilenetv2_100":
-        model = mobilenet_v2(weights=None)  # Pretrained weights 사용 가능
+        model = mobilenet_v2(
+            weights=MobileNet_V2_Weights
+        )  # Pretrained weights 사용 가능
         num_ftrs = model.classifier[1].in_features
         model.classifier = nn.Sequential(
             nn.Linear(num_ftrs, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 100)
@@ -218,7 +220,7 @@ def train_model(model_name, epochs=epochs):
         for inputs, labels in tqdm(test_loader, desc="Testing"):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
-            _, predicted = torch.max(outputs.data, 1)
+            predicted = nn.Softmax(dim=1)(outputs).argmax(1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
@@ -248,7 +250,8 @@ def train_model(model_name, epochs=epochs):
             for inputs, labels in tqdm(jpeg_test_loader, desc=f"Testing JPEG QF={QF}"):
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
-                _, predicted = torch.max(outputs.data, 1)
+                predicted = nn.Softmax(dim=1)(outputs).argmax(1)
+                # _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
