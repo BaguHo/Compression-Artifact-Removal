@@ -183,7 +183,9 @@ def train_model(model_name, epochs=epochs):
     # 손실 함수와 옵티마이저 설정
     criterion = nn.CrossEntropyLoss()
     if model_name == "efficientnet_b3":
-        optimizer = optim.RMSprop(model.parameters(), lr=0.001, decay=0.9, momentum=0.9)
+        optimizer = optim.RMSprop(
+            model.parameters(), lr=0.001, weight_decay=0.9, momentum=0.9
+        )
     elif model_name == "mobilenetv2_100":
         optimizer = optim.Adam(model.parameters(), lr=0.001)
     elif model_name == "vgg19":
