@@ -18,6 +18,7 @@ from PIL import Image
 from matplotlib import pyplot as plt
 from torchvision.transforms.functional import to_pil_image
 from torchvision.models.efficientnet import EfficientNet_B3_Weights
+from torchvision.models.mobilenet import MobileNet_V2_Weights
 
 logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
@@ -153,7 +154,7 @@ def get_model(model_name):
             weights=EfficientNet_B3_Weights
         )  # Pretrained weights 사용 가능
         num_ftrs = model.classifier[1].in_features
-        model.classifier = nn.Sequential(
+        model._fc = nn.Sequential(
             nn.Linear(num_ftrs, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 100)
         )
     elif model_name == "mobilenetv2_100":
