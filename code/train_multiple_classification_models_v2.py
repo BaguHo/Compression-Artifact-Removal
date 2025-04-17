@@ -158,7 +158,7 @@ def get_model(model_name):
             nn.Linear(num_ftrs, 1024),
             nn.ReLU(),
             nn.Linear(1024, 2048),
-            nn.ReLu(),
+            nn.ReLU(),
             nn.Linear(2048, 1024),
             nn.ReLU(),
             nn.Linear(1024, 100),
