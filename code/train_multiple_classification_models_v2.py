@@ -38,8 +38,6 @@ transform = transforms.Compose([transforms.ToTensor()])
 
 # Define function to save CIFAR100 as PNG
 def save_cifar100_as_png(dataset, split):
-    import PIL.Image as Image
-
     output_dir = os.path.join("datasets", "cifar100_png", split)
     os.makedirs(output_dir, exist_ok=True)
 
@@ -142,10 +140,6 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
                 print(f"Processed {idx} images with QF={qf} for {split} set")
 
 
-# Save the original CIFAR-100 dataset with different JPEG quality factors
-# print("Saving CIFAR-100 train dataset with different quality factors...")
-# save_cifar100_with_different_qf(train_dataset, "train")
-
 if not os.path.exists("datasets/cifar100_jpeg/"):
     print("Saving CIFAR-100 jpeg test dataset with different quality factors...")
     save_cifar100_with_different_qf(test_dataset, "test")
@@ -155,14 +149,16 @@ if not os.path.exists("datasets/cifar100_jpeg/"):
 def get_model(model_name):
     if model_name == "efficientnet_b3":
         model = efficientnet_b3(weights=None)  # Pretrained weights 사용 가능
-        model.classifier[1] = nn.Linear(
-            model.classifier[1].in_features, 100
-        )  # CIFAR-100에 맞게 수정
+        num_ftrs = model.classifier[1].in_features
+        model.classifier = nn.Sequential(
+            nn.Linear(num_ftrs, 512), nn.ReLU(), nn.Dropout(0.4), nn.Linear(512, 100)
+        )
     elif model_name == "mobilenetv2_100":
         model = mobilenet_v2(weights=None)  # Pretrained weights 사용 가능
-        model.classifier[1] = nn.Linear(
-            model.last_channel, 100
-        )  # CIFAR-100에 맞게 수정
+        num_ftrs = model.classifier[1].in_features
+        model.classifier = nn.Sequential(
+            nn.Linear(num_ftrs, 512), nn.ReLU(), nn.Dropout(0.4), nn.Linear(512, 12)
+        )
     elif model_name == "vgg19":
         model = vgg19(weights=None)  # Pretrained weights 사용 가능
         model.classifier[6] = nn.Linear(4096, 100)  # CIFAR-100에 맞게 수정
@@ -187,7 +183,7 @@ def train_model(model_name, epochs=epochs):
     # 손실 함수와 옵티마이저 설정
     criterion = nn.CrossEntropyLoss()
     if model_name == "efficientnet_b3":
-        optimizer = optim.RMSprop(model.parameters(), lr=0.001)
+        optimizer = optim.RMSprop(model.parameters(), lr=0.001, decay=0.9, momentum=0.9)
     elif model_name == "mobilenetv2_100":
         optimizer = optim.Adam(model.parameters(), lr=0.001)
     elif model_name == "vgg19":
@@ -235,7 +231,7 @@ def train_model(model_name, epochs=epochs):
     # 저장한 JPEG 데이터셋 불러와서 테스트
     for QF in QFs:
         jpeg_test_dataset = datasets.ImageFolder(
-            "datasets/cifar100_jpeg/JPEG" + str(QF) + "/test",
+            "datasets/cifar100_jpeg/JPEG" + str(QF) + "/test", transform=transform
         )
         jpeg_test_loader = DataLoader(
             jpeg_test_dataset,
