@@ -151,13 +151,13 @@ def get_model(model_name):
         model = efficientnet_b3(weights=None)  # Pretrained weights 사용 가능
         num_ftrs = model.classifier[1].in_features
         model.classifier = nn.Sequential(
-            nn.Linear(num_ftrs, 512), nn.ReLU(), nn.Dropout(0.4), nn.Linear(512, 100)
+            nn.Linear(num_ftrs, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 100)
         )
     elif model_name == "mobilenetv2_100":
         model = mobilenet_v2(weights=None)  # Pretrained weights 사용 가능
         num_ftrs = model.classifier[1].in_features
         model.classifier = nn.Sequential(
-            nn.Linear(num_ftrs, 512), nn.ReLU(), nn.Dropout(0.4), nn.Linear(512, 12)
+            nn.Linear(num_ftrs, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 100)
         )
     elif model_name == "vgg19":
         model = vgg19(weights=None)  # Pretrained weights 사용 가능
