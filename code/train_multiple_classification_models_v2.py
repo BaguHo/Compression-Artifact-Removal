@@ -11,12 +11,9 @@ import torch.optim as optim
 import sys, os
 import logging
 import re
-import torchvision.transforms as T
 import numpy as np
 from torchvision.utils import save_image
 from torchvision.datasets import CIFAR100
-import cv2
-from PIL import Image
 
 logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
@@ -32,22 +29,16 @@ epochs = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 
-mean = {
-'cifar10': (0.4914, 0.4822, 0.4465),
-'cifar100': (0.5071, 0.4867, 0.4408),
-}
-
-std = {
-'cifar10': (0.2023, 0.1994, 0.2010),
-'cifar100': (0.2675, 0.2565, 0.2761),
-}
-
 # 데이터 준비
-transform = transforms.Compose([transforms.ToTensor(), ])
+transform = transforms.Compose(
+    [transforms.ToTensor()]
+)   
 
 
 # Define function to save CIFAR100 as PNG
 def save_cifar100_as_png(dataset, split):
+    import PIL.Image as Image
+
     output_dir = os.path.join("datasets", "cifar100_png", split)
     os.makedirs(output_dir, exist_ok=True)
 
@@ -56,11 +47,11 @@ def save_cifar100_as_png(dataset, split):
         class_dir = os.path.join(output_dir, str(label))
         os.makedirs(class_dir, exist_ok=True)
 
-        # Convert to PIL Image if it's a tensor
-        if isinstance(img, torch.Tensor):
-            img = T.ToPILImage()(img)
+        # Convert to PIL Image if it's a numpy array
+        if isinstance(img, np.ndarray):
+            img = Image.fromarray(img)
 
-        # Save as PNG
+        # Save as PNG using PIL
         img_path = os.path.join(class_dir, f"img_{idx}.png")
         img.save(img_path, "PNG")
 
@@ -69,28 +60,26 @@ def save_cifar100_as_png(dataset, split):
 
 
 # Original CIFAR100 datasets
-cifar100_train = CIFAR100(
-    root="./datasets", train=True, download=True, transform=transform
-)
-cifar100_test = CIFAR100(
-    root="./datasets", train=False, download=True, transform=transform
-)
+cifar100_train = CIFAR100(root="./datasets", train=True, download=True)
+cifar100_test = CIFAR100(root="./datasets", train=False, download=True)
 
 # Save as PNG if not already done
 png_train_dir = os.path.join("datasets", "cifar100_png", "train")
 png_test_dir = os.path.join("datasets", "cifar100_png", "test")
 
 if not os.path.exists(png_train_dir):
-    print("Saving CIFAR-100 train dataset as PNG...")
     save_cifar100_as_png(cifar100_train, "train")
 
 if not os.path.exists(png_test_dir):
-    print("Saving CIFAR-100 test dataset as PNG...")
     save_cifar100_as_png(cifar100_test, "test")
 
 # Load PNG datasets
 train_dataset = datasets.ImageFolder(png_train_dir, transform=transform)
 test_dataset = datasets.ImageFolder(png_test_dir, transform=transform)
+
+print("cifar100 train dataset[0]", cifar100_train[0])
+print("train_dataset[0]", train_dataset[0])
+# input()
 
 train_loader = DataLoader(
     train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
@@ -102,8 +91,10 @@ test_loader = DataLoader(
 
 # Function to save CIFAR-100 dataset with different JPEG quality factors
 def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
+    import PIL.Image as Image
+
     for qf in qfs:
-        output_dir = os.path.join("datasets", "cifar100", f"JPEG{qf}", split)
+        output_dir = os.path.join("datasets", "cifar100_jpeg", f"JPEG{qf}", split)
         os.makedirs(output_dir, exist_ok=True)
 
         for idx, (img, label) in enumerate(dataset):
@@ -111,9 +102,11 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
             class_dir = os.path.join(output_dir, str(label))
             os.makedirs(class_dir, exist_ok=True)
 
-            # Convert to PIL Image if it's a tensor
+            # Convert to PIL Image if it's a tensor or numpy array
             if isinstance(img, torch.Tensor):
-                img = T.ToPILImage()(img)
+                img = transforms.ToPILImage()(img)
+            elif isinstance(img, np.ndarray):
+                img = Image.fromarray(img)
 
             # Save with specific JPEG quality
             img_path = os.path.join(class_dir, f"img_{idx}.jpg")
@@ -127,19 +120,9 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
 # print("Saving CIFAR-100 train dataset with different quality factors...")
 # save_cifar100_with_different_qf(train_dataset, "train")
 
-if not os.path.exists("datasets/cifar100/"):
-    print("Saving CIFAR-100 test dataset with different quality factors...")
+if not os.path.exists("datasets/cifar100_jpeg/"):
+    print("Saving CIFAR-100 jpeg test dataset with different quality factors...")
     save_cifar100_with_different_qf(test_dataset, "test")
-
-
-def sort_key(filename):
-    image_match = re.search(r"image_(\d+)", filename)
-    crop_match = re.search(r"crop_(\d+)", filename)
-
-    image_number = int(image_match.group(1)) if image_match else float("inf")
-    crop_number = int(crop_match.group(1)) if crop_match else float("inf")
-
-    return (image_number, crop_number)
 
 
 # 모델 선택 함수
@@ -215,7 +198,7 @@ def train_model(model_name, epochs=epochs):
             correct += (predicted == labels).sum().item()
 
     # model save
-    torch.save(model.state_dict(), f"{model_name}_cifar100.pth")
+    torch.save(model.state_dict(), f"models/{model_name}_cifar100.pth")
     print(f"Accuracy of {model_name} on CIFAR-100: {100 * correct / total:.2f}%")
     logging.info(f"Accuracy of {model_name} on CIFAR-100: {100 * correct / total:.2f}%")
 
@@ -225,8 +208,7 @@ def train_model(model_name, epochs=epochs):
     # 저장한 JPEG 데이터셋 불러와서 테스트
     for QF in QFs:
         jpeg_test_dataset = datasets.ImageFolder(
-            "datasets/cifar100/JPEG" + str(QF) + "/test",
-            transform=transform,
+            "datasets/cifar100_jpeg/JPEG" + str(QF) + "/test",
         )
         jpeg_test_loader = DataLoader(
             jpeg_test_dataset,
