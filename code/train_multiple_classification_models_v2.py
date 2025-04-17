@@ -155,8 +155,14 @@ def get_model(model_name):
         )  # Pretrained weights 사용 가능
         num_ftrs = model.classifier[1].in_features
         model.classifier = nn.Sequential(
-            nn.Linear(num_ftrs, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 2048),
-            nn.Linear(2048, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 100)
+            nn.Linear(num_ftrs, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 2048),
+            nn.ReLu(),
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 100),
+            nn.Softmax(dim=1),
         )
     elif model_name == "mobilenetv2_100":
         model = mobilenet_v2(weights=None)  # Pretrained weights 사용 가능
