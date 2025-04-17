@@ -135,7 +135,16 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
                 img = Image.fromarray(img)
 
             # Save with specific JPEG quality
-            img_path = os.path.join(class_dir, f"img_{idx}.jpg")
+            if idx < 10:
+                img_path = os.path.join(class_dir, f"img_0000{idx}.jpg")
+            elif idx < 100:
+                img_path = os.path.join(class_dir, f"img_000{idx}.jpg")
+            elif idx < 1000:
+                img_path = os.path.join(class_dir, f"img_00{idx}.jpg")
+            elif idx < 10000:
+                img_path = os.path.join(class_dir, f"img_0{idx}.jpg")
+            else:
+                img_path = os.path.join(class_dir, f"img_{idx}.jpg")
             img.save(img_path, "JPEG", quality=qf)
 
             if idx % 1000 == 0:
