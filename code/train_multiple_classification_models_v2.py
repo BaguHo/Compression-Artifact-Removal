@@ -17,6 +17,7 @@ from torchvision.datasets import CIFAR100
 from PIL import Image
 from matplotlib import pyplot as plt
 from torchvision.transforms.functional import to_pil_image
+from torchvision.models.efficientnet import EfficientNet_B3_Weights
 
 logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
@@ -148,7 +149,9 @@ if not os.path.exists("datasets/cifar100_jpeg/"):
 # 모델 선택 함수
 def get_model(model_name):
     if model_name == "efficientnet_b3":
-        model = efficientnet_b3(weights=None)  # Pretrained weights 사용 가능
+        model = efficientnet_b3(
+            weights=EfficientNet_B3_Weights
+        )  # Pretrained weights 사용 가능
         num_ftrs = model.classifier[1].in_features
         model.classifier = nn.Sequential(
             nn.Linear(num_ftrs, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 100)
