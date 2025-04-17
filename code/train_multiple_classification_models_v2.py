@@ -175,8 +175,8 @@ def get_model(model_name):
 
 # 훈련 함수
 def train_model(model_name, epochs=epochs):
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = torch.device("mps")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("mps")
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(get_model(model_name))
 
