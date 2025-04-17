@@ -14,6 +14,9 @@ import re
 import numpy as np
 from torchvision.utils import save_image
 from torchvision.datasets import CIFAR100
+from PIL import Image
+from matplotlib import pyplot as plt
+from torchvision.transforms.functional import to_pil_image
 
 logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
@@ -30,9 +33,7 @@ batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 
 # 데이터 준비
-transform = transforms.Compose(
-    [transforms.ToTensor()]
-)   
+transform = transforms.Compose([transforms.ToTensor()])
 
 
 # Define function to save CIFAR100 as PNG
@@ -47,12 +48,24 @@ def save_cifar100_as_png(dataset, split):
         class_dir = os.path.join(output_dir, str(label))
         os.makedirs(class_dir, exist_ok=True)
 
-        # Convert to PIL Image if it's a numpy array
-        if isinstance(img, np.ndarray):
+        # Convert to PIL Image if it's a tensor or numpy array
+        if isinstance(img, torch.Tensor):
+            img = transforms.ToPILImage()(img)
+        elif isinstance(img, np.ndarray):
             img = Image.fromarray(img)
 
         # Save as PNG using PIL
-        img_path = os.path.join(class_dir, f"img_{idx}.png")
+        if idx < 10:
+            img_path = os.path.join(class_dir, f"img_0000{idx}.png")
+        elif idx < 100:
+            img_path = os.path.join(class_dir, f"img_000{idx}.png")
+        elif idx < 1000:
+            img_path = os.path.join(class_dir, f"img_00{idx}.png")
+        elif idx < 10000:
+            img_path = os.path.join(class_dir, f"img_0{idx}.png")
+        else:
+            img_path = os.path.join(class_dir, f"img_{idx}.png")
+
         img.save(img_path, "PNG")
 
         if idx % 1000 == 0:
@@ -60,8 +73,12 @@ def save_cifar100_as_png(dataset, split):
 
 
 # Original CIFAR100 datasets
-cifar100_train = CIFAR100(root="./datasets", train=True, download=True)
-cifar100_test = CIFAR100(root="./datasets", train=False, download=True)
+cifar100_train = CIFAR100(
+    root="./datasets", train=True, download=True, transform=transform
+)
+cifar100_test = CIFAR100(
+    root="./datasets", train=False, download=True, transform=transform
+)
 
 # Save as PNG if not already done
 png_train_dir = os.path.join("datasets", "cifar100_png", "train")
@@ -77,8 +94,17 @@ if not os.path.exists(png_test_dir):
 train_dataset = datasets.ImageFolder(png_train_dir, transform=transform)
 test_dataset = datasets.ImageFolder(png_test_dir, transform=transform)
 
-print("cifar100 train dataset[0]", cifar100_train[0])
-print("train_dataset[0]", train_dataset[0])
+print("cifar100 train dataset[0]", cifar100_train[0][0])
+print("cifar100_train[0]", cifar100_train[0][1])
+print("train_dataset[0]", train_dataset[0][0])
+print("train_dataset[0]", train_dataset[0][1])
+
+# plt.imshow(to_pil_image((cifar100_train[0][0])))
+# plt.show()
+# plt.imshow(to_pil_image((train_dataset[0][0])))
+# plt.show()
+# input()
+
 # input()
 
 train_loader = DataLoader(
@@ -149,7 +175,8 @@ def get_model(model_name):
 
 # 훈련 함수
 def train_model(model_name, epochs=epochs):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps")
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(get_model(model_name))
 
