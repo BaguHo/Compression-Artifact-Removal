@@ -24,6 +24,9 @@ logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
 )
 
+seed = 42
+torch.manual_seed(seed)
+
 if len(sys.argv) < 4:
     print(
         "Usage: python train_multiple_classification_models.py <epochs> <batch_size> <num_workers>"
