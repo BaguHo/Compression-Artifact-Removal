@@ -162,7 +162,6 @@ def get_model(model_name):
             nn.Linear(2048, 1024),
             nn.ReLU(),
             nn.Linear(1024, 100),
-            nn.Softmax(dim=1),
         )
     elif model_name == "mobilenetv2_100":
         model = mobilenet_v2(weights=None)  # Pretrained weights 사용 가능
