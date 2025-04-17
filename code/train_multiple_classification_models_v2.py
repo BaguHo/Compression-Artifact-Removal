@@ -153,7 +153,6 @@ def get_model(model_name):
         model = efficientnet_b3(
             weights=EfficientNet_B3_Weights
         )  # Pretrained weights 사용 가능
-        model._fc = 
         num_ftrs = model.classifier[1].in_features
         model.classifier = nn.Sequential(
             nn.Linear(num_ftrs, 1024), nn.ReLU(), nn.Dropout(0.4), nn.Linear(1024, 2048),
