@@ -115,11 +115,11 @@ cifar100_test = CIFAR100(
 png_train_dir = os.path.join("datasets", "cifar100_png", "train")
 png_test_dir = os.path.join("datasets", "cifar100_png", "test")
 
-if not os.path.exists(png_train_dir):
-    save_cifar100_as_png(cifar100_train, "train")
+# if not os.path.exists(png_train_dir):
+#     save_cifar100_as_png(cifar100_train, "train")
 
-if not os.path.exists(png_test_dir):
-    save_cifar100_as_png(cifar100_test, "test")
+# if not os.path.exists(png_test_dir):
+#     save_cifar100_as_png(cifar100_test, "test")
 
 # Load PNG datasets
 train_dataset = datasets.ImageFolder(png_train_dir, transform=transform)
