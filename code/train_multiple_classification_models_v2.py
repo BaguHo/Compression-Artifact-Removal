@@ -189,9 +189,9 @@ def save_cifar100_with_different_qf(dataset, split, qfs=[100, 80, 60, 40, 20]):
                 print(f"Processed {idx} images with QF={qf} for {split} set")
 
 
-if not os.path.exists("datasets/cifar100_jpeg/"):
-    print("Saving CIFAR-100 jpeg test dataset with different quality factors...")
-    save_cifar100_with_different_qf(test_dataset, "test")
+# if not os.path.exists("datasets/cifar100_jpeg/"):
+#     print("Saving CIFAR-100 jpeg test dataset with different quality factors...")
+#     save_cifar100_with_different_qf(test_dataset, "test")
 
 
 # 모델 선택 함수
