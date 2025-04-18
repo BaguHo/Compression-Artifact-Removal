@@ -38,27 +38,7 @@ batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 
 # 데이터 준비
-# transform = transforms.Compose([transforms.ToTensor()])
-
-train_transform = transforms.Compose(
-    [
-        transforms.RandomCrop(32, padding=4),
-        transforms.Resize(224),  # EfficientNet 입력 크기 조정
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(15),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
-    ]
-)
-
-test_transform = transforms.Compose(
-    [
-        transforms.Resize(224),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
-    ]
-)
+transform = transforms.Compose([transforms.ToTensor()])
 
 
 # Define function to save CIFAR100 as PNG
@@ -96,39 +76,31 @@ def save_cifar100_as_png(dataset, split):
 
 
 # Original CIFAR100 datasets
-# cifar100_train = CIFAR100(
-#     root="./datasets", train=True, download=True, transform=transform
-# )
-# cifar100_test = CIFAR100(
-#     root="./datasets", train=False, download=True, transform=transform
-# )
-
-# CIFAR100 datasets with transformations
 cifar100_train = CIFAR100(
-    root="./datasets", train=True, download=True, transform=train_transform
+    root="./datasets", train=True, download=True, transform=transform
 )
 cifar100_test = CIFAR100(
-    root="./datasets", train=False, download=True, transform=test_transform
+    root="./datasets", train=False, download=True, transform=transform
 )
 
 # Save as PNG if not already done
 png_train_dir = os.path.join("datasets", "cifar100_png", "train")
 png_test_dir = os.path.join("datasets", "cifar100_png", "test")
 
-# if not os.path.exists(png_train_dir):
-#     save_cifar100_as_png(cifar100_train, "train")
+if not os.path.exists(png_train_dir):
+    save_cifar100_as_png(cifar100_train, "train")
 
-# if not os.path.exists(png_test_dir):
-#     save_cifar100_as_png(cifar100_test, "test")
+if not os.path.exists(png_test_dir):
+    save_cifar100_as_png(cifar100_test, "test")
 
 # Load PNG datasets
-# train_dataset = datasets.ImageFolder(png_train_dir, transform=transform)
-# test_dataset = datasets.ImageFolder(png_test_dir, transform=transform)
+train_dataset = datasets.ImageFolder(png_train_dir, transform=transform)
+test_dataset = datasets.ImageFolder(png_test_dir, transform=transform)
 
-# print("cifar100 train dataset[0]", cifar100_train[0][0])
-# print("cifar100_train[0]", cifar100_train[0][1])
-# print("train_dataset[0]", train_dataset[0][0])
-# print("train_dataset[0]", train_dataset[0][1])
+print("cifar100 train dataset[0]", cifar100_train[0][0])
+print("cifar100_train[0]", cifar100_train[0][1])
+print("train_dataset[0]", train_dataset[0][0])
+print("train_dataset[0]", train_dataset[0][1])
 
 # plt.imshow(to_pil_image((cifar100_train[0][0])))
 # plt.show()
@@ -200,6 +172,7 @@ def get_model(model_name):
         model = efficientnet_b3(
             weights=EfficientNet_B3_Weights
         )  # Pretrained weights 사용 가능
+        model.head.fc = nn.Linear(model.head.fc.in_features, 100)  # CIFAR-100에 맞게 수정
         num_ftrs = model.classifier[1].in_features
         model.classifier = nn.Linear(num_ftrs, 100)
     elif model_name == "mobilenetv2_100":
