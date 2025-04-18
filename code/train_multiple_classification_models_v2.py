@@ -111,11 +111,18 @@ print("train_dataset[0]", train_dataset[0][1])
 # input()
 
 train_loader = DataLoader(
-    train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+    cifar100_train, batch_size=batch_size, shuffle=True, num_workers=num_workers
 )
 test_loader = DataLoader(
-    test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+    cifar100_test, batch_size=batch_size, shuffle=False, num_workers=num_workers
 )
+
+# train_loader = DataLoader(
+#     train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+# )
+# test_loader = DataLoader(
+#     test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+# )
 
 
 # Function to save CIFAR-100 dataset with different JPEG quality factors
