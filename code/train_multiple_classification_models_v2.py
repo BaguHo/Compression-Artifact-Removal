@@ -96,11 +96,19 @@ def save_cifar100_as_png(dataset, split):
 
 
 # Original CIFAR100 datasets
+# cifar100_train = CIFAR100(
+#     root="./datasets", train=True, download=True, transform=transform
+# )
+# cifar100_test = CIFAR100(
+#     root="./datasets", train=False, download=True, transform=transform
+# )
+
+# CIFAR100 datasets with transformations
 cifar100_train = CIFAR100(
-    root="./datasets", train=True, download=True, transform=transform
+    root="./datasets", train=True, download=True, transform=train_transform
 )
 cifar100_test = CIFAR100(
-    root="./datasets", train=False, download=True, transform=transform
+    root="./datasets", train=False, download=True, transform=test_transform
 )
 
 # Save as PNG if not already done
