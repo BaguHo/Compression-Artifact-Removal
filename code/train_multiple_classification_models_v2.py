@@ -279,38 +279,38 @@ def train_model(model_name, epochs=epochs):
     print(f"Accuracy of {model_name} on CIFAR-100: {100 * correct / total:.2f}%")
     logging.info(f"Accuracy of {model_name} on CIFAR-100: {100 * correct / total:.2f}%")
 
-    # JPEG 데이터셋에 대한 정확도 계산
-    QFs = [100, 80, 60, 40, 20]
+    # # JPEG 데이터셋에 대한 정확도 계산
+    # QFs = [100, 80, 60, 40, 20]
 
-    # 저장한 JPEG 데이터셋 불러와서 테스트
-    for QF in QFs:
-        jpeg_test_dataset = datasets.ImageFolder(
-            "datasets/cifar100_jpeg/JPEG" + str(QF) + "/test", transform=transform
-        )
-        jpeg_test_loader = DataLoader(
-            jpeg_test_dataset,
-            batch_size=batch_size,
-            shuffle=False,
-            num_workers=num_workers,
-        )
+    # # 저장한 JPEG 데이터셋 불러와서 테스트
+    # for QF in QFs:
+    #     jpeg_test_dataset = datasets.ImageFolder(
+    #         "datasets/cifar100_jpeg/JPEG" + str(QF) + "/test", transform=transform
+    #     )
+    #     jpeg_test_loader = DataLoader(
+    #         jpeg_test_dataset,
+    #         batch_size=batch_size,
+    #         shuffle=False,
+    #         num_workers=num_workers,
+    #     )
 
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for inputs, labels in tqdm(jpeg_test_loader, desc=f"Testing JPEG QF={QF}"):
-                inputs, labels = inputs.to(device), labels.to(device)
-                outputs = model(inputs)
-                predicted = nn.Softmax(dim=1)(outputs).argmax(1)
-                # _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
+    #     correct = 0
+    #     total = 0
+    #     with torch.no_grad():
+    #         for inputs, labels in tqdm(jpeg_test_loader, desc=f"Testing JPEG QF={QF}"):
+    #             inputs, labels = inputs.to(device), labels.to(device)
+    #             outputs = model(inputs)
+    #             predicted = nn.Softmax(dim=1)(outputs).argmax(1)
+    #             # _, predicted = torch.max(outputs.data, 1)
+    #             total += labels.size(0)
+    #             correct += (predicted == labels).sum().item()
 
-        print(
-            f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%"
-        )
-        logging.info(
-            f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%"
-        )
+    #     print(
+    #         f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%"
+    #     )
+    #     logging.info(
+    #         f"Accuracy of {model_name} on CIFAR-100 JPEG QF={QF}: {100 * correct / total:.2f}%"
+    #     )
 
 
 # 실행 예시: 원하는 모델 이름을 입력하여 훈련 시작
