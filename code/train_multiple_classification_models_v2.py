@@ -38,7 +38,12 @@ batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 
 # 데이터 준비
-transform = transforms.Compose([transforms.ToTensor()])
+transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Resize((224, 224)),
+    ]
+)!
 
 
 # Define function to save CIFAR100 as PNG
