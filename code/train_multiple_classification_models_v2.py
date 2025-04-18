@@ -38,7 +38,27 @@ batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 
 # 데이터 준비
-transform = transforms.Compose([transforms.ToTensor()])
+# transform = transforms.Compose([transforms.ToTensor()])
+
+train_transform = transforms.Compose(
+    [
+        transforms.RandomCrop(32, padding=4),
+        transforms.Resize(224),  # EfficientNet 입력 크기 조정
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
+    ]
+)
+
+test_transform = transforms.Compose(
+    [
+        transforms.Resize(224),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
+    ]
+)
 
 
 # Define function to save CIFAR100 as PNG
