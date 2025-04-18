@@ -43,7 +43,7 @@ transform = transforms.Compose(
         transforms.ToTensor(),
         transforms.Resize((224, 224)),
     ]
-)!
+)
 
 
 # Define function to save CIFAR100 as PNG
