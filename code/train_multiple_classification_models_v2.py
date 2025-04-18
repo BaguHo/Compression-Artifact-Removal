@@ -206,7 +206,9 @@ def train_model(model_name, epochs=epochs):
     # 손실 함수와 옵티마이저 설정
     criterion = nn.CrossEntropyLoss()
     if model_name == "efficientnet_b3":
-        optimizer = optim.RMSprop(model.parameters(), lr=0.001)
+        optimizer = optim.RMSprop(
+            model.parameters(), lr=0.001, momentum=0.9, weight_decay=0.9
+        )
     elif model_name == "mobilenetv2_100":
         optimizer = optim.Adam(model.parameters(), lr=0.001)
     elif model_name == "vgg19":
@@ -239,7 +241,8 @@ def train_model(model_name, epochs=epochs):
         for inputs, labels in tqdm(test_loader, desc="Testing"):
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
-            predicted = nn.Softmax(dim=1)(outputs).argmax(1)
+            _, predicted = torch.max(outputs.data, 1)
+            # predicted = nn.Softmax(dim=1)(outputs).argmax(1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
