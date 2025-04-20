@@ -1,5 +1,4 @@
 from skimage.metrics import structural_similarity, peak_signal_noise_ratio
-from torchmetrics.image import PeakSignalNoiseRatioWithBlockedEffect
 from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
 import numpy as np
@@ -15,8 +14,8 @@ import lpips
 
 # !warning: BlockCNN does not work
 
-if len(sys.argv) < 5:
-    print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
+if len(sys.argv) < 4:
+    print("Usage: python script.py <epoch> <batch_size> <num_workers>")
     sys.exit(1)
 
 logging.basicConfig(
@@ -30,7 +29,7 @@ slack_webhook_url = (
 epochs = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
-num_classes = int(sys.argv[4])
+num_classes = 1000
 
 
 def sort_key(filename):
@@ -43,7 +42,7 @@ def sort_key(filename):
     return (image_number, crop_number)
 
 
-class CIFAR100Dataset(Dataset):
+class CustomDataset(Dataset):
     def __init__(self, input_images, target_images, transform=transforms.ToTensor()):
         self.input_images = input_images
         self.target_images = target_images
@@ -63,77 +62,229 @@ class CIFAR100Dataset(Dataset):
         return input_image, target_image
 
 
-def load_test_images(QF):
+# def load_test_images(QF):
 
-    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original_size")
+#     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original_size")
+
+#     train_input_dataset = []
+#     test_input_dataset = []
+#     train_target_dataset = []
+#     test_target_dataset = []
+
+#     # input images
+#     train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
+#     test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
+
+#     # target images (original)
+#     target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
+#     target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
+
+#     # 테스트 데이터 로드
+#     for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
+#         test_path = os.path.join(test_input_dir, str(i))
+#         target_test_path = os.path.join(target_test_dataset_dir, str(i))
+
+#         # test_path 내 파일을 정렬된 순서로 불러오기
+#         sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
+#         sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+
+#         # 두 디렉토리의 파일명이 같은지 확인하며 로드
+#         for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
+#             if test_file.replace("jpeg", "png") == target_file:
+#                 # input 이미지 로드
+#                 test_file.replace("png", "jpeg")
+#                 test_image_path = os.path.join(test_path, test_file)
+#                 test_image = cv2.imread(test_image_path)
+#                 test_input_dataset.append(test_image)
+
+#                 # target 이미지 로드
+#                 target_image_path = os.path.join(target_test_path, target_file)
+#                 target_image = cv2.imread(target_image_path)
+#                 test_target_dataset.append(target_image)
+
+#             else:
+#                 print(
+#                     f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
+#                 )
+
+#     # Dataset과 DataLoader 생성
+#     test_dataset = CustomDataset(test_input_dataset, test_target_dataset)
+
+#     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+#     return test_dataset, test_loader
+
+
+# def load_images():
+#     QFs = [100, 80, 60, 40, 20]
+#     dataset_name = "CIFAR100"
+#     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original_size")
+
+#     train_input_dataset = []
+#     test_input_dataset = []
+#     train_target_dataset = []
+#     test_target_dataset = []
+
+#     for QF in QFs:
+#         # input images
+#         train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
+#         test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
+
+#         # target images (original)
+#         target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
+#         target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
+
+#         # 학습 데이터 로드
+#         for i in tqdm.tqdm(
+#             range(num_classes), desc=f"Loading train data (QF {QF})", total=num_classes
+#         ):
+#             train_path = os.path.join(train_input_dir, str(i))
+#             target_train_path = os.path.join(target_train_dataset_dir, str(i))
+
+#             # train_path 내 파일을 정렬된 순서로 불러오기
+#             sorted_train_files = sorted(os.listdir(train_path), key=sort_key)
+#             sorted_target_train_files = sorted(
+#                 os.listdir(target_train_path), key=sort_key
+#             )
+
+#             # 두 디렉토리의 파일명이 같은지 확인하며 로드
+#             for train_file, target_file in zip(
+#                 sorted_train_files, sorted_target_train_files
+#             ):
+#                 if train_file.replace("jpeg", "png") == target_file:
+#                     # input 이미지 로드
+#                     train_file.replace("png", "jpeg")
+#                     train_image_path = os.path.join(train_path, train_file)
+#                     train_image = cv2.imread(train_image_path)
+#                     train_input_dataset.append(train_image)
+
+#                     # target 이미지 로드
+#                     target_image_path = os.path.join(target_train_path, target_file)
+#                     target_image = cv2.imread(target_image_path)
+#                     train_target_dataset.append(target_image)
+#                 else:
+#                     print(
+#                         f"Warning: Mismatched files in training set: {train_file} and {target_file}"
+#                     )
+
+#         # 테스트 데이터 로드
+#         for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
+#             test_path = os.path.join(test_input_dir, str(i))
+#             target_test_path = os.path.join(target_test_dataset_dir, str(i))
+
+#             # test_path 내 파일을 정렬된 순서로 불러오기
+#             sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
+#             sorted_target_test_files = sorted(
+#                 os.listdir(target_test_path), key=sort_key
+#             )
+
+#             # 두 디렉토리의 파일명이 같은지 확인하며 로드
+#             for test_file, target_file in zip(
+#                 sorted_test_files, sorted_target_test_files
+#             ):
+#                 if test_file.replace("jpeg", "png") == target_file:
+#                     # input 이미지 로드
+#                     test_file.replace("png", "jpeg")
+#                     test_image_path = os.path.join(test_path, test_file)
+#                     test_image = cv2.imread(test_image_path)
+#                     test_input_dataset.append(test_image)
+
+#                     # target 이미지 로드
+#                     target_image_path = os.path.join(target_test_path, target_file)
+#                     target_image = cv2.imread(target_image_path)
+#                     test_target_dataset.append(target_image)
+
+#                     # test input, target 이미지 시각화
+#                     # combined_image = cv2.hconcat([test_image, target_image])
+#                     # cv2.imshow("test combined image", combined_image)
+#                     # cv2.waitKey(0)
+#                     # cv2.destroyAllWindows()
+
+#                 else:
+#                     print(
+#                         f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
+#                     )
+
+#     # Dataset과 DataLoader 생성
+#     train_dataset = CustomDataset(train_input_dataset, train_target_dataset)
+#     test_dataset = CustomDataset(test_input_dataset, test_target_dataset)
+
+#     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+#     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+#     return train_dataset, test_dataset, train_loader, test_loader
+
+# def make_and_save_mini_imagenet_each_qf(QF):
+#     mini_imagenet_path = os.path.join(os.getcwd(), "datasets", "mini-imagenet")
+#     transform = trnasforms.Compose(
+#         [
+#             transforms.ToTensor(),
+#             transforms.Resize((224, 224)),
+#         ]
+#     )
+
+#     # load the dataset and save jpeg qf 100, 80, 60, 40, 20
+#     train_dataset = datasets.ImageFolder(
+#         os.path.join(mini_imagenet_path, "original", "train"),
+#         transform=transform,
+#     )
+#     test_dataset = datasets.ImageFolder(
+#         os.path.join(mini_imagenet_path, "original", "test"),
+#         transform=transform,
+#     )
+
+#     # save the dataset for each jpeg QF
+#     for idx, (data, label) in tqdm(enumerate(train_dataset), desc="Saving train data"):
+#         # save the image as jpeg
+#         os.makedirs(
+#             os.path.join(mini_imagenet_path, f"jpeg{QF}", "train"), exist_ok=True
+#         )
+#         save_path(
+#             os.path.join(
+#                 mini_imagenet_path,
+#                 f"jpeg{QF}",
+#                 "train",
+#                 str(label),
+#                 f"image_{int(idx):06d}.jpeg",
+#             )
+#         )
+#         cv2.imwrite(save_path, data.numpy())
+
+#     for idx, (data, label) in tqdm(enumerate(test_dataset), desc="Saving test data"):
+#         # save the image as jpeg
+#         os.makedirs(
+#             os.path.join(mini_imagenet_path, f"jpeg{QF}", "test"), exist_ok=True
+#         )
+#         save_path(
+#             os.path.join(
+#                 mini_imagenet_path,
+#                 f"jpeg{QF}",
+#                 "test",
+#                 str(label),
+#                 f"image_{int(idx):06d}.jpeg",
+#             )
+#         )
+#         cv2.imwrite(save_path, data.numpy())
+
+
+def laod_mini_imagenet_train_dataset_and_dataloader():
+    mini_imagenet_path = os.path.join(os.getcwd(), "datasets", "mini-imagenet")
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Resize((224, 224)),
+        ]
+    )
 
     train_input_dataset = []
-    test_input_dataset = []
     train_target_dataset = []
-    test_target_dataset = []
 
-    # input images
-    train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
-    test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
-
-    # target images (original)
-    target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
-    target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
-
-    # 테스트 데이터 로드
-    for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
-        test_path = os.path.join(test_input_dir, str(i))
-        target_test_path = os.path.join(target_test_dataset_dir, str(i))
-
-        # test_path 내 파일을 정렬된 순서로 불러오기
-        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
-
-        # 두 디렉토리의 파일명이 같은지 확인하며 로드
-        for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
-            if test_file.replace("jpeg", "png") == target_file:
-                # input 이미지 로드
-                test_file.replace("png", "jpeg")
-                test_image_path = os.path.join(test_path, test_file)
-                test_image = cv2.imread(test_image_path)
-                test_input_dataset.append(test_image)
-
-                # target 이미지 로드
-                target_image_path = os.path.join(target_test_path, target_file)
-                target_image = cv2.imread(target_image_path)
-                test_target_dataset.append(target_image)
-
-            else:
-                print(
-                    f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
-                )
-
-    # Dataset과 DataLoader 생성
-    test_dataset = CIFAR100Dataset(test_input_dataset, test_target_dataset)
-
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    return test_dataset, test_loader
-
-
-def load_images():
     QFs = [100, 80, 60, 40, 20]
-    dataset_name = "CIFAR100"
-    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original_size")
-
-    train_input_dataset = []
-    test_input_dataset = []
-    train_target_dataset = []
-    test_target_dataset = []
-
     for QF in QFs:
-        # input images
-        train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
-        test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
-
-        # target images (original)
-        target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
-        target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
+        train_input_dir = os.path.join(mini_imagenet_path, f"jpeg{QF}", "train")
+        target_train_dataset_dir = os.path.join(
+            mini_imagenet_path, "_original", "train"
+        )
 
         # 학습 데이터 로드
         for i in tqdm.tqdm(
@@ -149,13 +300,13 @@ def load_images():
             )
 
             # 두 디렉토리의 파일명이 같은지 확인하며 로드
-            for train_file, target_file in zip(
+            for input_file, target_file in zip(
                 sorted_train_files, sorted_target_train_files
             ):
-                if train_file.replace("jpeg", "png") == target_file:
+                if input_file.replace("jpeg", "png") == target_file:
                     # input 이미지 로드
-                    train_file.replace("png", "jpeg")
-                    train_image_path = os.path.join(train_path, train_file)
+                    input_file.replace("png", "jpeg")
+                    train_image_path = os.path.join(train_path, input_file)
                     train_image = cv2.imread(train_image_path)
                     train_input_dataset.append(train_image)
 
@@ -165,52 +316,62 @@ def load_images():
                     train_target_dataset.append(target_image)
                 else:
                     print(
-                        f"Warning: Mismatched files in training set: {train_file} and {target_file}"
-                    )
-
-        # 테스트 데이터 로드
-        for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
-            test_path = os.path.join(test_input_dir, str(i))
-            target_test_path = os.path.join(target_test_dataset_dir, str(i))
-
-            # test_path 내 파일을 정렬된 순서로 불러오기
-            sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-            sorted_target_test_files = sorted(
-                os.listdir(target_test_path), key=sort_key
-            )
-
-            # 두 디렉토리의 파일명이 같은지 확인하며 로드
-            for test_file, target_file in zip(
-                sorted_test_files, sorted_target_test_files
-            ):
-                if test_file.replace("jpeg", "png") == target_file:
-                    # input 이미지 로드
-                    test_file.replace("png", "jpeg")
-                    test_image_path = os.path.join(test_path, test_file)
-                    test_image = cv2.imread(test_image_path)
-                    test_input_dataset.append(test_image)
-
-                    # target 이미지 로드
-                    target_image_path = os.path.join(target_test_path, target_file)
-                    target_image = cv2.imread(target_image_path)
-                    test_target_dataset.append(target_image)
-
-                    # test input, target 이미지 시각화
-                    # combined_image = cv2.hconcat([test_image, target_image])
-                    # cv2.imshow("test combined image", combined_image)
-                    # cv2.waitKey(0)
-                    # cv2.destroyAllWindows()
-
-                else:
-                    print(
-                        f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
+                        f"Warning: Mismatched files in training set: {input_file} and {target_file}"
                     )
 
     # Dataset과 DataLoader 생성
-    train_dataset = CIFAR100Dataset(train_input_dataset, train_target_dataset)
-    test_dataset = CIFAR100Dataset(test_input_dataset, test_target_dataset)
-
+    train_dataset = CustomDataset(train_input_dataset, train_target_dataset)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+    return train_dataset, train_loader
+
+
+def laod_mini_imagenet_test_dataset_and_dataloader(QF):
+    mini_imagenet_path = os.path.join(os.getcwd(), "datasets", "mini-imagenet")
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Resize((224, 224)),
+        ]
+    )
+
+    test_input_dataset = []
+    test_target_dataset = []
+
+    test_input_dir = os.path.join(mini_imagenet_path, f"jpeg{QF}", "test")
+    target_test_dataset_dir = os.path.join(mini_imagenet_path, "_original", "test")
+
+    # 테스트 데이터 로드
+    for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
+        test_path = os.path.join(test_input_dir, str(i))
+        target_test_path = os.path.join(target_test_dataset_dir, str(i))
+
+        # test_path 내 파일을 정렬된 순서로 불러오기
+        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
+        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+
+        # 두 디렉토리의 파일명이 같은지 확인하며 로드
+        for input_file, target_file in zip(sorted_test_files, sorted_target_test_files):
+            if input_file.replace(".jpeg", ".png") == target_file:
+                # input 이미지 로드
+                input_file.replace(".png", ".jpeg")
+                test_image_path = os.path.join(test_path, input_file)
+                test_image = cv2.imread(test_image_path)
+                test_input_dataset.append(test_image)
+
+                # target 이미지 로드
+                target_image_path = os.path.join(target_test_path, target_file)
+                target_image = cv2.imread(target_image_path)
+                test_target_dataset.append(target_image)
+
+            else:
+                print(
+                    f"Warning: Mismatched files in testing set: {input_file} and {target_file}"
+                )
+
+    # Dataset과 DataLoader 생성
+    test_dataset = CustomDataset(test_input_dataset, test_target_dataset)
+
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     return train_dataset, test_dataset, train_loader, test_loader
@@ -435,22 +596,14 @@ if __name__ == "__main__":
     QFs = [100, 80, 60, 40, 20]
 
     # Load the dataset
-    train_dataset, test_dataset, train_loader, test_loader = load_images()
+    # train_dataset, test_dataset, train_loader, test_loader = load_images()
+    train_dataset, train_loader = laod_mini_imagenet_train_dataset_and_dataloader()
 
     model_names = [
         "ARCNN",
         "DnCNN",
         "BlockCNN",
     ]
-    # # Initialize the model
-    # if model_name == "ARCNN":
-    #     model = ARCNN()
-    # elif model_name == "FastARCNN":
-    #     model = FastARCNN()
-    # elif model_name == "DnCNN":
-    #     model = DnCNN()
-    # elif model_name == "BlockCNN":
-    #     model = BlockCNN()
 
     for model_name in model_names:
         if model_name == "ARCNN":
@@ -539,6 +692,9 @@ if __name__ == "__main__":
         logging.info(f"Final model saved as {type(model).__name__}_final.pth")
 
         for QF in QFs:
+            test_dataset, test_dataloader = (
+                laod_mini_imagenet_test_dataset_and_dataloader(QF)
+            )
             # Test the model
             model.eval()
             idx = 0
@@ -632,5 +788,7 @@ if __name__ == "__main__":
             os.makedirs("metrics", exist_ok=True)
             save_metrics(
                 metrics,
-                os.path.join("metrics", f"{type(model).__name__}_test_metrics.csv"),
+                os.path.join(
+                    "metrics", f"{type(model).__name__}_mini_imagenet_metrics.csv"
+                ),
             )

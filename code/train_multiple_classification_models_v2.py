@@ -102,18 +102,6 @@ if not os.path.exists(png_test_dir):
 train_dataset = datasets.ImageFolder(png_train_dir, transform=transform)
 test_dataset = datasets.ImageFolder(png_test_dir, transform=transform)
 
-print("cifar100 train dataset[0]", cifar100_train[0][0])
-print("cifar100_train[0]", cifar100_train[0][1])
-print("train_dataset[0]", train_dataset[0][0])
-print("train_dataset[0]", train_dataset[0][1])
-
-# plt.imshow(to_pil_image((cifar100_train[0][0])))
-# plt.show()
-# plt.imshow(to_pil_image((train_dataset[0][0])))
-# plt.show()
-# input()
-
-# input()
 
 train_loader = DataLoader(
     cifar100_train, batch_size=batch_size, shuffle=True, num_workers=num_workers
@@ -121,13 +109,6 @@ train_loader = DataLoader(
 test_loader = DataLoader(
     cifar100_test, batch_size=batch_size, shuffle=False, num_workers=num_workers
 )
-
-# train_loader = DataLoader(
-#     train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
-# )
-# test_loader = DataLoader(
-#     test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
-# )
 
 
 # Function to save CIFAR-100 dataset with different JPEG quality factors
