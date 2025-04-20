@@ -17,7 +17,7 @@ import lpips
 if len(sys.argv) < 4:
     print("Usage: python script.py <epoch> <batch_size> <num_workers>")
     sys.exit(1)
-    
+
 logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
 )
@@ -374,7 +374,7 @@ def laod_mini_imagenet_test_dataset_and_dataloader(QF):
 
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    return train_dataset, test_dataset, train_loader, test_loader
+    return test_dataset, test_loader
 
 
 class ARCNN(nn.Module):
