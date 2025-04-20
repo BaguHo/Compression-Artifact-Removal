@@ -119,7 +119,7 @@ def make_and_save_mini_imagenet_each_qf(QF):
 
 if __name__ == "__main__":
     QFs = [100, 80, 60, 40, 20]
-    change_imagenet_dir_name()
+    # change_imagenet_dir_name()
     make_and_save_mini_imagenet()
     for qf in QFs:
         make_and_save_mini_imagenet_each_qf(qf)
