@@ -765,7 +765,7 @@ if __name__ == "__main__":
                         idx += 1
 
             # Calculate average metrics
-            avg_test_loss = test_loss / len(test_loader)
+            avg_test_loss = test_loss / len(test_dataloader)
             avg_psnr = np.mean(psnr_values)
             avg_ssim = np.mean(ssim_values)
             avg_lpips_alex = np.mean(lpips_alex_values)
