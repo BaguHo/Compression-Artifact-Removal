@@ -706,7 +706,7 @@ if __name__ == "__main__":
 
             with torch.no_grad():
                 for input_images, target_images in tqdm.tqdm(
-                    test_loader, desc="Testing"
+                    test_dataloader, desc="Testing"
                 ):
                     input_images = input_images.to(device)
                     target_images = target_images.to(device)
