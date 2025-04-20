@@ -10,6 +10,31 @@ import tqdm
 import time
 
 
+def change_imagenet_dir_name():
+    # 변경할 디렉토리 경로 지정
+    for name in ["train", "test"]:
+        base_dir = (
+            f"./datasets/mini-imagenet/original/{name}"  # test도 동일하게 적용 가능
+        )
+
+        # 폴더 목록 가져오기 및 정렬
+        folders = sorted(
+            [
+                f
+                for f in os.listdir(base_dir)
+                if os.path.isdir(os.path.join(base_dir, f))
+            ]
+        )
+
+        # 0부터 시작해서 5자리로 패딩된 이름으로 변경
+        for idx, folder in enumerate(folders):
+            new_name = f"{idx:05d}"
+            src = os.path.join(base_dir, folder)
+            dst = os.path.join(base_dir, new_name)
+            os.rename(src, dst)
+            print(f"{folder} -> {new_name}")
+
+
 def make_and_save_mini_imagenet_each_qf(QF):
     mini_imagenet_path = os.path.join(os.getcwd(), "datasets", "mini-imagenet")
     transform = T.Compose([T.ToTensor(), T.Resize((224, 224))])
@@ -53,4 +78,5 @@ def make_and_save_mini_imagenet_each_qf(QF):
 
 if __name__ == "__main__":
     QFs = [100, 80, 60, 40, 20]
+    change_imagenet_dir_name()
     make_and_save_mini_imagenet_each_qf(100)

@@ -17,7 +17,7 @@ import lpips
 if len(sys.argv) < 4:
     print("Usage: python script.py <epoch> <batch_size> <num_workers>")
     sys.exit(1)
-
+    
 logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
 )
