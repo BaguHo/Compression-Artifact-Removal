@@ -99,9 +99,9 @@ def make_and_save_mini_imagenet_each_qf(QF):
     for idx, (img, label) in enumerate(train_dataset):
         image = T.ToPILImage()(img)
         image_filename = os.path.join(
-            output_train_path, str(label), f"image_{int(idx):05d}.png"
+            output_train_path, str(label), f"image_{int(idx):05d}.jpeg"
         )
-        image.save(image_filename, "PNG")
+        image.save(image_filename, "JPEG", quality=QF)
 
         if idx % 5000 == 0:
             print(f"{idx} training images saved...")
@@ -109,9 +109,9 @@ def make_and_save_mini_imagenet_each_qf(QF):
     for idx, (img, label) in enumerate(test_dataset):
         image = T.ToPILImage()(img)
         image_filename = os.path.join(
-            output_test_path, str(label), f"image_{int(idx):05d}.png"
+            output_test_path, str(label), f"image_{int(idx):05d}.jpeg"
         )
-        image.save(image_filename, "PNG")
+        image.save(image_filename, "JPEG", quality=QF)
 
         if idx % 5000 == 0:
             print(f"{idx} testing images saved...")
@@ -120,6 +120,6 @@ def make_and_save_mini_imagenet_each_qf(QF):
 if __name__ == "__main__":
     QFs = [100, 80, 60, 40, 20]
     # change_imagenet_dir_name()
-    make_and_save_mini_imagenet()
+    # make_and_save_mini_imagenet()
     for qf in QFs:
         make_and_save_mini_imagenet_each_qf(qf)
