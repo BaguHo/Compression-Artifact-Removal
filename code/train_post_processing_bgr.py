@@ -14,8 +14,8 @@ import lpips
 
 # !warning: BlockCNN does not work
 
-if len(sys.argv) < 4:
-    print("Usage: python script.py <epoch> <batch_size> <num_workers>")
+if len(sys.argv) < 5:
+    print("Usage: python script.py <model_name> <epoch> <batch_size> <num_workers>")
     sys.exit(1)
 
 logging.basicConfig(
@@ -26,9 +26,10 @@ dataset_name = "CIFAR100"
 slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
-epochs = int(sys.argv[1])
-batch_size = int(sys.argv[2])
-num_workers = int(sys.argv[3])
+model_name = sys.argv[1]
+epochs = int(sys.argv[2])
+batch_size = int(sys.argv[3])
+num_workers = int(sys.argv[4])
 num_classes = 1000
 
 
@@ -599,196 +600,194 @@ if __name__ == "__main__":
     # train_dataset, test_dataset, train_loader, test_loader = load_images()
     train_dataset, train_loader = laod_mini_imagenet_train_dataset_and_dataloader()
 
-    model_names = [
-        "ARCNN",
-        "DnCNN",
-        "BlockCNN",
-    ]
+    # model_names = [
+    #     "ARCNN",
+    #     "DnCNN",
+    #     "BlockCNN",
+    # ]
 
-    for model_name in model_names:
-        if model_name == "ARCNN":
-            model = ARCNN()
-        elif model_name == "FastARCNN":
-            model = FastARCNN()
-        elif model_name == "DnCNN":
-            model = DnCNN()
-        elif model_name == "BlockCNN":
-            model = BlockCNN()
-        print(model)
+    # for model_name in model_names:
+    if model_name == "ARCNN":
+        model = ARCNN()
+    elif model_name == "FastARCNN":
+        model = FastARCNN()
+    elif model_name == "DnCNN":
+        model = DnCNN()
+    elif model_name == "BlockCNN":
+        model = BlockCNN()
+    print(model)
 
-        device = torch.device(
-            "cuda"
-            if torch.cuda.is_available()
-            else "mps" if torch.backends.mps.is_available() else "cpu"
-        )
+    device = torch.device(
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps" if torch.backends.mps.is_available() else "cpu"
+    )
 
-        # use multiple GPUs if available
-        if torch.cuda.device_count() > 1:
-            model = nn.DataParallel(model)
-            print(f"Using {torch.cuda.device_count()} GPUs")
+    # use multiple GPUs if available
+    if torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model)
+        print(f"Using {torch.cuda.device_count()} GPUs")
 
-        model.to(device)
-        print(f"Model device: {device}")
+    model.to(device)
+    print(f"Model device: {device}")
 
-        # # train the model
-        criterion = nn.MSELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    # # train the model
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-        # # !load model
-        # model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth"))
+    # # !load model
+    # model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth"))
 
-        start_time = time.time()
-        print(f"Training started at {time.ctime(start_time)}")
+    start_time = time.time()
+    print(f"Training started at {time.ctime(start_time)}")
+    logging.info(f"{type(model).__name__} Training started at {time.ctime(start_time)}")
+    print(f"Training for {epochs} epochs")
+    for epoch in range(epochs):
+        model.train()
+        running_loss = 0.0
+        for i, (input_images, target_images) in enumerate(
+            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+        ):
+            input_images = input_images.to(device)
+            target_images = target_images.to(device)
+
+            optimizer.zero_grad()
+
+            # Forward pass
+            outputs = model(input_images)
+            loss = criterion(outputs, target_images)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+
+        epoch_loss = running_loss / len(train_loader)
+        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
         logging.info(
-            f"{type(model).__name__} Training started at {time.ctime(start_time)}"
+            f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
         )
-        print(f"Training for {epochs} epochs")
-        for epoch in range(epochs):
-            model.train()
-            running_loss = 0.0
-            for i, (input_images, target_images) in enumerate(
-                tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+
+        # Save the model
+        if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
+            torch.save(
+                model.state_dict(),
+                os.path.join("models", f"{type(model).__name__}_{epoch+1}.pth"),
+            )
+            print(f"Model saved at epoch {epoch+1}")
+            logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
+
+    end_time = time.time()
+    print(f"Training finished at {time.ctime(end_time)}")
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    logging.info(f"Training finished at {time.ctime(end_time)}")
+    # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
+
+    # Save the final model
+    torch.save(
+        model.state_dict(),
+        os.path.join("models", f"{type(model).__name__}_final.pth"),
+    )
+    print(f"Final model saved as {type(model).__name__}_final.pth")
+    logging.info(f"Final model saved as {type(model).__name__}_final.pth")
+
+    for QF in QFs:
+        test_dataset, test_dataloader = laod_mini_imagenet_test_dataset_and_dataloader(
+            QF
+        )
+        # Test the model
+        model.eval()
+        idx = 0
+        test_loss = 0.0
+        psnr_values = []
+        ssim_values = []
+        lpips_alex_values = []
+        lpips_alex_model = lpips.LPIPS(net="alex").to(device)
+
+        with torch.no_grad():
+            for input_images, target_images in tqdm.tqdm(
+                test_dataloader, desc="Testing"
             ):
                 input_images = input_images.to(device)
                 target_images = target_images.to(device)
 
-                optimizer.zero_grad()
-
                 # Forward pass
                 outputs = model(input_images)
+
+                # Calculate MSE loss
                 loss = criterion(outputs, target_images)
-                loss.backward()
-                optimizer.step()
-                running_loss += loss.item()
+                test_loss += loss.item()
 
-            epoch_loss = running_loss / len(train_loader)
-            print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-            logging.info(
-                f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
-            )
+                for i in range(len(outputs)):
+                    # Calculate LPIPS
+                    lpips_alex = lpips_alex_model(
+                        target_images[i], outputs[i], normalize=True
+                    ).item()
 
-            # Save the model
-            if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
-                torch.save(
-                    model.state_dict(),
-                    os.path.join("models", f"{type(model).__name__}_{epoch+1}.pth"),
-                )
-                print(f"Model saved at epoch {epoch+1}")
-                logging.info(f"Model {type(model).__name__} saved at epoch {epoch+1}")
+                    rgb_target = target_images[i].cpu().numpy()
+                    rgb_output = outputs[i].cpu().numpy()
 
-        end_time = time.time()
-        print(f"Training finished at {time.ctime(end_time)}")
-        elapsed_time = end_time - start_time
-        print(f"Elapsed time: {elapsed_time:.2f} seconds")
-        logging.info(f"Training finished at {time.ctime(end_time)}")
-        # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
+                    # Calculate PSNR
+                    psnr = peak_signal_noise_ratio(
+                        rgb_target, rgb_output, data_range=1.0
+                    )
 
-        # Save the final model
-        torch.save(
-            model.state_dict(),
-            os.path.join("models", f"{type(model).__name__}_final.pth"),
+                    # Calculate SSIM
+                    ssim = structural_similarity(
+                        rgb_target,
+                        rgb_output,
+                        multichannel=True,
+                        data_range=1.0,
+                        channel_axis=0,
+                    )
+
+                    lpips_alex_values.append(lpips_alex)
+                    psnr_values.append(psnr)
+                    ssim_values.append(ssim)
+
+                    logging.info(
+                        f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, LPIPS Alex: {lpips_alex:.4f}"
+                    )
+
+                    # save the output images
+                    os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
+                    output_image_path = os.path.join(
+                        f"{type(model).__name__}_output",
+                        f"JPEG{QF}",
+                        f"output{idx}.png",
+                    )
+                    np.clip(rgb_output, 0, 1, out=rgb_output)
+                    rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                    cv2.imwrite(output_image_path, rgb_output)
+                    logging.info(
+                        f"{type(model).__name__} Output image saved at {output_image_path}"
+                    )
+                    idx += 1
+
+        # Calculate average metrics
+        avg_test_loss = test_loss / len(test_dataloader)
+        avg_psnr = np.mean(psnr_values)
+        avg_ssim = np.mean(ssim_values)
+        avg_lpips_alex = np.mean(lpips_alex_values)
+
+        print(
+            f"Model: {type(model).__name__}, Epoch: {epochs}, QF: {QF}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}"
         )
-        print(f"Final model saved as {type(model).__name__}_final.pth")
-        logging.info(f"Final model saved as {type(model).__name__}_final.pth")
+        logging.info(
+            f"Model: {type(model).__name__}, Epoch: {epochs}, QF: {QF}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}"
+        )
 
-        for QF in QFs:
-            test_dataset, test_dataloader = (
-                laod_mini_imagenet_test_dataset_and_dataloader(QF)
-            )
-            # Test the model
-            model.eval()
-            idx = 0
-            test_loss = 0.0
-            psnr_values = []
-            ssim_values = []
-            lpips_alex_values = []
-            lpips_alex_model = lpips.LPIPS(net="alex").to(device)
-
-            with torch.no_grad():
-                for input_images, target_images in tqdm.tqdm(
-                    test_dataloader, desc="Testing"
-                ):
-                    input_images = input_images.to(device)
-                    target_images = target_images.to(device)
-
-                    # Forward pass
-                    outputs = model(input_images)
-
-                    # Calculate MSE loss
-                    loss = criterion(outputs, target_images)
-                    test_loss += loss.item()
-
-                    for i in range(len(outputs)):
-                        # Calculate LPIPS
-                        lpips_alex = lpips_alex_model(
-                            target_images[i], outputs[i], normalize=True
-                        ).item()
-
-                        rgb_target = target_images[i].cpu().numpy()
-                        rgb_output = outputs[i].cpu().numpy()
-
-                        # Calculate PSNR
-                        psnr = peak_signal_noise_ratio(
-                            rgb_target, rgb_output, data_range=1.0
-                        )
-
-                        # Calculate SSIM
-                        ssim = structural_similarity(
-                            rgb_target,
-                            rgb_output,
-                            multichannel=True,
-                            data_range=1.0,
-                            channel_axis=0,
-                        )
-
-                        lpips_alex_values.append(lpips_alex)
-                        psnr_values.append(psnr)
-                        ssim_values.append(ssim)
-
-                        logging.info(
-                            f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, LPIPS Alex: {lpips_alex:.4f}"
-                        )
-
-                        # save the output images
-                        os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
-                        output_image_path = os.path.join(
-                            f"{type(model).__name__}_output",
-                            f"JPEG{QF}",
-                            f"output{idx}.png",
-                        )
-                        np.clip(rgb_output, 0, 1, out=rgb_output)
-                        rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
-                        cv2.imwrite(output_image_path, rgb_output)
-                        logging.info(
-                            f"{type(model).__name__} Output image saved at {output_image_path}"
-                        )
-                        idx += 1
-
-            # Calculate average metrics
-            avg_test_loss = test_loss / len(test_dataloader)
-            avg_psnr = np.mean(psnr_values)
-            avg_ssim = np.mean(ssim_values)
-            avg_lpips_alex = np.mean(lpips_alex_values)
-
-            print(
-                f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}"
-            )
-            logging.info(
-                f"Model: {type(model).__name__}, Epoch: {epochs}, Training Time: {time.ctime(end_time)}, Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f}, Average LPIPS Alex: {avg_lpips_alex:.4f}"
-            )
-
-            # Save metrics
-            metrics = {
-                "QF": QF,
-                "Test Loss": [avg_test_loss],
-                "PSNR": psnr_values,
-                "SSIM": ssim_values,
-                "LPIPS Alex": lpips_alex_values,
-            }
-            os.makedirs("metrics", exist_ok=True)
-            save_metrics(
-                metrics,
-                os.path.join(
-                    "metrics", f"{type(model).__name__}_mini_imagenet_metrics.csv"
-                ),
-            )
+        # Save metrics
+        metrics = {
+            "QF": QF,
+            "Test Loss": [avg_test_loss],
+            "PSNR": psnr_values,
+            "SSIM": ssim_values,
+            "LPIPS Alex": lpips_alex_values,
+        }
+        os.makedirs("metrics", exist_ok=True)
+        save_metrics(
+            metrics,
+            os.path.join(
+                "metrics", f"{type(model).__name__}_mini_imagenet_metrics.csv"
+            ),
+        )
