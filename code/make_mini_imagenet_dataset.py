@@ -37,7 +37,7 @@ def change_imagenet_dir_name():
 
 def make_and_save_mini_imagenet():
     mini_imagenet_path = os.path.join(os.getcwd(), "datasets", "mini-imagenet")
-    transform = T.Compose([T.ToTensor(), T.Resize((224, 224))])
+    transform = T.Compose([T.ToTensor(), T.RandomCrop(224, 224)])
 
     # 데이터셋 로드
     train_dataset = datasets.ImageFolder(

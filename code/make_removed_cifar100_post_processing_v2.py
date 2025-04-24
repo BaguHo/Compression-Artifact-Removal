@@ -24,7 +24,7 @@ dataset_name = "CIFAR100"
 slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
-QFs = [80, 60, 40, 20]
+QFs = [100, 80, 60, 40, 20]
 
 model_names = [
     "ARCNN",

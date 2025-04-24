@@ -1,10 +1,9 @@
 from skimage.metrics import structural_similarity, peak_signal_noise_ratio
 from torch.utils.data import DataLoader, Dataset
+from torch.nn import functional as F
+from torch import nn
 import torchvision.transforms as transforms
 import numpy as np
-from torch import nn
-from torch.nn import functional as F
-import torch
 import os, sys, re
 import logging
 import cv2
@@ -615,26 +614,26 @@ if __name__ == "__main__":
             model = BlockCNN()
         print(model)
 
-        device = torch.device(
+        device = nn.device(
             "cuda"
-            if torch.cuda.is_available()
-            else "mps" if torch.backends.mps.is_available() else "cpu"
+            if nn.cuda.is_available()
+            else "mps" if nn.backends.mps.is_available() else "cpu"
         )
 
         # use multiple GPUs if available
-        if torch.cuda.device_count() > 1:
+        if nn.cuda.device_count() > 1:
             model = nn.DataParallel(model)
-            print(f"Using {torch.cuda.device_count()} GPUs")
+            print(f"Using {nn.cuda.device_count()} GPUs")
 
         model.to(device)
         print(f"Model device: {device}")
 
         # # train the model
         criterion = nn.MSELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+        optimizer = nn.optim.Adam(model.parameters(), lr=0.001)
 
         # # !load model
-        # model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth"))
+        # model.load_state_dict(nn.load(f"./models/{type(model).__name__}_30.pth"))
 
         start_time = time.time()
         print(f"Training started at {time.ctime(start_time)}")
@@ -666,7 +665,7 @@ if __name__ == "__main__":
 
             # Save the model
             if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
-                torch.save(
+                nn.save(
                     model.state_dict(),
                     os.path.join("models", f"{model_name}_{epoch+1}.pth"),
                 )
@@ -681,7 +680,7 @@ if __name__ == "__main__":
         # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
         # Save the final model
-        torch.save(
+        nn.save(
             model.state_dict(),
             os.path.join("models", f"{model_name}_final.pth"),
         )
@@ -701,7 +700,7 @@ if __name__ == "__main__":
             lpips_alex_values = []
             lpips_alex_model = lpips.LPIPS(net="alex").to(device)
 
-            with torch.no_grad():
+            with nn.no_grad():
                 for input_images, target_images in tqdm.tqdm(
                     test_dataloader, desc="Testing"
                 ):
