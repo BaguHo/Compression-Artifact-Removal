@@ -390,7 +390,7 @@ if __name__ == "__main__":
             model = BlockCNN()
         print(model)
 
-        device = nn.device(
+        device = (
             "cuda"
             if nn.cuda.is_available()
             else "mps" if nn.backends.mps.is_available() else "cpu"
