@@ -2,6 +2,7 @@ from skimage.metrics import structural_similarity, peak_signal_noise_ratio
 from torchmetrics.image import PeakSignalNoiseRatioWithBlockedEffect
 from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
+from knockknock import slack_sender
 import numpy as np
 from torch import nn
 import torch
@@ -12,33 +13,22 @@ import tqdm
 import time
 import lpips
 
-if len(sys.argv) < 5:
-    print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
+if len(sys.argv) < 4:
+    print("Usage: python script.py <epoch> <batch_size> <num_workers>")
     sys.exit(1)
 
 logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
 )
 
-dataset_name = "CIFAR100"
+dataset_name = "mini-imagenet"
 slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
 epochs = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
-num_classes = int(sys.argv[4])
-
-
-def sort_key(filename):
-    image_match = re.search(r"image_(\d+)", filename)
-    crop_match = re.search(r"crop_(\d+)", filename)
-
-    image_number = int(image_match.group(1)) if image_match else float("inf")
-    crop_number = int(crop_match.group(1)) if crop_match else float("inf")
-
-    return (image_number, crop_number)
-
+num_classes = 1000
 
 class CustomDataset(Dataset):
     def __init__(self, input_images, target_images, transform=transforms.ToTensor()):
@@ -60,77 +50,70 @@ class CustomDataset(Dataset):
         return input_image, target_image
 
 
-def load_images():
-    QFs = [100, 80, 60, 40, 20]
-    dataset_name = "CIFAR100"
-    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
-
+def load_train_dataset_and_dataloader():
+    train_dataset_path = os.path.join(os.getcwd(), "datasets", "mini-imagenet")
+    QFs = ["100", "80", "60", "40", "20"]
     train_input_dataset = []
-    test_input_dataset = []
     train_target_dataset = []
-    test_target_dataset = []
 
     for QF in QFs:
         # input images
-        train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
-        test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
+        train_input_dir = os.path.join(train_dataset_path, f"jpeg{QF}", "train")
+        target_train_dataset_dir = os.path.join(train_dataset_path, "_original", "train")
 
-        # target images (original)
-        target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
-        target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
-
-        # 학습 데이터 로드
-        for i in tqdm.tqdm(
-            range(num_classes), desc=f"Loa,ding train data (QF {QF})", total=num_classes
-        ):
+        # 테스트 데이터 로드
+        for i in tqdm.tqdm(range(num_classes), desc=f"Loading train data (QF {QF})"):
             train_path = os.path.join(train_input_dir, str(i))
             target_train_path = os.path.join(target_train_dataset_dir, str(i))
 
             # train_path 내 파일을 정렬된 순서로 불러오기
-            sorted_train_files = sorted(os.listdir(train_path), key=sort_key)
-            sorted_target_train_files = sorted(
-                os.listdir(target_train_path), key=sort_key
-            )
+            sorted_train_files = sorted(os.listdir(train_path))
+            sorted_target_train_files = sorted(os.listdir(target_train_path))
 
             # 두 디렉토리의 파일명이 같은지 확인하며 로드
-            for train_file, target_file in zip(
-                sorted_train_files, sorted_target_train_files
-            ):
-                if train_file == target_file:
+            for input_file, target_file in zip(sorted_train_files, sorted_target_train_files):
+                if input_file.replace("jpeg","png") == target_file:
                     # input 이미지 로드
-                    train_image_path = os.path.join(train_path, train_file)
+                    input_file.replace("png", "jpeg")
+                    train_image_path = os.path.join(train_path, input_file)
                     train_image = cv2.imread(train_image_path)
-                    train_input_dataset.append(train_image)
+                    # train_image 224x224 --> 8x8로 잘라서 train_input_dataset에 추가
+                    for y in range(0, train_image.shape[0], 8):
+                        for x in range(0, train_image.shape[1], 8):
+                            if y + 8 <= train_image.shape[0] and x + 8 <= train_image.shape[1]:
+                                patch = train_image[y:y+8, x:x+8]
+                                train_input_dataset.append(patch)
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_train_path, target_file)
                     target_image = cv2.imread(target_image_path)
-                    train_target_dataset.append(target_image)
+                    # target_image 224x224 --> 8x8로 잘라서 train_target_dataset에 추가
+                    for y in range(0, target_image.shape[0], 8):
+                        for x in range(0, target_image.shape[1], 8):
+                            if y + 8 <= target_image.shape[0] and x + 8 <= target_image.shape[1]:
+                                patch = target_image[y:y+8, x:x+8]
+                                train_target_dataset.append(patch)
                 else:
                     print(
-                        f"Warning: Mismatched files in training set: {train_file} and {target_file}"
+                        f"Warning: Mismatched files in training set: {input_file} and {target_file}"
                     )
 
     # Dataset과 DataLoader 생성
     train_dataset = CustomDataset(train_input_dataset, train_target_dataset)
-
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     return train_dataset, train_loader
 
 
-def load_test_images_each_QF(QF):
-    dataset_name = "CIFAR100"
-    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
+def load_test_dataset_and_dataloader_each_QF(QF):
+    dataset_path = os.path.join(os.getcwd(), "datasets", "mini-imagenet")
 
     test_input_dataset = []
     test_target_dataset = []
 
     # input images
-    test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
-
-    # target images (original)
-    target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
+    test_input_dir = os.path.join(dataset_path, f"jpeg{QF}", "test")
+    target_test_dataset_dir = os.path.join(dataset_path, "_original", "test")
 
     # 테스트 데이터 로드
     for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
@@ -138,24 +121,36 @@ def load_test_images_each_QF(QF):
         target_test_path = os.path.join(target_test_dataset_dir, str(i))
 
         # test_path 내 파일을 정렬된 순서로 불러오기
-        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+        sorted_test_files = sorted(os.listdir(test_path))
+        sorted_target_test_files = sorted(os.listdir(target_test_path))
 
         # 두 디렉토리의 파일명이 같은지 확인하며 로드
-        for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
-            if test_file == target_file:
+        for input_file, target_file in zip(sorted_test_files, sorted_target_test_files):
+            if input_file.replace("jpeg", "png") == target_file:
                 # input 이미지 로드
-                test_image_path = os.path.join(test_path, test_file)
+                input_file.replace("png", "jpeg")
+                test_image_path = os.path.join(test_path, input_file)
                 test_image = cv2.imread(test_image_path)
-                test_input_dataset.append(test_image)
+                # test_image 224x224 --> 8x8로 잘라서 test_input_dataset에 추가
+                # Split 224x224 image into 8x8 patches
+                for y in range(0, test_image.shape[0], 8):
+                    for x in range(0, test_image.shape[1], 8):
+                        if y + 8 <= test_image.shape[0] and x + 8 <= test_image.shape[1]:
+                            patch = test_image[y:y+8, x:x+8]
+                            test_input_dataset.append(patch)
 
                 # target 이미지 로드
                 target_image_path = os.path.join(target_test_path, target_file)
                 target_image = cv2.imread(target_image_path)
-                test_target_dataset.append(target_image)
+                # Split 224x224 image into 8x8 patches
+                for y in range(0, target_image.shape[0], 8):
+                    for x in range(0, target_image.shape[1], 8):
+                        if y + 8 <= target_image.shape[0] and x + 8 <= target_image.shape[1]:
+                            patch = target_image[y:y+8, x:x+8]
+                            test_target_dataset.append(patch)
             else:
                 print(
-                    f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
+                    f"Warning: Mismatched files in testing set: {input_file} and {target_file}"
                 )
 
     # Dataset과 DataLoader 생성
@@ -258,10 +253,15 @@ def save_metrics(metrics, filename):
             f.write(f"{metrics['PSNR'][i]},{metrics['SSIM'][i]}\n")
     print(f"Metrics saved to {filename}")
 
+# Send slack notification when program finishes
+@slack_sender(webhook_url=slack_webhook_url, channel="Jiho Eum")
+def send_completion_message(msg)    :
+    return f"PxT_v2_224_224 training and testing completed successfully!"
+
 
 if __name__ == "__main__":
     # Load the dataset
-    train_dataset, train_loader = load_images()
+    train_dataset, train_loader = load_train_dataset_and_dataloader()
 
     # Initialize the model
     model = PxT()
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     # use multiple GPUs if available
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
-        print(f"Using {torch.cuda.device_count()} GPUs")
+    print(f"Using {torch.cuda.device_count()} GPUs")
 
     model.to(device)
     print(f"Model device: {device}")
@@ -310,16 +310,16 @@ if __name__ == "__main__":
         epoch_loss = running_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
         logging.info(
-            f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+            f"PxT_v2_224_224 Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
         )
         # Save the model
         if (epoch + 1) % 10 == 0:
             torch.save(
                 model.state_dict(),
-                os.path.join("models", f"{type(model).__name__}_{epoch+1}.pth"),
+                os.path.join("models", f"PxT_v2_224_224_{epoch+1}.pth"),
             )
-            print(f"{type(model).__name__} Model saved at epoch {epoch+1}")
-            logging.info(f"{type(model).__name__} Model saved at epoch {epoch+1}")
+            print(f"PxT_v2_224_224 Model saved at epoch {epoch+1}")
+            logging.info(f"PxT_v2_224_224 Model saved at epoch {epoch+1}")
 
     end_time = time.time()
     print(f"Training finished at {time.ctime(end_time)}")
@@ -370,23 +370,25 @@ if __name__ == "__main__":
                     rgb_output_patches.append(rgb_output)
                     patch_idx += 1
 
-                    # 8x8 이미지들을 32x32로 합치기
-                    if patch_idx % 16 == 0 and patch_idx > 0:
+                    # 8x8 이미지들을 224x224로 합쳐줘
+                    if patch_idx % 784 == 0 and patch_idx > 0:
                         patch_idx = 0
-                        combined_target_image = np.zeros((32, 32, 3), dtype=np.uint8)
-                        combined_output_image = np.zeros((32, 32, 3), dtype=np.uint8)
+                        combined_target_image = np.zeros((224, 224, 3), dtype=np.uint8)
+                        combined_output_image = np.zeros((224, 224, 3), dtype=np.uint8)
 
-                        for j in range(4):
-                            for k in range(4):
-                                idx = j * 4 + k
+                        # Reconstruct target image from patches
+                        for j in range(28):
+                            for k in range(28):
+                                idx = j * 28 + k
                                 combined_target_image[
                                     j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
                                 ] = rgb_target_patches[idx]
                         rgb_target_patches.clear()
 
-                        for j in range(4):
-                            for k in range(4):
-                                idx = j * 4 + k
+                        # Reconstruct output image from patches
+                        for j in range(28):
+                            for k in range(28):
+                                idx = j * 28 + k
                                 combined_output_image[
                                     j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
                                 ] = rgb_output_patches[idx]
@@ -421,20 +423,13 @@ if __name__ == "__main__":
                         psnr_values.append(psnr)
                         ssim_values.append(ssim)
 
-                        logging.info(
-                            f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
-                        )
-
                         # 합쳐진 이미지 저장
-                        os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
+                        os.makedirs(f"PxT_v2_224_224_output", exist_ok=True)
                         combined_image_path = os.path.join(
-                            f"{type(model).__name__}_output",
-                            f"combined_output{image_name_idx}.png",
+                            f"PxT_v2_224_224_output",
+                            f"combined_output{image_name_idx:05d}.png",
                         )
                         cv2.imwrite(combined_image_path, combined_output_image)
-                        logging.info(
-                            f"{type(model).__name__} Combined image saved at {combined_image_path}"
-                        )
                         image_name_idx += 1
 
         # Calculate average metrics
@@ -444,8 +439,14 @@ if __name__ == "__main__":
         avg_lpips_alex = np.mean(lpips_alex_loss_values)
 
         print(
-            f"{type(model).__name__} QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"PxT_v2_224_224 QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )
         logging.info(
-            f"{type(model).__name__} QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"PxT_v2_224_224 QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )
+        
+    send_completion_message()
+    
+    # Shutdown computer after 1 minute
+    print("Computer will shutdown in 1 minute...")
+    os.system("sudo shutdown -h +1")
