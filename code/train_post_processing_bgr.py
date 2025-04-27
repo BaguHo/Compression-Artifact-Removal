@@ -2,9 +2,10 @@ from skimage.metrics import structural_similarity, peak_signal_noise_ratio
 from torch.utils.data import DataLoader, Dataset
 from torch.nn import functional as F
 from torch import nn
+import torch
 import torchvision.transforms as transforms
 import numpy as np
-import os, sys, re
+import os, sys
 import logging
 import cv2
 import tqdm
@@ -350,7 +351,7 @@ class BlockCNN(nn.Module):
         out = self.sig(out)
         # out = out * 255
 
-        # out = torch.sigmoid(self.conv_8(out))
+        # out = nn.sigmoid(self.conv_8(out))
 
         return out
 
@@ -390,16 +391,12 @@ if __name__ == "__main__":
             model = BlockCNN()
         print(model)
 
-        device = (
-            "cuda"
-            if nn.cuda.is_available()
-            else "mps" if nn.backends.mps.is_available() else "cpu"
-        )
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # use multiple GPUs if available
-        if nn.cuda.device_count() > 1:
+        if torch.cuda.device_count() > 1:
             model = nn.DataParallel(model)
-            print(f"Using {nn.cuda.device_count()} GPUs")
+            print(f"Using {torch.cuda.device_count()} GPUs")
 
         model.to(device)
         print(f"Model device: {device}")
