@@ -395,14 +395,14 @@ if __name__ == "__main__":
 
         # use multiple GPUs if available
         if torch.cuda.device_count() > 1:
-            model = torch.DataParallel(model)
+            model = torch.nn.DataParallel(model)
             print(f"Using {torch.cuda.device_count()} GPUs")
 
         model.to(device)
         print(f"Model device: {device}")
 
         # # train the model
-        criterion = torch.MSELoss()
+        criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
         # # !load model
@@ -450,7 +450,7 @@ if __name__ == "__main__":
         elapsed_time = end_time - start_time
         print(f"Elapsed time: {elapsed_time:.2f} seconds")
         logging.info(f"Training finished at {time.ctime(end_time)}")
-        # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
+        logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
         # Save the final model
         torch.save(
