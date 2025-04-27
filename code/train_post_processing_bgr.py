@@ -395,18 +395,18 @@ if __name__ == "__main__":
 
         # use multiple GPUs if available
         if torch.cuda.device_count() > 1:
-            model = nn.DataParallel(model)
+            model = torch.DataParallel(model)
             print(f"Using {torch.cuda.device_count()} GPUs")
 
         model.to(device)
         print(f"Model device: {device}")
 
         # # train the model
-        criterion = nn.MSELoss()
-        optimizer = nn.optim.Adam(model.parameters(), lr=0.001)
+        criterion = torch.MSELoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
         # # !load model
-        # model.load_state_dict(nn.load(f"./models/{type(model).__name__}_30.pth"))
+        # model.load_state_dict(torch.load(f"./models/{type(model).__name__}_30.pth"))
 
         start_time = time.time()
         print(f"Training started at {time.ctime(start_time)}")
@@ -438,7 +438,7 @@ if __name__ == "__main__":
 
             # Save the model
             if (epoch + 1) % 10 == 0 or (epoch + 1) == epochs:
-                nn.save(
+                torch.save(
                     model.state_dict(),
                     os.path.join("models", f"{model_name}_{epoch+1}.pth"),
                 )
@@ -453,7 +453,7 @@ if __name__ == "__main__":
         # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
         # Save the final model
-        nn.save(
+        torch.save(
             model.state_dict(),
             os.path.join("models", f"{model_name}_final.pth"),
         )
@@ -473,7 +473,7 @@ if __name__ == "__main__":
             lpips_alex_values = []
             lpips_alex_model = lpips.LPIPS(net="alex").to(device)
 
-            with nn.no_grad():
+            with torch.no_grad():
                 for input_images, target_images in tqdm.tqdm(
                     test_dataloader, desc="Testing"
                 ):
