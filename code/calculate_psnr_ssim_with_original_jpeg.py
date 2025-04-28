@@ -8,7 +8,7 @@ import lpips
 
 def calculate_psnr_ssim_lpips(QF):
     original_dataset_dir  = os.path.join("datasets/mini-imagenet/_original/test")
-    jpeg_dataset_dir = os.path.join("datasets/mini-imagenet/jpeg{QF}/test")
+    jpeg_dataset_dir = os.path.join(f"datasets/mini-imagenet/jpeg{QF}/test")
 
     original_images = []
     jpeg_images = []
