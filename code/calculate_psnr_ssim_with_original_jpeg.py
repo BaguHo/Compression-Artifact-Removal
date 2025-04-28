@@ -16,15 +16,17 @@ def calculate_psnr_ssim_lpips(QF):
     for i in range(1000):
         original_image_path = os.path.join(original_dataset_dir, str(i))
         jpeg_image_path = os.path.join(jpeg_dataset_dir, str(i))
-        original_images = os.listdir(original_image_path)
-        jpeg_images = os.listdir(jpeg_image_path)
+        original_image_names = os.listdir(original_image_path)
+        jpeg_image_names = os.listdir(jpeg_image_path)
 
-        print(original_images)
-        print(jpeg_images)
+        # print(original_images)
+        # print(jpeg_images)
 
-        for original_image, jpeg_image in zip(original_images, jpeg_images):
-            original_image = Image.open(os.path.join(original_image_path, str(original_image)))
-            jpeg_image = Image.open(os.path.join(jpeg_image_path, str(jpeg_image)))
+        for original_image_name, jpeg_image_name in zip(original_image_names, jpeg_image_names):
+            original_image_path =  os.path.join(original_image_path, original_image_name)
+            jpeg_image_path = os.path.join(jpeg_image_path, jpeg_image_name)
+            original_image = Image.open(original_image_path)
+            jpeg_image = Image.open(jpeg_image_path)
             original_images.append(original_image)
             jpeg_images.append(jpeg_image)
 
