@@ -7,28 +7,30 @@ import lpips
 
 
 def calculate_psnr_ssim_lpips(QF):
-    original_dataset_path  = os.path.join("datasets/mini-imagenet/_original/test")
-    jpeg_dataset_path = os.path.join("datasets/mini-imagenet/jpeg{QF}/test")
+    original_dataset_dir  = os.path.join("datasets/mini-imagenet/_original/test")
+    jpeg_dataset_dir = os.path.join("datasets/mini-imagenet/jpeg{QF}/test")
 
     original_images = []
     jpeg_images = []
 
     for i in range(1000):
-        original_image_path = os.path.join(original_dataset_path, str(i))
-        jpeg_image_path = os.path.join(jpeg_dataset_path, str(i))
+        original_image_path = os.path.join(original_dataset_dir, str(i))
+        jpeg_image_path = os.path.join(jpeg_dataset_dir, str(i))
+        original_images = os.listdir(original_image_path)
+        jpeg_images = os.listdir(jpeg_image_path)
 
-        original_image = Image.open(original_image_path)
-        jpeg_image = Image.open(jpeg_image_path)
-
-        original_images.append(original_image)
-        jpeg_images.append(jpeg_image)
+        for original_image, jpeg_image in zip(original_images, jpeg_images):
+            original_image = Image.open(os.path.join(original_image_path, original_image))
+            jpeg_image = Image.open(os.path.join(jpeg_image_path, jpeg_image))
+            original_images.append(original_image)
+            jpeg_images.append(jpeg_image)
 
     lpips_metric = lpips.LPIPS(net="alex")
     lpips_values = []
     psnr_values = []
     ssim_values = []
 
-    for i in range(1000):
+    for i in range(len(original_images)):
         original_image = original_images[i]
         jpeg_image = jpeg_images[i]
 
