@@ -4,6 +4,7 @@ from PIL import Image
 from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 import lpips
+import torch
 
 def calculate_avg_psnr_ssim(original_image_dir, removed_image_dir):
     lpips_model = lpips.LPIPS(net='alex')
