@@ -33,7 +33,7 @@ def calculate_avg_psnr_ssim(original_image_dir, removed_image_dir):
         )
 
         # Calculate LPIPS between original and removed
-        lpips_removed = lpips_model(original_image, removed_image)
+        lpips_removed = lpips_model(torch.from_numpy(original_image), torch.from_numpy(removed_image))
 
         psnr_scores_removed.append(psnr_removed)
         ssim_scores_removed.append(ssim_removed)
@@ -48,8 +48,8 @@ def calculate_avg_psnr_ssim(original_image_dir, removed_image_dir):
 
     
 if __name__ == "__main__":
-    QFs = [80, 60, 40, 20]
-    num_classes = 20
+    QFs = [100, 80, 60, 40, 20]
+    num_classes = 1000
 
     for QF in QFs:
         for i in range(num_classes):
