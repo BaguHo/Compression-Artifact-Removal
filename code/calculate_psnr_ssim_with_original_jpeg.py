@@ -76,12 +76,12 @@ if __name__ == "__main__":
                 os.getcwd(),
                 "datasets",
                 "mini-imagenet",
-                f"jpeg{QF}",
+                f"_original",
                 "test",
                 str(i),
             )
             removed_image_dir = os.path.join(
-                os.getcwd(), "datasets", "combined_ycbcr", f"QF_{QF}", "test", str(i)
+                os.getcwd(), "datasets", "mini-imagenet", f"jpeg{QF}", "test", str(i)
             )
 
             avg_psnr_original, avg_ssim_original, avg_psnr_removed, avg_ssim_removed, avg_lpips_original, avg_lpips_removed = (
