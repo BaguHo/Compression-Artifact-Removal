@@ -1,127 +1,109 @@
-from skimage.metrics import structural_similarity, peak_signal_noise_ratio
-from torchmetrics.image import PeakSignalNoiseRatioWithBlockedEffect
-from torch.utils.data import DataLoader, Dataset
-import torchvision.transforms as transforms
 import numpy as np
-from torch import nn
-import torch
-import os, sys, re
-import logging
-import cv2
-import tqdm
-import time
+import os
+from PIL import Image
+from skimage.metrics import peak_signal_noise_ratio as psnr
+from skimage.metrics import structural_similarity as ssim
+import lpips
 
-if len(sys.argv) < 3:
-    print("Usage: python script.py <batch_size> <num_workers> ")
-    sys.exit(1)
+def calculate_avg_psnr_ssim(original_image_dir, removed_image_dir):
+    lpips_model = lpips.LPIPS(net='alex')
+    psnr_scores_original = []  # original vs original
+    ssim_scores_original = []  # original vs original
+    lpips_scores_original = []  # original vs original
+    psnr_scores_removed = []  # original vs removed
+    ssim_scores_removed = []  # original vs removed
+    lpips_scores_removed = []  # original vs removed
 
-logging.basicConfig(
-    filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
-)
+    # Get list of files in each directory
+    original_files = sorted(os.listdir(original_image_dir))
+    removed_files = sorted(os.listdir(removed_image_dir))
 
-dataset_name = "CIFAR100"
-slack_webhook_url = (
-    "https://hooks.slack.com/services/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"
-)
+    for original_file, removed_file in zip(original_files, removed_files):
+        original_path = os.path.join(original_image_dir, original_file)
+        removed_path = os.path.join(removed_image_dir, removed_file)
 
-batch_size = int(sys.argv[1])
-num_workers = int(sys.argv[2])
-num_classes = 1000
+        # Load images and convert to numpy arrays
+        original_image = np.array(Image.open(original_path))
+        removed_image = np.array(Image.open(removed_path))
 
+        # Calculate metrics between original and itself
+        psnr_original = psnr(original_image, original_image)
+        ssim_original = ssim(
+            original_image, 
+            original_image,
+            win_size=3,  # 작은 이미지를 위해 win_size를 줄임
+            channel_axis=2  # RGB 이미지의 경우 일반적으로 채널이 마지막 축(2)에 있음
+        )
 
-def sort_key(filename):
-    image_match = re.search(r"image_(\d+)", filename)
-    crop_match = re.search(r"crop_(\d+)", filename)
+        # Calculate metrics between original and removed
+        psnr_removed = psnr(original_image, removed_image)
+        ssim_removed = ssim(
+            original_image, 
+            removed_image,
+            win_size=3,  # 작은 이미지를 위해 win_size를 줄임
+            channel_axis=2  # RGB 이미지의 경우 채널이 마지막 축에 있음
+        )
 
-    image_number = int(image_match.group(1)) if image_match else float("inf")
-    crop_number = int(crop_match.group(1)) if crop_match else float("inf")
+        # Calculate LPIPS between original and removed
+        lpips_original = lpips_model(original_image, original_image)
+        lpips_removed = lpips_model(original_image, removed_image)
 
-    return (image_number, crop_number)
+        psnr_scores_original.append(psnr_original)
+        ssim_scores_original.append(ssim_original)
+        lpips_scores_original.append(lpips_original)
+        psnr_scores_removed.append(psnr_removed)
+        ssim_scores_removed.append(ssim_removed)
+        lpips_scores_removed.append(lpips_removed)
 
+    # Calculate averages
+    avg_psnr_original = np.mean(psnr_scores_original)
+    avg_ssim_original = np.mean(ssim_scores_original)
+    avg_psnr_removed = np.mean(psnr_scores_removed)
+    avg_ssim_removed = np.mean(ssim_scores_removed)
+    avg_lpips_original = np.mean(lpips_scores_original)
+    avg_lpips_removed = np.mean(lpips_scores_removed)
 
-def calculate_psnr_ssim_with_original_jpeg():
-    QFs = [100, 80, 60, 40, 20]
-    dataset_name = "mini-imagenet"
-    cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name)
+    return avg_psnr_original, avg_ssim_original, avg_psnr_removed, avg_ssim_removed, avg_lpips_original, avg_lpips_removed
 
-    test_input_dataset = []
-    test_target_dataset = []
+    
+if __name__ == "__main__":
+    QFs = [80, 60, 40, 20]
+    num_classes = 20
 
     for QF in QFs:
-        # input images
-        train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
-        test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
-
-        # target images (original)
-        target_train_dataset_dir = os.path.join(cifar100_path, "_original", "train")
-        target_test_dataset_dir = os.path.join(cifar100_path, "_original", "test")
-
-        # 테스트 데이터 로드
-        for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
-            test_path = os.path.join(test_input_dir, str(i))
-            target_test_path = os.path.join(target_test_dataset_dir, str(i))
-
-            # test_path 내 파일을 정렬된 순서로 불러오기
-            sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-            sorted_target_test_files = sorted(
-                os.listdir(target_test_path), key=sort_key
+        for i in range(num_classes):
+            original_image_dir = os.path.join(
+                os.getcwd(),
+                "datasets",
+                "CIFAR100",
+                "original_size",
+                f"jpeg{QF}",
+                "test",
+                str(i),
+            )
+            removed_image_dir = os.path.join(
+                os.getcwd(), "datasets", "combined_ycbcr", f"QF_{QF}", "test", str(i)
             )
 
-            # 두 디렉토리의 파일명이 같은지 확인하며 로드
-            for test_file, target_file in zip(
-                sorted_test_files, sorted_target_test_files
-            ):
-                if test_file.replace("jpeg", "png") == target_file:
-                    # input 이미지 로드
-                    test_file.replace("png", "jpeg")
-                    test_image_path = os.path.join(test_path, test_file)
-                    test_image = cv2.imread(test_image_path)
-                    test_input_dataset.append(test_image)
+            avg_psnr_original, avg_ssim_original, avg_psnr_removed, avg_ssim_removed, avg_lpips_original, avg_lpips_removed = (
+                calculate_avg_psnr_ssim(original_image_dir, removed_image_dir)
+            )
 
-                    # target 이미지 로드
-                    target_image_path = os.path.join(target_test_path, target_file)
-                    target_image = cv2.imread(target_image_path)
-                    test_target_dataset.append(target_image)
-                else:
-                    print(
-                        f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
+            with open(
+                os.path.join(os.getcwd(), "results", "psnr_ssim_results.csv"), "a"
+            ) as f:
+                if (
+                    os.path.getsize(
+                        os.path.join(os.getcwd(), "results", "psnr_ssim_results.csv")
                     )
-
-        # test_input_dataaset, test_target_dataset의 psnr, ssim 계산 후 original_jpeg.csv에 저장
-        psnr_values = []
-        ssim_values = []
-        for i in range(len(test_input_dataset)):
-            input_image = test_input_dataset[i]
-            target_image = test_target_dataset[i]
-
-            psnr_values.append(
-                peak_signal_noise_ratio(input_image, target_image, data_range=255)
-            )
-            ssim_values.append(
-                structural_similarity(
-                    input_image,
-                    target_image,
-                    data_range=255,
-                    multichannel=True,
-                    channel_axis=2,
+                    == 0
+                ):
+                    f.write(
+                        "QF,class,avg_psnr_original,avg_ssim_original,avg_psnr_removed,avg_ssim_removed,avg_lpips_original,avg_lpips_removed\n"
+                    )
+                f.write(
+                    f"{QF},{i},{avg_psnr_original},{avg_ssim_original},{avg_psnr_removed},{avg_ssim_removed},{avg_lpips_original},{avg_lpips_removed}\n"
                 )
+            print(
+                f"QF: {QF}, class: {i}, avg_psnr_original: {avg_psnr_original}, avg_ssim_original: {avg_ssim_original}, avg_psnr_removed: {avg_psnr_removed}, avg_ssim_removed: {avg_ssim_removed}, avg_lpips_original: {avg_lpips_original}, avg_lpips_removed: {avg_lpips_removed}"
             )
-            logging.info(
-                f"original-jpeg Image {i}: PSNR = {psnr_values[-1]}, SSIM = {ssim_values[-1]}"
-            )
-        print(f"Avg PSNR: {np.mean(psnr_values)}, Avg SSIM: {np.mean(ssim_values)}")
-        logging.info(
-            f"Avg PSNR: {np.mean(psnr_values)}, Avg SSIM: {np.mean(ssim_values)}"
-        )
-        os.makedirs("metrics", exist_ok=True)
-
-        # Save the results to a CSV file
-        with open("metrics/original_jpeg.csv", "w") as f:
-            f.write("PSNR,SSIM\n")
-            for psnr, ssim in zip(psnr_values, ssim_values):
-                f.write(f"{psnr},{ssim}\n")
-        logging.info("Results saved to original_jpeg.csv")
-
-
-if __name__ == "__main__":
-    calculate_psnr_ssim_with_original_jpeg()
