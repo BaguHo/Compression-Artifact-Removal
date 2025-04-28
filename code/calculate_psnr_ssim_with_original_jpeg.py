@@ -75,8 +75,7 @@ if __name__ == "__main__":
             original_image_dir = os.path.join(
                 os.getcwd(),
                 "datasets",
-                "CIFAR100",
-                "original_size",
+                "mini-imagenet",
                 f"jpeg{QF}",
                 "test",
                 str(i),
