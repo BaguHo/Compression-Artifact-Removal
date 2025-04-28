@@ -20,8 +20,8 @@ def calculate_psnr_ssim_lpips(QF):
         jpeg_images = os.listdir(jpeg_image_path)
 
         for original_image, jpeg_image in zip(original_images, jpeg_images):
-            original_image = Image.open(os.path.join(original_image_path, original_image))
-            jpeg_image = Image.open(os.path.join(jpeg_image_path, jpeg_image))
+            original_image = Image.open(os.path.join(original_image_path, str(original_image)))
+            jpeg_image = Image.open(os.path.join(jpeg_image_path, str(jpeg_image)))
             original_images.append(original_image)
             jpeg_images.append(jpeg_image)
 
