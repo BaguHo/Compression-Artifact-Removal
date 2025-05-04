@@ -338,143 +338,144 @@ if __name__ == "__main__":
     QFs = [100, 80, 60, 40, 20]
     dataset_name = "CIFAR100"
 
-    # model_names = ["ARCNN", "DnCNN", "BlockCNN"]
+    model_names = ["ARCNN", "DnCNN", "BlockCNN"]
     # Load the dataset
 
-    for QF in QFs:
-        test_dataset, test_loader = load_images(QF)
+    for model_name in model_names:
+        for QF in QFs:
+            test_dataset, test_loader = load_images(QF)
 
-        # Initialize the model
-        if model_name == "ARCNN":
-            model = ARCNN()
-        elif model_name == "FastARCNN":
-            model = FastARCNN()
-        elif model_name == "DnCNN":
-            model = DnCNN()
-        elif model_name == "BlockCNN":
-            model = BlockCNN()
-        print(model)
+            # Initialize the model
+            if model_name == "ARCNN":
+                model = ARCNN()
+            elif model_name == "FastARCNN":
+                model = FastARCNN()
+            elif model_name == "DnCNN":
+                model = DnCNN()
+            elif model_name == "BlockCNN":
+                model = BlockCNN()
+            print(model)
 
-        device = torch.device(
-            "cuda"
-            if torch.cuda.is_available()
-            else "mps" if torch.backends.mps.is_available() else "cpu"
-        )
+            device = torch.device(
+                "cuda"
+                if torch.cuda.is_available()
+                else "mps" if torch.backends.mps.is_available() else "cpu"
+            )
 
-        # use multiple GPUs if available
-        if torch.cuda.device_count() > 1:
-            model = nn.DataParallel(model)
-            print(f"Using {torch.cuda.device_count()} GPUs")
+            # use multiple GPUs if available
+            if torch.cuda.device_count() > 1:
+                model = nn.DataParallel(model)
+                print(f"Using {torch.cuda.device_count()} GPUs")
 
-        model.to(device)
-        print(f"Model device: {device}")
+            model.to(device)
+            print(f"Model device: {device}")
 
-        # # train the model
-        criterion = nn.MSELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+            # # train the model
+            criterion = nn.MSELoss()
+            optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-        # !load model
-        model.load_state_dict(
-            torch.load(f"./models/{type(model).__name__}_30.pth", map_location=device)
-        )
+            # !load model
+            model.load_state_dict(
+                torch.load(f"./models/{mode_name}_30.pth", map_location=device)
+            )
 
-        # Test the model
-        model.eval()
-        idx = 0
-        test_loss = 0.0
-        psnr_values = []
-        ssim_values = []
-        psnr_b_values = []
-        lpips_vgg_values = []
-        lpips_alex_values = []
-        lpips_vgg = lpips.LPIPS(net="vgg").to(device)
-        lpips_alex = lpips.LPIPS(net="alex").to(device)
+            # Test the model
+            model.eval()
+            idx = 0
+            test_loss = 0.0
+            psnr_values = []
+            ssim_values = []
+            psnr_b_values = []
+            lpips_vgg_values = []
+            lpips_alex_values = []
+            lpips_vgg = lpips.LPIPS(net="vgg").to(device)
+            lpips_alex = lpips.LPIPS(net="alex").to(device)
 
-        with torch.no_grad():
-            for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
+            with torch.no_grad():
+                for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
 
-                input_images = input_images.to(device)
-                target_images = target_images.to(device)
+                    input_images = input_images.to(device)
+                    target_images = target_images.to(device)
 
-                # Forward pass
-                outputs = model(input_images)
+                    # Forward pass
+                    outputs = model(input_images)
 
-                # Calculate MSE loss
-                loss = criterion(outputs, target_images)
-                test_loss += loss.item()
+                    # Calculate MSE loss
+                    loss = criterion(outputs, target_images)
+                    test_loss += loss.item()
 
-                for i in range(len(outputs)):
-                    #  Calculate LPIPS
-                    lpips_vgg_value = lpips_vgg(
-                        target_images[i],
-                        outputs[i],
-                    )
-                    lpips_alex_value = lpips_alex(
-                        target_images[i],
-                        outputs[i],
-                    )
+                    for i in range(len(outputs)):
+                        #  Calculate LPIPS
+                        lpips_vgg_value = lpips_vgg(
+                            target_images[i],
+                            outputs[i],
+                        )
+                        lpips_alex_value = lpips_alex(
+                            target_images[i],
+                            outputs[i],
+                        )
 
-                    rgb_target = target_images[i].cpu().numpy()
-                    rgb_output = outputs[i].cpu().numpy()
+                        rgb_target = target_images[i].cpu().numpy()
+                        rgb_output = outputs[i].cpu().numpy()
 
-                    # Calculate PSNR
-                    psnr = peak_signal_noise_ratio(
-                        rgb_target, rgb_output, data_range=1.0
-                    )
+                        # Calculate PSNR
+                        psnr = peak_signal_noise_ratio(
+                            rgb_target, rgb_output, data_range=1.0
+                        )
 
-                    # Calculate SSIM
-                    ssim = structural_similarity(
-                        rgb_target,
-                        rgb_output,
-                        multichannel=True,
-                        data_range=1.0,
-                        channel_axis=0,
-                    )
+                        # Calculate SSIM
+                        ssim = structural_similarity(
+                            rgb_target,
+                            rgb_output,
+                            multichannel=True,
+                            data_range=1.0,
+                            channel_axis=0,
+                        )
 
-                    lpips_alex_values.append(lpips_alex_value.item())
-                    psnr_values.append(psnr)
-                    ssim_values.append(ssim)
+                        lpips_alex_values.append(lpips_alex_value.item())
+                        psnr_values.append(psnr)
+                        ssim_values.append(ssim)
 
-                    logging.info(
-                        f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f},  LPIPS Alex: {lpips_alex_value.item():.4f}"
-                    )
+                        logging.info(
+                            f"{mode_name}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f},  LPIPS Alex: {lpips_alex_value.item():.4f}"
+                        )
 
-                    # save the output images
-                    os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
-                    output_image_path = os.path.join(
-                        f"{type(model).__name__}_output", f"output{idx}.png"
-                    )
-                    np.clip(rgb_output, 0, 1, out=rgb_output)
-                    rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
-                    cv2.imwrite(output_image_path, rgb_output)
-                    logging.info(
-                        f"{type(model).__name__} Output image saved at {output_image_path}"
-                    )
-                    idx += 1
+                        # save the output images
+                        os.makedirs(f"{mode_name}_output", exist_ok=True)
+                        output_image_path = os.path.join(
+                            f"{mode_name}_output", f"output{idx}.png"
+                        )
+                        np.clip(rgb_output, 0, 1, out=rgb_output)
+                        rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                        cv2.imwrite(output_image_path, rgb_output)
+                        logging.info(
+                            f"{mode_name} Output image saved at {output_image_path}"
+                        )
+                        idx += 1
 
-        # Calculate average metrics
-        avg_test_loss = test_loss / len(test_loader)
-        avg_psnr = np.mean(psnr_values)
-        avg_ssim = np.mean(ssim_values)
-        avg_lpips_vgg = np.mean(lpips_vgg_values)
-        avg_lpips_alex = np.mean(lpips_alex_values)
+            # Calculate average metrics
+            avg_test_loss = test_loss / len(test_loader)
+            avg_psnr = np.mean(psnr_values)
+            avg_ssim = np.mean(ssim_values)
+            avg_lpips_vgg = np.mean(lpips_vgg_values)
+            avg_lpips_alex = np.mean(lpips_alex_values)
 
-        print(
-            f"Model: {type(model).__name__},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
-        )
-        logging.info(
-            f"Model: {type(model).__name__},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
-        )
+            print(
+                f"Model: {mode_name},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
+            )
+            logging.info(
+                f"Model: {mode_name},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
+            )
 
-        # Save metrics
-        metrics = {
-            "Test Loss": [avg_test_loss],
-            "PSNR": psnr_values,
-            "SSIM": ssim_values,
-            "LPIPS": lpips_alex_values,
-            "QF": [QF],
-        }
-        os.makedirs("metrics", exist_ok=True)
-        save_metrics(
-            metrics, os.path.join("metrics", f"{type(model).__name__}_test_metrics.csv")
-        )
+            # Save metrics
+            metrics = {
+                "Test Loss": [avg_test_loss],
+                "PSNR": psnr_values,
+                "SSIM": ssim_values,
+                "LPIPS": lpips_alex_values,
+                "QF": [QF],
+            }
+            os.makedirs("metrics", exist_ok=True)
+            save_metrics(
+                metrics, os.path.join("metrics", f"{mode_name}_test_metrics.csv")
+            )

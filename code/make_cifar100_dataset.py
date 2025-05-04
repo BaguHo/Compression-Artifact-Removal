@@ -5,15 +5,9 @@ import torchvision.transforms as transforms
 from torchvision import datasets
 import matplotlib.pyplot as plt
 from PIL import Image
-from knockknock import slack_sender
 
 dataset_name = "CIFAR100"
 num_classes = 100
-
-slack_webhook_url = (
-    "https://hooks.slack.com/services/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"
-)
-
 
 def crop_image(image, crop_size=8):
     width, height = image.size
@@ -65,7 +59,7 @@ def save_CIFAR100():
         image = transforms.ToPILImage()(image)
 
         image_filename = os.path.join(
-            output_dir, "train", str(label), f"image_{idx}_laebl_{label}.png"
+            output_dir, "train", str(label), f"image_{idx:05d}_laebl_{label:03d}.png"
         )
         image.save(image_filename, "PNG")
 
@@ -78,7 +72,7 @@ def save_CIFAR100():
         image = transforms.ToPILImage()(image)
 
         image_filename = os.path.join(
-            output_dir, "test", str(label), f"image_{idx}_laebl_{label}.png"
+            output_dir, "test", str(label), f"image_{idx:05d}_laebl_{label:03d}.png"
         )
 
         image.save(image_filename, "PNG")
@@ -108,7 +102,7 @@ def save_CIFAR100():
                 jpeg_output_dir,
                 "train",
                 str(label),
-                f"image_{idx}_laebl_{label}.jpeg",
+                f"image_{idx:05d}_laebl_{label:03d}.jpeg",
             )
             image.save(image_filename, "JPEG", quality=QF)
 
@@ -123,7 +117,7 @@ def save_CIFAR100():
                 jpeg_output_dir,
                 "test",
                 str(label),
-                f"image_{idx}_laebl_{label}.jpeg",
+                f"image_{idx:05d}_laebl_{label:03d}.jpeg",
             )
 
             image.save(image_filename, "JPEG", quality=QF)
@@ -150,7 +144,7 @@ def process_and_save_images(input_dir, output_dir):
             for idx, cropped_img in enumerate(cropped_images):
                 cropped_img.save(
                     os.path.join(
-                        output_dir, f"{os.path.splitext(img_file)[0]}_crop_{idx}.jpeg"
+                        output_dir, f"{os.path.splitext(img_file)[0]}_crop_{idx:05d}.jpeg"
                     )
                 )
 
@@ -245,11 +239,11 @@ def make_8x8_jpeg_image(QF):
 
 
 if __name__ == "__main__":
-    QFs = [100]
+    QFs = [100, 80, 60, 40, 20]
     save_CIFAR100()
-    make_8x8_image_from_original_dataset()
-    for QF in QFs:
-        # jpeg image 8x8로 저장
-        print("making the 8x8 image..")
-        make_8x8_jpeg_image(QF)
-        print("Done")
+    # make_8x8_image_from_original_dataset()
+    # for QF in QFs:
+    #     # jpeg image 8x8로 저장
+    #     print("making the 8x8 image..")
+    #     make_8x8_jpeg_image(QF)
+    #     print("Done")

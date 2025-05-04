@@ -2,18 +2,22 @@ from skimage.metrics import structural_similarity, peak_signal_noise_ratio
 from torchmetrics.image import PeakSignalNoiseRatioWithBlockedEffect
 from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
+from torchvision.transforms import ToPILImage as to_pil
 import numpy as np
 from torch import nn
 from torch.nn import functional as F
 import torch
+import requests
 import os, sys, re
 import logging
 import cv2
 import tqdm
 import time
+from knockknock import slack_sender
+from PIL import Image
 
-if len(sys.argv) < 4:
-    print("Usage: python script.py <batch_size> <num_workers> <num_classes>")
+if len(sys.argv) < 3:
+    print("Usage: python script.py <batch_size> <num_workers> ")
     sys.exit(1)
 
 logging.basicConfig(
@@ -27,27 +31,23 @@ slack_webhook_url = (
 QFs = [100, 80, 60, 40, 20]
 
 model_names = [
-    "ARCNN",
+    # "ARCNN",
     "DnCNN",
-    "BlockCNN",
+    # "BlockCNN",
 ]
 batch_size = int(sys.argv[1])
 num_workers = int(sys.argv[2])
-num_classes = int(sys.argv[3])
+num_classes = 100
+
+transform = transforms.Compose(
+    [
+        transforms.ToTensor(),
+    ]
+)
 
 
-def sort_key(filename):
-    image_match = re.search(r"image_(\d+)", filename)
-    crop_match = re.search(r"crop_(\d+)", filename)
-
-    image_number = int(image_match.group(1)) if image_match else float("inf")
-    crop_number = int(crop_match.group(1)) if crop_match else float("inf")
-
-    return (image_number, crop_number)
-
-
-class CIFAR100Dataset(Dataset):
-    def __init__(self, input_images, target_images, transform=transforms.ToTensor()):
+class CustomDataset(Dataset):
+    def __init__(self, input_images, target_images, transform=transform):
         self.input_images = input_images
         self.target_images = target_images
         self.transform = transform
@@ -93,12 +93,12 @@ def load_images(QF):
     for i in tqdm.tqdm(
         range(num_classes), desc=f"Loading train data (QF {QF})", total=num_classes
     ):
-        train_path = os.path.join(train_input_dir, str(i))
-        target_train_path = os.path.join(target_train_dataset_dir, str(i))
+        train_path = os.path.join(train_input_dir, str(i).zfill(3))
+        target_train_path = os.path.join(target_train_dataset_dir, str(i).zfill(3))
 
         # train_path 내 파일을 정렬된 순서로 불러오기
-        sorted_train_files = sorted(os.listdir(train_path), key=sort_key)
-        sorted_target_train_files = sorted(os.listdir(target_train_path), key=sort_key)
+        sorted_train_files = sorted(os.listdir(train_path))
+        sorted_target_train_files = sorted(os.listdir(target_train_path))
 
         # 두 디렉토리의 파일명이 같은지 확인하며 로드
         for train_file, target_file in zip(
@@ -107,12 +107,12 @@ def load_images(QF):
             if train_file.replace("jpeg", "png") == target_file:
                 # input 이미지 로드
                 train_image_path = os.path.join(train_path, train_file)
-                train_image = cv2.imread(train_image_path)
+                train_image = Image.open(train_image_path)
                 train_input_dataset.append(train_image)
 
                 # target 이미지 로드
                 target_image_path = os.path.join(target_train_path, target_file)
-                target_image = cv2.imread(target_image_path)
+                target_image = Image.open(target_image_path)
                 train_target_dataset.append(target_image)
             else:
                 print(
@@ -121,24 +121,24 @@ def load_images(QF):
 
     # 테스트 데이터 로드
     for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
-        test_path = os.path.join(test_input_dir, str(i))
-        target_test_path = os.path.join(target_test_dataset_dir, str(i))
+        test_path = os.path.join(test_input_dir, str(i).zfill(3))
+        target_test_path = os.path.join(target_test_dataset_dir, str(i).zfill(3))
 
         # test_path 내 파일을 정렬된 순서로 불러오기
-        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+        sorted_test_files = sorted(os.listdir(test_path))
+        sorted_target_test_files = sorted(os.listdir(target_test_path))
 
         # 두 디렉토리의 파일명이 같은지 확인하며 로드
         for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
             if test_file.replace("jpeg", "png") == target_file:
                 # input 이미지 로드
                 test_image_path = os.path.join(test_path, test_file)
-                test_image = cv2.imread(test_image_path)
+                test_image = Image.open(test_image_path)
                 test_input_dataset.append(test_image)
 
                 # target 이미지 로드
                 target_image_path = os.path.join(target_test_path, target_file)
-                target_image = cv2.imread(target_image_path)
+                target_image = Image.open(target_image_path)
                 test_target_dataset.append(target_image)
             else:
                 print(
@@ -146,8 +146,8 @@ def load_images(QF):
                 )
 
     # Dataset과 DataLoader 생성
-    train_dataset = CIFAR100Dataset(train_input_dataset, train_target_dataset)
-    test_dataset = CIFAR100Dataset(test_input_dataset, test_target_dataset)
+    train_dataset = CustomDataset(train_input_dataset, train_target_dataset)
+    test_dataset = CustomDataset(test_input_dataset, test_target_dataset)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -180,35 +180,6 @@ class ARCNN(nn.Module):
         x = self.last(x)
         return x
 
-
-class FastARCNN(nn.Module):
-    def __init__(self):
-        super(FastARCNN, self).__init__()
-        self.base = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=9, stride=2, padding=4),
-            nn.PReLU(),
-            nn.Conv2d(64, 32, kernel_size=1),
-            nn.PReLU(),
-            nn.Conv2d(32, 32, kernel_size=7, padding=3),
-            nn.PReLU(),
-            nn.Conv2d(32, 64, kernel_size=1),
-            nn.PReLU(),
-        )
-        self.last = nn.ConvTranspose2d(
-            64, 3, kernel_size=9, stride=2, padding=4, output_padding=1
-        )
-
-        self._initialize_weights()
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.normal_(m.weight, std=0.001)
-
-    def forward(self, x):
-        x = self.base(x)
-        x = self.last(x)
-        return x
 
 
 class DnCNN(nn.Module):
@@ -373,16 +344,10 @@ if __name__ == "__main__":
         # Load the dataset
         train_dataset, test_dataset, train_loader, test_loader = load_images(QF)
 
-        # Print dataset sizes
-        print(f"Train dataset size: {len(train_dataset)}")
-        print(f"Test dataset size: {len(test_dataset)}")
-
         # Initialize the model
         for model_name in model_names:
             if model_name == "ARCNN":
                 model = ARCNN()
-            elif model_name == "FastARCNN":
-                model = FastARCNN()
             elif model_name == "DnCNN":
                 model = DnCNN()
             elif model_name == "BlockCNN":
@@ -399,14 +364,14 @@ if __name__ == "__main__":
             model.to(device)
             print(f"Model device: {device}")
 
-            # # train the model
+            # train the model
             criterion = nn.MSELoss()
             optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-            # # !load model
+            # !load model
             model.load_state_dict(
                 torch.load(
-                    f"./models/{type(model).__name__}_30.pth", map_location=device
+                    f"./models/{model_name}_cifar100_final.pth", map_location=device
                 )
             )
 
@@ -439,16 +404,21 @@ if __name__ == "__main__":
                     for i in range(len(outputs)):
                         rgb_output = outputs[i].cpu().numpy()
                         np.clip(rgb_output, 0, 1, out=rgb_output)
-                        rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                        # rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                        # rgb_output = rgb_output.astype(np.uint8)
                         rgb_train_images.append(rgb_output)
                         image_idx += 1
                         os.makedirs(
-                            f"datasets/{type(model).__name__}_cifar100/JPEG{QF}/train/{class_idx}",
+                            f"datasets/{model_name}_cifar100_v2/jpeg{QF}/train/{class_idx:03d}",
                             exist_ok=True,
                         )
-                        cv2.imwrite(
-                            f"datasets/{type(model).__name__}_cifar100/JPEG{QF}/train/{class_idx}/image_{image_idx}.png",
-                            rgb_output,
+                        # print(rgb_output.shape)
+                        # input()
+                        img = to_pil()(rgb_output.transpose(1, 2, 0))
+                        # print(np.array(img).shape)
+                        # input()
+                        img.save(
+                            f"datasets/{model_name}_cifar100_v2/jpeg{QF}/train/{class_idx:03d}/image_{image_idx:05d}.png"
                         )
                         if image_idx % 500 == 0 and image_idx > 0:
                             image_idx = 0
@@ -467,17 +437,23 @@ if __name__ == "__main__":
                     for i in range(len(outputs)):
                         rgb_output = outputs[i].cpu().numpy()
                         np.clip(rgb_output, 0, 1, out=rgb_output)
-                        rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                        # rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                        # rgb_output = rgb_output.astype(np.uint8)
                         rgb_test_images.append(rgb_output)
                         image_idx += 1
                         os.makedirs(
-                            f"datasets/{type(model).__name__}_cifar100/JPEG{QF}/test/{class_idx}",
+                            f"datasets/{model_name}_cifar100/jpeg{QF}/test/{class_idx:03d}",
                             exist_ok=True,
                         )
-                        cv2.imwrite(
-                            f"datasets/{type(model).__name__}_cifar100/JPEG{QF}/test/{class_idx}/image_{image_idx}.png",
-                            rgb_output,
+                        img = to_pil()(rgb_output.transpose(1, 2, 0))
+                        # print(np.array(img).shape)
+                        # input()
+                        img.save(
+                            f"datasets/{model_name}_cifar100/jpeg{QF}/test/{class_idx:03d}/image_{image_idx:05d}.png"
                         )
                         if image_idx % 100 == 0 and image_idx > 0:
                             image_idx = 0
                             class_idx += 1
+                            
+    # send_slack_message("make_removed_cifar100_post_processing_v2 is done")
+

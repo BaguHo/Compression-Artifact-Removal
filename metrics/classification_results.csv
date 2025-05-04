@@ -63,3 +63,69 @@ vgg19,ARCNN_cifar100,20,26.86,0.3554044929361552
 vgg19,BlockCNN_cifar100,20,27.6,0.35009933530334997
 vgg19,DnCNN_cifar100,20,27.59,0.3534072291346502
 vgg19,PxT_cifar100,20,26.07,0.34965901229437807
+efficientnet_b3,CIFAR100,original,83.11,0.8394710503576168
+efficientnet_b3,JPEG compressed,100,80.65,0.8210118113499938
+efficientnet_b3,CIFAR100,original,83.18,0.84014163199937
+efficientnet_b3,JPEG compressed,100,80.55,0.8204392776779639
+efficientnet_b3,CIFAR100,original,82.94,0.8372978815820958
+efficientnet_b3,jpeg compressed,100,80.84,0.8213548745048804
+efficientnet_b3,jpeg compressed,80,65.11,0.7123343582884932
+efficientnet_b3,jpeg compressed,60,52.23,0.6198425334396698
+efficientnet_b3,jpeg compressed,40,42.46,0.5476070159766465
+efficientnet_b3,jpeg compressed,20,24.06,0.4164548870095129
+mobilenetv2_100,CIFAR100,original,71.99,0.749533120006247
+mobilenetv2_100,jpeg compressed,100,67.19,0.7158296193913951
+mobilenetv2_100,jpeg compressed,80,50.75,0.6134583931133585
+mobilenetv2_100,jpeg compressed,60,41.51,0.5431381403619274
+mobilenetv2_100,jpeg compressed,40,34.36,0.47765156310635654
+efficientnet_b3,CIFAR100,original,82.12,0.8296445608263404
+efficientnet_b3,jpeg compressed,100,79.59,0.8082384548507909
+efficientnet_b3,CIFAR100,original,82.12,0.8296445608263404
+efficientnet_b3,jpeg compressed,100,79.6,0.8083162167116246
+efficientnet_b3,CIFAR100,original,82.12,0.8296445608263404
+efficientnet_b3,jpeg compressed,100,79.6,0.8083162167116246
+efficientnet_b3,CIFAR100,original,82.12,0.8296445608263404
+efficientnet_b3,jpeg compressed,100,79.6,0.8083162167116246
+efficientnet_b3,jpeg compressed,80,62.14,0.675652556048443
+efficientnet_b3,jpeg compressed,60,48.54,0.5895111563853546
+efficientnet_b3,jpeg compressed,40,37.17,0.5273444699744776
+efficientnet_b3,jpeg compressed,20,19.02,0.41644341530568435
+efficientnet_b3,CIFAR100,original,9.89,0.1006374939674534
+efficientnet_b3,jpeg compressed,100,9.81,0.09561487058563407
+efficientnet_b3,jpeg compressed,80,8.36,0.08039653531938255
+efficientnet_b3,jpeg compressed,60,7.15,0.07187027835401176
+efficientnet_b3,jpeg compressed,40,6.16,0.06772875662910673
+efficientnet_b3,jpeg compressed,20,3.66,0.06007958007277167
+efficientnet_b3,CIFAR100,original,10.13,0.10282387950787125
+efficientnet_b3,jpeg compressed,100,9.96,0.09997770288824386
+efficientnet_b3,jpeg compressed,80,8.95,0.083491713395224
+efficientnet_b3,CIFAR100,original,83.32,0.8412806456733919
+efficientnet_b3,jpeg compressed,100,81.12,0.8230492626515578
+efficientnet_b3,jpeg compressed,80,65.86,0.7084306206601718
+efficientnet_b3,jpeg compressed,60,53.65,0.6287208904867316
+efficientnet_b3,jpeg compressed,40,43.69,0.5693535769268705
+efficientnet_b3,jpeg compressed,20,25.98,0.4464938790471764
+mobilenetv2_100,CIFAR100,original,74.27,0.7637483285032981
+mobilenetv2_100,jpeg compressed,100,70.87,0.7384037158629804
+mobilenetv2_100,jpeg compressed,80,53.21,0.6137124849918245
+mobilenetv2_100,jpeg compressed,60,44.58,0.5333263101997882
+mobilenetv2_100,jpeg compressed,40,37.93,0.46307609286586626
+mobilenetv2_100,jpeg compressed,20,23.69,0.35753507272591023
+efficientnet_b3,CIFAR100,original,80.34,0.8113117965786489
+efficientnet_b3,jpeg compressed,100,78.06,0.7919506222404774
+efficientnet_b3,jpeg compressed,80,61.74,0.6730844420694794
+efficientnet_b3,jpeg compressed,60,48.01,0.5816727121544244
+efficientnet_b3,jpeg compressed,40,38.4,0.5203590464160943
+efficientnet_b3,jpeg compressed,20,21.78,0.39866935218160365
+mobilenetv2_100,CIFAR100,original,74.57,0.7593726078186471
+mobilenetv2_100,jpeg compressed,100,71.41,0.736242169998233
+mobilenetv2_100,jpeg compressed,80,54.91,0.6130274076919325
+mobilenetv2_100,jpeg compressed,60,44.84,0.5258288456415847
+mobilenetv2_100,jpeg compressed,40,36.94,0.45335991451464097
+mobilenetv2_100,jpeg compressed,20,23.09,0.3564213200773162
+vgg19,CIFAR100,original,1.0,0.0001
+vgg19,jpeg compressed,100,1.0,0.0001
+vgg19,jpeg compressed,80,1.0,0.0001
+vgg19,jpeg compressed,60,1.0,0.0001
+vgg19,jpeg compressed,40,1.0,0.0001
+vgg19,jpeg compressed,20,1.0,0.0001

@@ -12,8 +12,8 @@ import tqdm
 import time
 import lpips
 
-if len(sys.argv) < 5:
-    print("Usage: python script.py <epoch> <batch_size> <num_workers> <num_classes>")
+if len(sys.argv) < 4:
+    print("Usage: python script.py <epoch> <batch_size> <num_workers>")
     sys.exit(1)
 
 logging.basicConfig(
@@ -27,17 +27,8 @@ slack_webhook_url = (
 epochs = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
-num_classes = int(sys.argv[4])
+num_classes = 100
 
-
-def sort_key(filename):
-    image_match = re.search(r"image_(\d+)", filename)
-    crop_match = re.search(r"crop_(\d+)", filename)
-
-    image_number = int(image_match.group(1)) if image_match else float("inf")
-    crop_number = int(crop_match.group(1)) if crop_match else float("inf")
-
-    return (image_number, crop_number)
 
 
 class CustomDataset(Dataset):
@@ -87,9 +78,9 @@ def load_images():
             target_train_path = os.path.join(target_train_dataset_dir, str(i))
 
             # train_path 내 파일을 정렬된 순서로 불러오기
-            sorted_train_files = sorted(os.listdir(train_path), key=sort_key)
+            sorted_train_files = sorted(os.listdir(train_path))
             sorted_target_train_files = sorted(
-                os.listdir(target_train_path), key=sort_key
+                os.listdir(target_train_path)
             )
 
             # 두 디렉토리의 파일명이 같은지 확인하며 로드
@@ -138,8 +129,8 @@ def load_test_images_each_QF(QF):
         target_test_path = os.path.join(target_test_dataset_dir, str(i))
 
         # test_path 내 파일을 정렬된 순서로 불러오기
-        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+        sorted_test_files = sorted(os.listdir(test_path))
+        sorted_target_test_files = sorted(os.listdir(target_test_path))
 
         # 두 디렉토리의 파일명이 같은지 확인하며 로드
         for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):
@@ -310,16 +301,16 @@ if __name__ == "__main__":
         epoch_loss = running_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
         logging.info(
-            f"{type(model).__name__} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+            f"PxT_v2_cifar100 Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
         )
         # Save the model
         if (epoch + 1) % 10 == 0:
             torch.save(
                 model.state_dict(),
-                os.path.join("models", f"{type(model).__name__}_{epoch+1}.pth"),
+                os.path.join("models", f"PxT_v2_cifar100_{epoch+1}.pth"),
             )
-            print(f"{type(model).__name__} Model saved at epoch {epoch+1}")
-            logging.info(f"{type(model).__name__} Model saved at epoch {epoch+1}")
+            print(f"PxT_v2_cifar100 Model saved at epoch {epoch+1}")
+            logging.info(f"PxT_v2_cifar100 Model saved at epoch {epoch+1}")
 
     end_time = time.time()
     print(f"Training finished at {time.ctime(end_time)}")
@@ -421,20 +412,20 @@ if __name__ == "__main__":
                         psnr_values.append(psnr)
                         ssim_values.append(ssim)
 
-                        logging.info(
-                            f"{type(model).__name__}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}"
-                        )
+                        # logging.info(
+                        #     f"PxT_v2_cifar100, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, LPIPS Alex: {lpips_alex_loss:.4f}"
+                        # )
 
                         # 합쳐진 이미지 저장
-                        os.makedirs(f"{type(model).__name__}_output", exist_ok=True)
+                        os.makedirs(f"PxT_v2_cifar100_output", exist_ok=True)
                         combined_image_path = os.path.join(
-                            f"{type(model).__name__}_output",
+                            f"PxT_v2_cifar100_output",
                             f"combined_output{image_name_idx}.png",
                         )
                         cv2.imwrite(combined_image_path, combined_output_image)
-                        logging.info(
-                            f"{type(model).__name__} Combined image saved at {combined_image_path}"
-                        )
+                        # logging.info(
+                        #     f"PxT_v2_cifar100 Combined image saved at {combined_image_path}"
+                        # )
                         image_name_idx += 1
 
         # Calculate average metrics
@@ -444,8 +435,8 @@ if __name__ == "__main__":
         avg_lpips_alex = np.mean(lpips_alex_loss_values)
 
         print(
-            f"{type(model).__name__} QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"PxT_v2_cifar100 QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )
         logging.info(
-            f"{type(model).__name__} QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"PxT_v2_cifar100 QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )
