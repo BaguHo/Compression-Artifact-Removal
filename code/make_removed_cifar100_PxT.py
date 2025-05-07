@@ -143,7 +143,7 @@ def load_images(QF):
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     # return train_dataset, test_dataset, train_loader, test_loader
-    return train_dataset, test_dataset, train_loader, test_loader
+    return None, test_dataset, None, test_loader
 
 
 class Encoder(nn.Module):
@@ -402,7 +402,6 @@ if __name__ == "__main__":
                         combined_target_images.append(combined_target_image)
                         combined_output_images.append(combined_output_image)
 
-                        
                         # Calculate PSNR and SSIM
                         psnr_value = psnr(
                             combined_target_image.transpose(2, 0, 1),
@@ -451,9 +450,7 @@ if __name__ == "__main__":
                             class_idx += 1
                             image_name_idx = 0
                         cv2.imwrite(combined_image_path, combined_output_image)
-                        # logging.info(
-                        #     f"PxT_v2 Combined image saved at {combined_image_path}"
-                        # )
+                        
 
         # Calculate average metrics
         avg_test_loss = test_loss / len(test_loader)

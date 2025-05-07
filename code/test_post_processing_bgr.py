@@ -36,16 +36,6 @@ num_workers = int(sys.argv[3])
 num_classes = int(sys.argv[4])
 
 
-def sort_key(filename):
-    image_match = re.search(r"image_(\d+)", filename)
-    crop_match = re.search(r"crop_(\d+)", filename)
-
-    image_number = int(image_match.group(1)) if image_match else float("inf")
-    crop_number = int(crop_match.group(1)) if crop_match else float("inf")
-
-    return (image_number, crop_number)
-
-
 class CIFAR100Dataset(Dataset):
     def __init__(self, input_images, target_images, transform=transforms.ToTensor()):
         self.input_images = input_images
@@ -89,8 +79,8 @@ def load_images(QF):
         target_test_path = os.path.join(target_test_dataset_dir, str(i))
 
         # test_path 내 파일을 정렬된 순서로 불러오기
-        sorted_test_files = sorted(os.listdir(test_path), key=sort_key)
-        sorted_target_test_files = sorted(os.listdir(target_test_path), key=sort_key)
+        sorted_test_files = sorted(os.listdir(test_path))
+        sorted_target_test_files = sorted(os.listdir(target_test_path))
 
         # 두 디렉토리의 파일명이 같은지 확인하며 로드
         for test_file, target_file in zip(sorted_test_files, sorted_target_test_files):

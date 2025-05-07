@@ -5,6 +5,7 @@ import torchvision.transforms as transforms
 from torchvision import datasets
 import matplotlib.pyplot as plt
 from PIL import Image
+import tqdm
 
 dataset_name = "CIFAR100"
 num_classes = 100
@@ -134,7 +135,7 @@ def process_and_save_images(input_dir, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
     # input_dir 내의 모든 이미지 파일 처리
-    for img_file in os.listdir(input_dir):
+    for img_file in tqdm.tqdm(os.listdir(input_dir), desc="Processing images"):
         img_path = os.path.join(input_dir, img_file)
 
         with Image.open(img_path) as img:
@@ -144,7 +145,7 @@ def process_and_save_images(input_dir, output_dir):
             for idx, cropped_img in enumerate(cropped_images):
                 cropped_img.save(
                     os.path.join(
-                        output_dir, f"{os.path.splitext(img_file)[0]}_crop_{idx:05d}.jpeg"
+                        output_dir, f"{os.path.splitext(img_file)[0]}_crop_{idx:05d}.png"
                     )
                 )
 
@@ -158,7 +159,7 @@ def make_8x8_image_from_original_dataset():
             "original_size",
             "original",
             "train",
-            str(i),
+            f"{i:03d}",
         )
 
         input_test_dir = os.path.join(
@@ -166,7 +167,7 @@ def make_8x8_image_from_original_dataset():
             "original_size",
             "original",
             "test",
-            str(i),
+            f"{i:03d}",
         )
 
         output_train_dir = os.path.join(
@@ -174,14 +175,14 @@ def make_8x8_image_from_original_dataset():
             "8x8_images",
             f"original",
             "train",
-            str(i),
+            f"{i:03d}",
         )
         output_test_dir = os.path.join(
             temp_path,
             "8x8_images",
             f"original",
             "test",
-            str(i),
+            f"{i:03d}",
         )
 
         os.makedirs(output_train_dir, exist_ok=True)
@@ -200,7 +201,7 @@ def make_8x8_jpeg_image(QF):
             "original_size",
             f"jpeg{QF}",
             "train",
-            str(i),
+            f"{i:03d}",
         )
         test_dir = os.path.join(
             os.getcwd(),
@@ -209,7 +210,7 @@ def make_8x8_jpeg_image(QF):
             "original_size",
             f"jpeg{QF}",
             "test",
-            str(i),
+            f"{i:03d}",
         )
 
         output_train_dir = os.path.join(
@@ -219,7 +220,7 @@ def make_8x8_jpeg_image(QF):
             "8x8_images",
             f"jpeg{QF}",
             "train",
-            str(i),
+            f"{i:03d}",
         )
         output_test_dir = os.path.join(
             os.getcwd(),
@@ -228,7 +229,7 @@ def make_8x8_jpeg_image(QF):
             "8x8_images",
             f"jpeg{QF}",
             "test",
-            str(i),
+            f"{i:03d}",
         )
 
         os.makedirs(output_train_dir, exist_ok=True)
@@ -240,10 +241,10 @@ def make_8x8_jpeg_image(QF):
 
 if __name__ == "__main__":
     QFs = [100, 80, 60, 40, 20]
-    save_CIFAR100()
-    # make_8x8_image_from_original_dataset()
-    # for QF in QFs:
-    #     # jpeg image 8x8로 저장
-    #     print("making the 8x8 image..")
-    #     make_8x8_jpeg_image(QF)
-    #     print("Done")
+    # save_CIFAR100()
+    make_8x8_image_from_original_dataset()
+    for QF in QFs:
+        # jpeg image 8x8로 저장
+        print("making the 8x8 image..")
+        make_8x8_jpeg_image(QF)
+        print("Done")
