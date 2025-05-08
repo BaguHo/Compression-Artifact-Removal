@@ -14,7 +14,6 @@ from torch.utils.data import Dataset, DataLoader
 transform = transforms.Compose(
     [
         transforms.ToTensor(),
-        # transforms.Resize(224,224)
     ]
 )
 
@@ -126,7 +125,7 @@ def calculate_psnr_ssim_lpips(QF, dataset_name):
 if __name__ == "__main__":
     QFs = ["100", "80", "60", "40", "20"]
     # dataset_names = ["ARCNN_cifar100", "DnCNN_cifar100", "BlockCNN_cifar100", "PxT_v2_cifar100"]
-    dataset_names = ["PxT_v2_cifar100"]
+    dataset_names = ["PxT_big_cifar100_test"]
     for QF in QFs:
         for dataset_name in dataset_names:  
             calculate_psnr_ssim_lpips(QF, dataset_name)

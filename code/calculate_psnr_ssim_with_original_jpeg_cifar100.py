@@ -56,8 +56,8 @@ def load_cifar100_test_dataset_and_dataloader(QF):
 
     # 테스트 데이터 로드
     for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
-        test_path = os.path.join(test_input_dir, str(i).zfill(3))
-        target_test_path = os.path.join(target_test_dataset_dir, str(i).zfill(3))
+        test_path = os.path.join(test_input_dir, f"{i:03d}")
+        target_test_path = os.path.join(target_test_dataset_dir, f"{i:03d}")
 
         # test_path 내 파일을 정렬된 순서로 불러오기
         sorted_test_files = sorted(os.listdir(test_path))

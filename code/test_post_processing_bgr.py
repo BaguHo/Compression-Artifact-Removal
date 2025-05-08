@@ -16,10 +16,8 @@ import lpips
 # !warning: BlockCNN does not work
 
 
-if len(sys.argv) < 5:
-    print(
-        "Usage: python script.py <model_name> <batch_size> <num_workers> <num_classes>"
-    )
+if len(sys.argv) < 3:
+    print("Usage: python script.py <batch_size> <num_workers> ")
     sys.exit(1)
 
 logging.basicConfig(
@@ -30,10 +28,10 @@ dataset_name = "CIFAR100"
 slack_webhook_url = (
     "https://hooks.slack.com/services/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"
 )
-model_name = sys.argv[1]
-batch_size = int(sys.argv[2])
-num_workers = int(sys.argv[3])
-num_classes = int(sys.argv[4])
+# model_name = sys.argv[1]
+batch_size = int(sys.argv[1])
+num_workers = int(sys.argv[2])
+num_classes = 100
 
 
 class CIFAR100Dataset(Dataset):
@@ -56,6 +54,91 @@ class CIFAR100Dataset(Dataset):
         return input_image, target_image
 
 
+class Encoder(nn.Module):
+    def __init__(self, embed_dim, num_heads, mlp_dim):
+        super(Encoder, self).__init__()
+        self.ln1 = nn.LayerNorm(embed_dim)
+        self.mhsa = nn.MultiheadAttention(embed_dim, num_heads)
+        self.ln2 = nn.LayerNorm(embed_dim)
+        self.mlp = nn.Sequential(
+            nn.Linear(embed_dim, mlp_dim), nn.GELU(), nn.Linear(mlp_dim, embed_dim)
+        )
+
+    def forward(self, x):
+        # Multi-head self-attention with residual connection
+        y = self.ln1(x)
+        y, _ = self.mhsa(y, y, y)
+        x = x + y
+
+        # MLP with residual connection
+        y = self.ln2(x)
+        y = self.mlp(y)
+        x = x + y
+        return x
+
+
+class PxT(nn.Module):
+    def __init__(
+        self,
+        img_size=32,
+        patch_size=1,
+        in_channels=3,
+        embed_dim=64,
+        num_heads=16,
+        num_layers=8,
+        mlp_dim=128,
+    ):
+        super(PxT, self).__init__()
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.num_patches = (img_size // patch_size) ** 2
+        self.patch_dim = in_channels * patch_size * patch_size
+        self.embed_dim = embed_dim
+
+        self.patch_embed = nn.Linear(self.patch_dim, embed_dim)
+
+        self.position_embeddings = nn.Parameter(
+            torch.zeros(1, self.num_patches, embed_dim)
+        )
+
+        self.transformer = nn.ModuleList(
+            [Encoder(embed_dim, num_heads, mlp_dim) for _ in range(num_layers)]
+        )
+
+        self.decoder = nn.Sequential(nn.Linear(embed_dim, self.patch_dim))
+
+    def forward(self, x):
+        batch_size = x.size(0)
+
+        x = x.unfold(2, self.patch_size, self.patch_size).unfold(
+            3, self.patch_size, self.patch_size
+        )
+        x = x.permute(0, 2, 3, 1, 4, 5).contiguous()
+        x = x.view(batch_size, -1, self.patch_dim)
+
+        x = self.patch_embed(x)
+        x = x + self.position_embeddings
+
+        x = x.permute(1, 0, 2)
+        for layer in self.transformer:
+            x = layer(x)
+        x = x.permute(1, 0, 2)
+
+        x = self.decoder(x)
+
+        x = x.view(
+            batch_size,
+            self.img_size // self.patch_size,
+            self.img_size // self.patch_size,
+            3,
+            self.patch_size,
+            self.patch_size,
+        )
+        x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
+        x = x.view(batch_size, 3, self.img_size, self.img_size)
+        return x
+
+
 def load_images(QF):
 
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "original_size")
@@ -75,8 +158,8 @@ def load_images(QF):
 
     # 테스트 데이터 로드
     for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
-        test_path = os.path.join(test_input_dir, str(i))
-        target_test_path = os.path.join(target_test_dataset_dir, str(i))
+        test_path = os.path.join(test_input_dir, f"{i:03d}")
+        target_test_path = os.path.join(target_test_dataset_dir, f"{i:03d}")
 
         # test_path 내 파일을 정렬된 순서로 불러오기
         sorted_test_files = sorted(os.listdir(test_path))
@@ -108,6 +191,67 @@ def load_images(QF):
 
     return test_dataset, test_loader
 
+
+class PxT_v3(nn.Module):
+    def __init__(
+        self,
+        img_size=32 ,
+        patch_size=1,
+        in_channels=3,
+        embed_dim=64,
+        num_heads=16,
+        num_layers=8,
+        mlp_dim=128,
+    ):
+        super(PxT_v3, self).__init__()
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.num_patches = (img_size // patch_size) ** 2
+        self.patch_dim = in_channels * patch_size * patch_size
+        self.embed_dim = embed_dim
+
+        self.patch_embed = nn.Linear(self.patch_dim, embed_dim)
+
+        self.position_embeddings = nn.Parameter(
+            torch.zeros(1, self.num_patches, embed_dim)
+        )
+
+        self.transformer = nn.ModuleList(
+            [Encoder(embed_dim, num_heads, mlp_dim) for _ in range(num_layers)]
+        )
+
+        self.decoder = nn.Sequential(nn.Linear(embed_dim, self.patch_dim))
+
+    def forward(self, x):
+        batch_size = x.size(0)
+
+        x = x.unfold(2, self.patch_size, self.patch_size).unfold(
+            3, self.patch_size, self.patch_size
+        )
+        x = x.permute(0, 2, 3, 1, 4, 5).contiguous()
+        x = x.view(batch_size, -1, self.patch_dim)
+
+        x = self.patch_embed(x)
+        x = x + self.position_embeddings
+
+        x = x.permute(1, 0, 2)
+        for layer in self.transformer:
+            x = layer(x)
+        x = x.permute(1, 0, 2)
+
+        x = self.decoder(x)
+
+        x = x.view(
+            batch_size,
+            self.img_size // self.patch_size,
+            self.img_size // self.patch_size,
+            3,
+            self.patch_size,
+            self.patch_size,
+        )
+        x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
+        x = x.view(batch_size, 3, self.img_size, self.img_size)
+        return x
 
 class ARCNN(nn.Module):
     def __init__(self):
@@ -328,7 +472,8 @@ if __name__ == "__main__":
     QFs = [100, 80, 60, 40, 20]
     dataset_name = "CIFAR100"
 
-    model_names = ["ARCNN", "DnCNN", "BlockCNN"]
+    # model_names = ["ARCNN", "DnCNN", "BlockCNN"]
+    model_names = ["PxT_32_32_5"]
     # Load the dataset
 
     for model_name in model_names:
@@ -344,6 +489,8 @@ if __name__ == "__main__":
                 model = DnCNN()
             elif model_name == "BlockCNN":
                 model = BlockCNN()
+            elif model_name == "PxT_32_32_5":
+                model = PxT()
             print(model)
 
             device = torch.device(
@@ -365,8 +512,11 @@ if __name__ == "__main__":
             optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
             # !load model
+            # model.load_state_dict(
+            #     torch.load(f"./models/{model_name}_30.pth", map_location=device)
+            # )
             model.load_state_dict(
-                torch.load(f"./models/{mode_name}_30.pth", map_location=device)
+                torch.load(f"./models/PxT_32_32_5.pth", map_location=device)
             )
 
             # Test the model
@@ -426,21 +576,15 @@ if __name__ == "__main__":
                         psnr_values.append(psnr)
                         ssim_values.append(ssim)
 
-                        logging.info(
-                            f"{mode_name}, PSNR: {psnr:.2f}, SSIM: {ssim:.4f},  LPIPS Alex: {lpips_alex_value.item():.4f}"
-                        )
 
                         # save the output images
-                        os.makedirs(f"{mode_name}_output", exist_ok=True)
+                        os.makedirs(f"{model_name}_output", exist_ok=True)
                         output_image_path = os.path.join(
-                            f"{mode_name}_output", f"output{idx}.png"
+                            f"{model_name}_output", f"output{idx}.png"
                         )
                         np.clip(rgb_output, 0, 1, out=rgb_output)
                         rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
                         cv2.imwrite(output_image_path, rgb_output)
-                        logging.info(
-                            f"{mode_name} Output image saved at {output_image_path}"
-                        )
                         idx += 1
 
             # Calculate average metrics
@@ -451,21 +595,21 @@ if __name__ == "__main__":
             avg_lpips_alex = np.mean(lpips_alex_values)
 
             print(
-                f"Model: {mode_name},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
+                f"Model: {model_name},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
             )
             logging.info(
-                f"Model: {mode_name},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
+                f"Model: {model_name},  Test Loss: {avg_test_loss:.4f}, Average PSNR: {avg_psnr:.2f} dB, Average SSIM: {np.mean(ssim_values):.4f},  Average LPIPS Alex: {avg_lpips_alex:.4f}"
             )
 
             # Save metrics
-            metrics = {
-                "Test Loss": [avg_test_loss],
-                "PSNR": psnr_values,
-                "SSIM": ssim_values,
-                "LPIPS": lpips_alex_values,
-                "QF": [QF],
-            }
-            os.makedirs("metrics", exist_ok=True)
-            save_metrics(
-                metrics, os.path.join("metrics", f"{mode_name}_test_metrics.csv")
-            )
+            # metrics = {
+            #     "Test Loss": [avg_test_loss],
+            #     "PSNR": psnr_values,
+            #     "SSIM": ssim_values,
+            #     "LPIPS": lpips_alex_values,
+            #     "QF": [QF],
+            # }
+            # os.makedirs("metrics", exist_ok=True)
+            # save_metrics(
+            #     metrics, os.path.join("metrics", f"{model_name}_test_metrics.csv")
+            # )

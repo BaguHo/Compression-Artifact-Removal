@@ -29,8 +29,6 @@ batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 num_classes = 100
 
-
-
 class CustomDataset(Dataset):
     def __init__(self, input_images, target_images, transform=transforms.ToTensor()):
         self.input_images = input_images
@@ -53,35 +51,30 @@ class CustomDataset(Dataset):
 
 def load_images():
     QFs = [100, 80, 60, 40, 20]
+    # QFs = [100]
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8_images")
 
     train_input_dataset = []
-    test_input_dataset = []
     train_target_dataset = []
-    test_target_dataset = []
 
     for QF in QFs:
         # input images
         train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
-        test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
 
         # target images (original)
         target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
-        target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
 
         # 학습 데이터 로드
         for i in tqdm.tqdm(
-            range(num_classes), desc=f"Loa,ding train data (QF {QF})", total=num_classes
+            range(num_classes), desc=f"Loading train data (QF {QF})", total=num_classes
         ):
-            train_path = os.path.join(train_input_dir, str(i))
-            target_train_path = os.path.join(target_train_dataset_dir, str(i))
+            train_path = os.path.join(train_input_dir, f"{i:03d}")
+            target_train_path = os.path.join(target_train_dataset_dir, f"{i:03d}")
 
             # train_path 내 파일을 정렬된 순서로 불러오기
             sorted_train_files = sorted(os.listdir(train_path))
-            sorted_target_train_files = sorted(
-                os.listdir(target_train_path)
-            )
+            sorted_target_train_files = sorted(os.listdir(target_train_path))
 
             # 두 디렉토리의 파일명이 같은지 확인하며 로드
             for train_file, target_file in zip(
@@ -91,20 +84,25 @@ def load_images():
                     # input 이미지 로드
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = cv2.imread(train_image_path)
-                    train_input_dataset.append(train_image)
+                    if train_image is None:
+                        print(f"Warning: Failed to load input image: {train_image_path}")
+                        sys.exit(1)
+                    else:
+                        train_input_dataset.append(train_image)
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_train_path, target_file)
                     target_image = cv2.imread(target_image_path)
-                    train_target_dataset.append(target_image)
+                    if target_image is None:
+                        print(f"Warning: Failed to load target image: {target_image_path}")
+                        sys.exit(1)
+                    else:
+                        train_target_dataset.append(target_image)
                 else:
                     print(
                         f"Warning: Mismatched files in training set: {train_file} and {target_file}"
                     )
-
-    # Dataset과 DataLoader 생성
     train_dataset = CustomDataset(train_input_dataset, train_target_dataset)
-
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     return train_dataset, train_loader
@@ -125,8 +123,8 @@ def load_test_images_each_QF(QF):
 
     # 테스트 데이터 로드
     for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
-        test_path = os.path.join(test_input_dir, str(i))
-        target_test_path = os.path.join(target_test_dataset_dir, str(i))
+        test_path = os.path.join(test_input_dir, f"{i:03d}")
+        target_test_path = os.path.join(target_test_dataset_dir, f"{i:03d}")
 
         # test_path 내 파일을 정렬된 순서로 불러오기
         sorted_test_files = sorted(os.listdir(test_path))
@@ -148,8 +146,6 @@ def load_test_images_each_QF(QF):
                 print(
                     f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
                 )
-
-    # Dataset과 DataLoader 생성
     test_dataset = CustomDataset(test_input_dataset, test_target_dataset)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
@@ -179,18 +175,18 @@ class Encoder(nn.Module):
         return x
 
 
-class PxT(nn.Module):
+class PxT_big(nn.Module):
     def __init__(
         self,
         img_size=8,
         patch_size=1,
         in_channels=3,
-        embed_dim=64,
-        num_heads=16,
-        num_layers=8,
-        mlp_dim=128,
+        embed_dim=192,
+        num_heads=12,
+        num_layers=12,
+        mlp_dim=384,
     ):
-        super(PxT, self).__init__()
+        super(PxT_big, self).__init__()
         self.img_size = img_size
         self.patch_size = patch_size
         self.num_patches = (img_size // patch_size) ** 2
@@ -255,7 +251,7 @@ if __name__ == "__main__":
     train_dataset, train_loader = load_images()
 
     # Initialize the model
-    model = PxT()
+    model = PxT_big()
     print(model)
 
     device = torch.device(
@@ -301,16 +297,16 @@ if __name__ == "__main__":
         epoch_loss = running_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
         logging.info(
-            f"PxT_v2_cifar100 Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+            f"PxT_big_cifar100 Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
         )
         # Save the model
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % 5 == 0:
             torch.save(
                 model.state_dict(),
-                os.path.join("models", f"PxT_v2_cifar100_{epoch+1}.pth"),
+                os.path.join("models", f"PxT_big_cifar100_{epoch+1}.pth"),
             )
-            print(f"PxT_v2_cifar100 Model saved at epoch {epoch+1}")
-            logging.info(f"PxT_v2_cifar100 Model saved at epoch {epoch+1}")
+            print(f"PxT_big_cifar100 Model saved at epoch {epoch+1}")
+            logging.info(f"PxT_big_cifar100 Model saved at epoch {epoch+1}")
 
     end_time = time.time()
     print(f"Training finished at {time.ctime(end_time)}")
@@ -412,20 +408,13 @@ if __name__ == "__main__":
                         psnr_values.append(psnr)
                         ssim_values.append(ssim)
 
-                        # logging.info(
-                        #     f"PxT_v2_cifar100, PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, LPIPS Alex: {lpips_alex_loss:.4f}"
-                        # )
-
                         # 합쳐진 이미지 저장
-                        os.makedirs(f"PxT_v2_cifar100_output", exist_ok=True)
+                        os.makedirs(f"PxT_big_cifar100_output", exist_ok=True)
                         combined_image_path = os.path.join(
-                            f"PxT_v2_cifar100_output",
+                            f"PxT_big_cifar100_output",
                             f"combined_output{image_name_idx}.png",
                         )
-                        cv2.imwrite(combined_image_path, combined_output_image)
-                        # logging.info(
-                        #     f"PxT_v2_cifar100 Combined image saved at {combined_image_path}"
-                        # )
+                        # cv2.imwrite(combined_image_path, combined_output_image)
                         image_name_idx += 1
 
         # Calculate average metrics
@@ -435,8 +424,8 @@ if __name__ == "__main__":
         avg_lpips_alex = np.mean(lpips_alex_loss_values)
 
         print(
-            f"PxT_v2_cifar100 QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"PxT_big_cifar100 QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )
         logging.info(
-            f"PxT_v2_cifar100 QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"PxT_big_cifar100 QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )

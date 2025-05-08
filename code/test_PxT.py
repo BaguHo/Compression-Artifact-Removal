@@ -78,8 +78,8 @@ def load_images(QF):
 
     # 테스트 데이터 로드
     for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
-        test_path = os.path.join(test_input_dir, str(i))
-        target_test_path = os.path.join(target_test_dataset_dir, str(i))
+        test_path = os.path.join(test_input_dir, f"{i:03d}")
+        target_test_path = os.path.join(target_test_dataset_dir, f"{i:03d}")
 
         # test_path 내 파일을 정렬된 순서로 불러오기
         sorted_test_files = sorted(os.listdir(test_path))
@@ -132,6 +132,69 @@ class Encoder(nn.Module):
         y = self.mlp(y)
         x = x + y
         return x
+
+
+class PxT_big(nn.Module):
+    def __init__(
+        self,
+        img_size=8,
+        patch_size=1,
+        in_channels=3,
+        embed_dim=192,
+        num_heads=12,
+        num_layers=12,
+        mlp_dim=384,
+    ):
+        super(PxT_big, self).__init__()
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.num_patches = (img_size // patch_size) ** 2
+        self.patch_dim = in_channels * patch_size * patch_size
+        self.embed_dim = embed_dim
+
+        self.patch_embed = nn.Linear(self.patch_dim, embed_dim)
+
+        self.position_embeddings = nn.Parameter(
+            torch.zeros(1, self.num_patches, embed_dim)
+        )
+
+        self.transformer = nn.ModuleList(
+            [Encoder(embed_dim, num_heads, mlp_dim) for _ in range(num_layers)]
+        )
+
+        self.decoder = nn.Sequential(nn.Linear(embed_dim, self.patch_dim))
+
+    def forward(self, x):
+        batch_size = x.size(0)
+
+        x = x.unfold(2, self.patch_size, self.patch_size).unfold(
+            3, self.patch_size, self.patch_size
+        )
+        x = x.permute(0, 2, 3, 1, 4, 5).contiguous()
+        x = x.view(batch_size, -1, self.patch_dim)
+
+        x = self.patch_embed(x)
+        x = x + self.position_embeddings
+
+        x = x.permute(1, 0, 2)
+        for layer in self.transformer:
+            x = layer(x)
+        x = x.permute(1, 0, 2)
+
+        x = self.decoder(x)
+
+        x = x.view(
+            batch_size,
+            self.img_size // self.patch_size,
+            self.img_size // self.patch_size,
+            3,
+            self.patch_size,
+            self.patch_size,
+        )
+        x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
+        x = x.view(batch_size, 3, self.img_size, self.img_size)
+        return x
+
 
 
 class PxT_v3(nn.Module):
@@ -202,7 +265,7 @@ if __name__ == "__main__":
         train_dataset, test_dataset, train_loader, test_loader = load_images(QF)
 
         # Initialize the model
-        model = PxT_v3()
+        model = PxT_big()
         print(model)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -217,7 +280,7 @@ if __name__ == "__main__":
 
         # # !load model
         model.load_state_dict(
-            torch.load(f"./models/PxT_v2_cifar100_20.pth", map_location=device)
+            torch.load(f"./models/PxT_big_cifar100_20.pth", map_location=device)
         )
 
         # Test the model
@@ -307,10 +370,10 @@ if __name__ == "__main__":
                         
                         # 합쳐진 이미지 저장
                         image_name_idx += 1
-                        os.makedirs(os.path.join("datasets", f"PxT_v2_cifar100_test_target", f"jpeg{QF}", "test", f"{class_idx:03d}"), exist_ok=True)
+                        os.makedirs(os.path.join("datasets", f"PxT_big_cifar100_test_target", f"jpeg{QF}", "test", f"{class_idx:03d}"), exist_ok=True)
                         combined_target_image_path = os.path.join(
                             "datasets",
-                            f"PxT_v2_cifar100_test_target",
+                            f"PxT_big_cifar100_test_target",
                             f"jpeg{QF}",
                             "test",
                             f"{class_idx:03d}",
@@ -320,7 +383,7 @@ if __name__ == "__main__":
                         os.makedirs(
                             os.path.join(
                                 "datasets",
-                                f"PxT_v2_cifar100_test",
+                                f"PxT_big_cifar100_test",
                                 f"jpeg{QF}",
                                 "test",
                                 f"{class_idx:03d}",
@@ -329,7 +392,7 @@ if __name__ == "__main__":
                         )
                         combined_image_path = os.path.join(
                             "datasets",
-                            f"PxT_v2_cifar100_test",
+                            f"PxT_big_cifar100_test",
                             f"jpeg{QF}",
                             "test",
                             f"{class_idx:03d}",
@@ -338,8 +401,6 @@ if __name__ == "__main__":
                         if image_name_idx % 100 == 0 and image_name_idx > 0:
                             class_idx += 1
                             image_name_idx = 0
-                        # print(combined_output_image.shape)
-                        # input()
                         cv2.imwrite(combined_image_path, combined_output_image)
                         
 
@@ -349,8 +410,8 @@ if __name__ == "__main__":
         avg_lpips = np.mean(lpips_values)
 
         print(
-            f"PxT_v2_cifar100, QF: {QF}, PSNR: {avg_psnr:.2f} dB, SSIM: {avg_ssim:.4f}, LPIPS: {avg_lpips:.4f}"
+            f"PxT_big_cifar100, QF: {QF}, PSNR: {avg_psnr:.2f} dB, SSIM: {avg_ssim:.4f}, LPIPS: {avg_lpips:.4f}"
         )
         logging.info(
-            f"PxT_v2_cifar100, QF: {QF}, PSNR: {avg_psnr:.2f} dB, SSIM: {avg_ssim:.4f}, LPIPS: {avg_lpips:.4f}"
+            f"PxT_big_cifar100, QF: {QF}, PSNR: {avg_psnr:.2f} dB, SSIM: {avg_ssim:.4f}, LPIPS: {avg_lpips:.4f}"
         )

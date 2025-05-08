@@ -243,8 +243,8 @@ if __name__ == "__main__":
     QFs = [100, 80, 60, 40, 20]
     # save_CIFAR100()
     make_8x8_image_from_original_dataset()
-    for QF in QFs:
-        # jpeg image 8x8로 저장
-        print("making the 8x8 image..")
-        make_8x8_jpeg_image(QF)
-        print("Done")
+    # for QF in QFs:
+    #     # jpeg image 8x8로 저장
+    #     print("making the 8x8 image..")
+    #     make_8x8_jpeg_image(QF)
+    #     print("Done")

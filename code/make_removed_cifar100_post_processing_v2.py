@@ -31,9 +31,9 @@ slack_webhook_url = (
 QFs = [100, 80, 60, 40, 20]
 
 model_names = [
-    # "ARCNN",
+    "ARCNN",
     "DnCNN",
-    # "BlockCNN",
+    "BlockCNN",
 ]
 batch_size = int(sys.argv[1])
 num_workers = int(sys.argv[2])
@@ -89,35 +89,35 @@ def load_images(QF):
     target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
     target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
 
-    # 학습 데이터 로드
-    for i in tqdm.tqdm(
-        range(num_classes), desc=f"Loading train data (QF {QF})", total=num_classes
-    ):
-        train_path = os.path.join(train_input_dir, str(i).zfill(3))
-        target_train_path = os.path.join(target_train_dataset_dir, str(i).zfill(3))
+    # # 학습 데이터 로드
+    # for i in tqdm.tqdm(
+    #     range(num_classes), desc=f"Loading train data (QF {QF})", total=num_classes
+    # ):
+    #     train_path = os.path.join(train_input_dir, str(i).zfill(3))
+    #     target_train_path = os.path.join(target_train_dataset_dir, str(i).zfill(3))
 
-        # train_path 내 파일을 정렬된 순서로 불러오기
-        sorted_train_files = sorted(os.listdir(train_path))
-        sorted_target_train_files = sorted(os.listdir(target_train_path))
+    #     # train_path 내 파일을 정렬된 순서로 불러오기
+    #     sorted_train_files = sorted(os.listdir(train_path))
+    #     sorted_target_train_files = sorted(os.listdir(target_train_path))
 
-        # 두 디렉토리의 파일명이 같은지 확인하며 로드
-        for train_file, target_file in zip(
-            sorted_train_files, sorted_target_train_files
-        ):
-            if train_file.replace("jpeg", "png") == target_file:
-                # input 이미지 로드
-                train_image_path = os.path.join(train_path, train_file)
-                train_image = Image.open(train_image_path)
-                train_input_dataset.append(train_image)
+    #     # 두 디렉토리의 파일명이 같은지 확인하며 로드
+    #     for train_file, target_file in zip(
+    #         sorted_train_files, sorted_target_train_files
+    #     ):
+    #         if train_file.replace("jpeg", "png") == target_file:
+    #             # input 이미지 로드
+    #             train_image_path = os.path.join(train_path, train_file)
+    #             train_image = Image.open(train_image_path)
+    #             train_input_dataset.append(train_image)
 
-                # target 이미지 로드
-                target_image_path = os.path.join(target_train_path, target_file)
-                target_image = Image.open(target_image_path)
-                train_target_dataset.append(target_image)
-            else:
-                print(
-                    f"Warning: Mismatched files in training set: {train_file} and {target_file}"
-                )
+    #             # target 이미지 로드
+    #             target_image_path = os.path.join(target_train_path, target_file)
+    #             target_image = Image.open(target_image_path)
+    #             train_target_dataset.append(target_image)
+    #         else:
+    #             print(
+    #                 f"Warning: Mismatched files in training set: {train_file} and {target_file}"
+    #             )
 
     # 테스트 데이터 로드
     for i in tqdm.tqdm(range(num_classes), desc=f"Loading test data (QF {QF})"):
@@ -146,13 +146,13 @@ def load_images(QF):
                 )
 
     # Dataset과 DataLoader 생성
-    train_dataset = CustomDataset(train_input_dataset, train_target_dataset)
+    # train_dataset = CustomDataset(train_input_dataset, train_target_dataset)
     test_dataset = CustomDataset(test_input_dataset, test_target_dataset)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+    # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    return train_dataset, test_dataset, train_loader, test_loader
+    return None, test_dataset, None, test_loader
 
 
 class ARCNN(nn.Module):
@@ -388,41 +388,41 @@ if __name__ == "__main__":
                 image_idx = 0
                 class_idx = 0
 
-                for input_images, target_images in tqdm.tqdm(
-                    train_loader, desc="Making Train Images"
-                ):
-                    input_images = input_images.to(device)
-                    target_images = target_images.to(device)
+                # for input_images, target_images in tqdm.tqdm(
+                #     train_loader, desc="Making Train Images"
+                # ):
+                #     input_images = input_images.to(device)
+                #     target_images = target_images.to(device)
 
-                    # Forward pass
-                    outputs = model(input_images)
+                #     # Forward pass
+                #     outputs = model(input_images)
 
-                    # Calculate MSE loss
-                    loss = criterion(outputs, target_images)
-                    test_loss += loss.item()
+                #     # Calculate MSE loss
+                #     loss = criterion(outputs, target_images)
+                #     test_loss += loss.item()
 
-                    for i in range(len(outputs)):
-                        rgb_output = outputs[i].cpu().numpy()
-                        np.clip(rgb_output, 0, 1, out=rgb_output)
-                        # rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
-                        # rgb_output = rgb_output.astype(np.uint8)
-                        rgb_train_images.append(rgb_output)
-                        image_idx += 1
-                        os.makedirs(
-                            f"datasets/{model_name}_cifar100_v2/jpeg{QF}/train/{class_idx:03d}",
-                            exist_ok=True,
-                        )
-                        # print(rgb_output.shape)
-                        # input()
-                        img = to_pil()(rgb_output.transpose(1, 2, 0))
-                        # print(np.array(img).shape)
-                        # input()
-                        img.save(
-                            f"datasets/{model_name}_cifar100_v2/jpeg{QF}/train/{class_idx:03d}/image_{image_idx:05d}.png"
-                        )
-                        if image_idx % 500 == 0 and image_idx > 0:
-                            image_idx = 0
-                            class_idx += 1
+                #     for i in range(len(outputs)):
+                #         rgb_output = outputs[i].cpu().numpy()
+                #         np.clip(rgb_output, 0, 1, out=rgb_output)
+                #         # rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                #         # rgb_output = rgb_output.astype(np.uint8)
+                #         rgb_train_images.append(rgb_output)
+                #         image_idx += 1
+                #         os.makedirs(
+                #             f"datasets/{model_name}_cifar100_v2/jpeg{QF}/train/{class_idx:03d}",
+                #             exist_ok=True,
+                #         )
+                #         # print(rgb_output.shape)
+                #         # input()
+                #         img = to_pil()(rgb_output.transpose(1, 2, 0))
+                #         # print(np.array(img).shape)
+                #         # input()
+                #         img.save(
+                #             f"datasets/{model_name}_cifar100_v2/jpeg{QF}/train/{class_idx:03d}/image_{image_idx:05d}.png"
+                #         )
+                #         if image_idx % 500 == 0 and image_idx > 0:
+                #             image_idx = 0
+                #             class_idx += 1
 
                 image_idx = 0
                 class_idx = 0

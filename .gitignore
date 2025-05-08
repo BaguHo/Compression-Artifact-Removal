@@ -1,3 +1,13 @@
+./datasets/*
+./experiments/*
+./SwinIR/*
+./classification_checkpoint/*
+./checkpoints/*
+./DnCNN_output/*
+./ARCNN_output/*
+./Fast_ARCNN_output/*
+./PxT_output/*
+./models/*
 /datasets/*
 /experiments/*
 /SwinIR/*
