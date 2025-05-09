@@ -7,12 +7,11 @@ from torch import nn
 import torch
 import os, sys, re
 import logging
-import cv2
 import tqdm
 import time
 import lpips
 from PIL import Image
-
+import PIL as pil
 if len(sys.argv) < 4:
     print("Usage: python script.py <epoch> <batch_size> <num_workers>")
     sys.exit(1)
@@ -29,6 +28,7 @@ epochs = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 num_classes = 100
+model_name = "PxT_32_32_ycbcr"
 
 transform = transforms.Compose(
     [
@@ -62,7 +62,8 @@ def laod_cifar100_train_dataset_and_dataloader():
     train_input_dataset = []
     train_target_dataset = []
 
-    QFs = [100, 80, 60, 40, 20]
+    # QFs = [100, 80, 60, 40, 20]
+    QFs = [100]
     for QF in QFs:
         train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
         target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
@@ -87,12 +88,12 @@ def laod_cifar100_train_dataset_and_dataloader():
                 if input_file.replace("jpeg", "png") == target_file:
                     # input 이미지 로드
                     train_image_path = os.path.join(train_path, input_file)
-                    train_image = Image.open(train_image_path)
+                    train_image = Image.open(train_image_path).convert("YCbCr")
                     train_input_dataset.append(train_image)
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_train_path, target_file)
-                    target_image = Image.open(target_image_path)
+                    target_image = Image.open(target_image_path).convert("YCbCr")
                     train_target_dataset.append(target_image)
                 else:
                     print(
@@ -101,7 +102,7 @@ def laod_cifar100_train_dataset_and_dataloader():
 
     # Dataset과 DataLoader 생성
     train_dataset = CustomDataset(train_input_dataset, train_target_dataset, transform=transform)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
     return train_dataset, train_loader
 
@@ -129,12 +130,12 @@ def load_cifar100_test_dataset_and_dataloader(QF):
             if input_file.replace(".jpeg", ".png") == target_file:
                 # input 이미지 로드
                 test_image_path = os.path.join(test_path, input_file)
-                test_image = Image.open(test_image_path)
+                test_image = Image.open(test_image_path).convert("YCbCr")
                 test_input_dataset.append(test_image)
 
                 # target 이미지 로드
                 target_image_path = os.path.join(target_test_path, target_file)
-                target_image = Image.open(target_image_path)
+                target_image = Image.open(target_image_path).convert("YCbCr")
                 test_target_dataset.append(target_image)
 
             else:
@@ -144,7 +145,7 @@ def load_cifar100_test_dataset_and_dataloader(QF):
 
     # Dataset과 DataLoader 생성
     test_dataset = CustomDataset(test_input_dataset, test_target_dataset, transform=transform)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     return test_dataset, test_loader
 
@@ -178,9 +179,9 @@ class PxT(nn.Module):
         img_size=32,
         patch_size=8,
         in_channels=3,
-        embed_dim=192,
+        embed_dim=384,
         num_heads=16,
-        num_layers=8,
+        num_layers=16,
         mlp_dim=256,
     ):
         super(PxT, self).__init__()
@@ -204,7 +205,6 @@ class PxT(nn.Module):
 
     def forward(self, x):
         batch_size = x.size(0)
-
         x = x.unfold(2, self.patch_size, self.patch_size).unfold(
             3, self.patch_size, self.patch_size
         )
@@ -232,15 +232,6 @@ class PxT(nn.Module):
         x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
         x = x.view(batch_size, 3, self.img_size, self.img_size)
         return x
-
-
-# test를 돌릴 때 psnr, ssim 를 평균으로 저장하는 함수 (.csv로 저장)
-def save_metrics(metrics, filename):
-    with open(filename, "w") as f:
-        f.write("PSNR,SSIM\n")
-        for i in range(len(metrics["PSNR"])):
-            f.write(f"{metrics['PSNR'][i]},{metrics['SSIM'][i]}\n")
-    print(f"Metrics saved to {filename}")
 
 
 if __name__ == "__main__":
@@ -275,43 +266,45 @@ if __name__ == "__main__":
     logging.info(f"Training started at {time.ctime(start_time)}")
     print(f"Training for {epochs} epochs")
 
-    for epoch in range(epochs):
-        model.train()
-        running_loss = 0.0
-        for i, (input_images, target_images) in enumerate(
-            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
-        ):
-            input_images = input_images.to(device)
-            target_images = target_images.to(device)
+    # models{model_name}_20.pth 불러오기
+    model.load_state_dict(torch.load(os.path.join("models", f"{model_name}_20.pth")))
+    # for epoch in range(epochs):
+    #     model.train()
+    #     running_loss = 0.0
+    #     for i, (input_images, target_images) in enumerate(
+    #         tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+    #     ):
+    #         input_images = input_images.to(device)
+    #         target_images = target_images.to(device)
 
-            optimizer.zero_grad()
+    #         optimizer.zero_grad()
 
-            # Forward pass
-            outputs = model(input_images)
-            loss = criterion(outputs, target_images)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-        epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-        logging.info(
-            f"PxT_32_32_patch_size_1 Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
-        )
-        # Save the model
-        if (epoch + 1) % 5 == 0:
-            torch.save(
-                model.state_dict(),
-                os.path.join("models", f"PxT_32_32_patch_size_1_{epoch+1}.pth"),
-            )
-            print(f"PxT_32_32_patch_size_1 Model saved at epoch {epoch+1}")
-            logging.info(f"PxT_32_32_patch_size_1 Model saved at epoch {epoch+1}")
+    #         # Forward pass
+    #         outputs = model(input_images)
+    #         loss = criterion(outputs, target_images)
+    #         loss.backward()
+    #         optimizer.step()
+    #         running_loss += loss.item()
+    #     epoch_loss = running_loss / len(train_loader)
+    #     print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+    #     logging.info(
+    #         f"{model_name} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+    #     )
+    #     # Save the model
+    #     if (epoch + 1) % 5 == 0:
+    #         torch.save(
+    #             model.state_dict(),
+    #             os.path.join("models", f"{model_name}_{epoch+1}.pth"),
+    #         )
+    #         print(f"{model_name} Model saved at epoch {epoch+1}")
+    #         logging.info(f"{model_name} Model saved at epoch {epoch+1}")
 
-    end_time = time.time()
-    print(f"Training finished at {time.ctime(end_time)}")
-    elapsed_time = end_time - start_time
-    print(f"Elapsed time: {elapsed_time:.2f} seconds")
-    logging.info(f"Training finished at {time.ctime(end_time)}")
-    logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
+    # end_time = time.time()
+    # print(f"Training finished at {time.ctime(end_time)}")
+    # elapsed_time = end_time - start_time
+    # print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    # logging.info(f"Training finished at {time.ctime(end_time)}")
+    # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
     # Test the model
     model.eval()
@@ -332,6 +325,8 @@ if __name__ == "__main__":
             rgb_target_patches = []
             rgb_output_patches = []
             patch_idx = 0
+            image_name_idx = 0
+            class_idx = 0
 
             for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
                 input_images = input_images.to(device)
@@ -347,73 +342,62 @@ if __name__ == "__main__":
                 for i in range(len(outputs)):
                     rgb_target = target_images[i].cpu().numpy()
                     rgb_output = outputs[i].cpu().numpy()
-                    np.clip(rgb_target, 0, 1, out=rgb_target)
-                    np.clip(rgb_output, 0, 1, out=rgb_output)
-                    rgb_target = np.transpose(rgb_target, (1, 2, 0)) * 255
-                    rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
-                    rgb_target_patches.append(rgb_target)
-                    rgb_output_patches.append(rgb_output)
-                    patch_idx += 1
+                    # ycbcr 이미지를 rgb로 바꿔서 psnr, ssim, lpips 계산 후 저장 pil사용
+                    # [3,32,32] --> [32,32,3]
+                    rgb_target = pil.Image.fromarray(rgb_target.transpose(1, 2, 0),Mode="YCbCr").convert("RGB")
+                    rgb_output = pil.Image.fromarray(rgb_output.transpose(1, 2, 0),Mode="YCbCr").convert("RGB")
+                    rgb_target = np.array(rgb_target)
+                    rgb_output = np.array(rgb_output)
+                    
+                    # Calculate PSNR and SSIM
+                    psnr = peak_signal_noise_ratio(
+                        rgb_target.transpose(2, 0, 1),
+                        rgb_output.transpose(2, 0, 1),
+                        data_range=255,
+                    )
+                    ssim = structural_similarity(
+                        rgb_target.transpose(2, 0, 1),
+                        rgb_output.transpose(2, 0, 1),
+                        data_range=255,
+                        channel_axis=0,
+                    )
+                    lpips_alex_loss = lpips_loss_alex(
+                        torch.from_numpy(rgb_output)
+                        .permute(2, 0, 1)
+                        .to(device),
+                        torch.from_numpy(rgb_target)
+                        .permute(2, 0, 1)
+                        .to(device),
+                    )
 
-                    # 8x8 이미지들을 32x32로 합치기
-                    if patch_idx % 16 == 0 and patch_idx > 0:
-                        patch_idx = 0
-                        combined_target_image = np.zeros((32, 32, 3), dtype=np.uint8)
-                        combined_output_image = np.zeros((32, 32, 3), dtype=np.uint8)
+                    lpips_alex_loss_values.append(lpips_alex_loss.item())
+                    psnr_values.append(psnr)
+                    ssim_values.append(ssim)
 
-                        for j in range(4):
-                            for k in range(4):
-                                idx = j * 4 + k
-                                combined_target_image[
-                                    j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
-                                ] = rgb_target_patches[idx]
-                        rgb_target_patches.clear()
-
-                        for j in range(4):
-                            for k in range(4):
-                                idx = j * 4 + k
-                                combined_output_image[
-                                    j * 8 : (j + 1) * 8, k * 8 : (k + 1) * 8, :
-                                ] = rgb_output_patches[idx]
-
-                        rgb_output_patches.clear()
-                        combined_target_images.append(combined_target_image)
-                        combined_output_images.append(combined_output_image)
-
-                        # Calculate PSNR and SSIM
-                        psnr = peak_signal_noise_ratio(
-                            combined_target_image.transpose(2, 0, 1),
-                            combined_output_image.transpose(2, 0, 1),
-                            data_range=255,
+                    image_name_idx += 1
+                    
+                    os.makedirs(
+                        os.path.join(
+                            "datasets",
+                            f"{model_name}",
+                            f"jpeg{QF}",
+                            "test",
+                            f"{class_idx:03d}",
+                        ),
+                        exist_ok=True,
                         )
-                        ssim = structural_similarity(
-                            combined_target_image.transpose(2, 0, 1),
-                            combined_output_image.transpose(2, 0, 1),
-                            multichannel=True,
-                            data_range=255,
-                            channel_axis=0,
+                    output_image_path = os.path.join(
+                        "datasets",
+                        f"{model_name}",
+                        f"jpeg{QF}",
+                        "test",
+                        f"{class_idx:03d}",
+                        f"output{image_name_idx:05d}.png",
                         )
-                        lpips_alex_loss = lpips_loss_alex(
-                            torch.from_numpy(combined_output_image)
-                            .permute(2, 0, 1)
-                            .to(device),
-                            torch.from_numpy(combined_target_image)
-                            .permute(2, 0, 1)
-                            .to(device),
-                        )
-
-                        lpips_alex_loss_values.append(lpips_alex_loss.item())
-                        psnr_values.append(psnr)
-                        ssim_values.append(ssim)
-
-                        # 합쳐진 이미지 저장
-                        os.makedirs(f"PxT_32_32_patch_size_1_output", exist_ok=True)
-                        combined_image_path = os.path.join(
-                            f"PxT_32_32_patch_size_1_output",
-                            f"combined_output{image_name_idx}.png",
-                        )
-                        cv2.imwrite(combined_image_path, combined_output_image)
-                        image_name_idx += 1
+                    rgb_output.save(output_image_path)
+                    if image_name_idx % 100 == 0 and image_name_idx > 0:
+                        class_idx += 1
+                        image_name_idx = 0
 
         # Calculate average metrics
         avg_test_loss = test_loss / len(test_loader)
@@ -422,8 +406,8 @@ if __name__ == "__main__":
         avg_lpips_alex = np.mean(lpips_alex_loss_values)
 
         print(
-            f"PxT_32_32_patch_size_1 QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"{model_name} QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )
         logging.info(
-            f"PxT_32_32_patch_size_1 QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"{model_name} QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )

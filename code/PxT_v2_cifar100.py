@@ -84,6 +84,7 @@ def load_images():
                     # input 이미지 로드
                     train_image_path = os.path.join(train_path, train_file)
                     train_image = cv2.imread(train_image_path)
+                    train_image = cv2.cvtColor(train_image, cv2.COLOR_BGR2YCrCb)
                     if train_image is None:
                         print(f"Warning: Failed to load input image: {train_image_path}")
                         sys.exit(1)
@@ -93,6 +94,7 @@ def load_images():
                     # target 이미지 로드
                     target_image_path = os.path.join(target_train_path, target_file)
                     target_image = cv2.imread(target_image_path)
+                    target_image = cv2.cvtColor(target_image, cv2.COLOR_BGR2YCrCb)
                     if target_image is None:
                         print(f"Warning: Failed to load target image: {target_image_path}")
                         sys.exit(1)
@@ -103,7 +105,7 @@ def load_images():
                         f"Warning: Mismatched files in training set: {train_file} and {target_file}"
                     )
     train_dataset = CustomDataset(train_input_dataset, train_target_dataset)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
     return train_dataset, train_loader
 
@@ -136,18 +138,20 @@ def load_test_images_each_QF(QF):
                 # input 이미지 로드
                 test_image_path = os.path.join(test_path, test_file)
                 test_image = cv2.imread(test_image_path)
+                test_image = cv2.cvtColor(test_image, cv2.COLOR_BGR2YCrCb)
                 test_input_dataset.append(test_image)
 
                 # target 이미지 로드
                 target_image_path = os.path.join(target_test_path, target_file)
                 target_image = cv2.imread(target_image_path)
+                target_image = cv2.cvtColor(target_image, cv2.COLOR_BGR2YCrCb)
                 test_target_dataset.append(target_image)
             else:
                 print(
                     f"Warning: Mismatched files in testing set: {test_file} and {target_file}"
                 )
     test_dataset = CustomDataset(test_input_dataset, test_target_dataset)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     return test_dataset, test_loader
 
@@ -237,18 +241,10 @@ class PxT_big(nn.Module):
         return x
 
 
-# test를 돌릴 때 psnr, ssim 를 평균으로 저장하는 함수 (.csv로 저장)
-def save_metrics(metrics, filename):
-    with open(filename, "w") as f:
-        f.write("PSNR,SSIM\n")
-        for i in range(len(metrics["PSNR"])):
-            f.write(f"{metrics['PSNR'][i]},{metrics['SSIM'][i]}\n")
-    print(f"Metrics saved to {filename}")
-
-
 if __name__ == "__main__":
     # Load the dataset
     train_dataset, train_loader = load_images()
+    model_name = "PxT_v2_cifar100_ycbcr"
 
     # Initialize the model
     model = PxT_big()
@@ -297,16 +293,16 @@ if __name__ == "__main__":
         epoch_loss = running_loss / len(train_loader)
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
         logging.info(
-            f"PxT_big_cifar100 Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+            f"{model_name} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
         )
         # Save the model
         if (epoch + 1) % 5 == 0:
             torch.save(
                 model.state_dict(),
-                os.path.join("models", f"PxT_big_cifar100_{epoch+1}.pth"),
+                os.path.join("models", f"{model_name}_{epoch+1}.pth"),
             )
-            print(f"PxT_big_cifar100 Model saved at epoch {epoch+1}")
-            logging.info(f"PxT_big_cifar100 Model saved at epoch {epoch+1}")
+            print(f"{model_name} Model saved at epoch {epoch+1}")
+            logging.info(f"{model_name} Model saved at epoch {epoch+1}")
 
     end_time = time.time()
     print(f"Training finished at {time.ctime(end_time)}")
@@ -334,6 +330,9 @@ if __name__ == "__main__":
             rgb_target_patches = []
             rgb_output_patches = []
             patch_idx = 0
+            class_idx = 0
+            image_name_idx = 0
+            
 
             for input_images, target_images in tqdm.tqdm(test_loader, desc="Testing"):
                 input_images = input_images.to(device)
@@ -353,6 +352,8 @@ if __name__ == "__main__":
                     np.clip(rgb_output, 0, 1, out=rgb_output)
                     rgb_target = np.transpose(rgb_target, (1, 2, 0)) * 255
                     rgb_output = np.transpose(rgb_output, (1, 2, 0)) * 255
+                    rgb_target = cv2.cvtColor(rgb_target, cv2.COLOR_YCrCb2BGR)
+                    rgb_output = cv2.cvtColor(rgb_output, cv2.COLOR_YCrCb2BGR)
                     rgb_target_patches.append(rgb_target)
                     rgb_output_patches.append(rgb_output)
                     patch_idx += 1
@@ -408,14 +409,29 @@ if __name__ == "__main__":
                         psnr_values.append(psnr)
                         ssim_values.append(ssim)
 
-                        # 합쳐진 이미지 저장
-                        os.makedirs(f"PxT_big_cifar100_output", exist_ok=True)
+                        cv2.imwrite(combined_image_path, combined_output_image)
+                        image_name_idx += 1
+                        os.makedirs(
+                            os.path.join(
+                                "datasets",
+                                f"{model_name}",
+                                f"jpeg{QF}",
+                                "test",
+                                f"{class_idx:03d}",
+                            ),
+                            exist_ok=True,
+                        )
                         combined_image_path = os.path.join(
-                            f"PxT_big_cifar100_output",
+                            "datasets",
+                            f"{model_name}",
+                            f"jpeg{QF}",
+                            "test",
+                            f"{class_idx:03d}",
                             f"combined_output{image_name_idx}.png",
                         )
-                        # cv2.imwrite(combined_image_path, combined_output_image)
-                        image_name_idx += 1
+                        if image_name_idx % 100 == 0 and image_name_idx > 0:
+                            class_idx += 1
+                            image_name_idx = 0
 
         # Calculate average metrics
         avg_test_loss = test_loss / len(test_loader)
@@ -424,8 +440,8 @@ if __name__ == "__main__":
         avg_lpips_alex = np.mean(lpips_alex_loss_values)
 
         print(
-            f"PxT_big_cifar100 QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"{model_name} QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )
         logging.info(
-            f"PxT_big_cifar100 QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
+            f"{model_name} QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
         )

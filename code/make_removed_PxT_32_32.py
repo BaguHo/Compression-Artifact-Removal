@@ -31,7 +31,7 @@ slack_webhook_url = (
 QFs = [100, 80, 60, 40, 20]
 
 model_names = [
-    "PxT_32_32_improved"
+    "PxT_32_32_ycbcr"
 ]
 batch_size = int(sys.argv[1])
 num_workers = int(sys.argv[2])
@@ -400,7 +400,6 @@ if __name__ == "__main__":
                 model = BlockCNN()
             elif model_name == "PxT_32_32_improved":
                 model = Improved_PxT()
-            print(model)
 
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -491,24 +490,24 @@ if __name__ == "__main__":
                     # print(outputs.shape)
                     # input()
                     # input_image와 target이미지를 각각 "./PxT_32_32_patch_size_8_test_input", "./PxT_32_32_test_target"에 이미지로 저장
-                    input_images = input_images.cpu().numpy()
-                    target_images = target_images.cpu().numpy()
-                    for i in range(len(input_images)):
-                        input_image = input_images[i]
-                        target_image = target_images[i]
-                        input_image = np.transpose(input_image, (1, 2, 0)) * 255
-                        target_image = np.transpose(target_image, (1, 2, 0)) * 255
-                        input_image = Image.fromarray(input_image.astype(np.uint8))
-                        target_image = Image.fromarray(target_image.astype(np.uint8))
-                        os.makedirs(f"./{model_name}_test_input", exist_ok=True)
-                        os.makedirs(f"./{model_name}_test_target", exist_ok=True)
-                        input_image.save(
-                            f"./{model_name}_test_input/{temp_image_name_idx:05d}.png"
-                        )
-                        target_image.save(
-                            f"./{model_name}_test_target/{temp_image_name_idx:05d}.png"
-                        )
-                        temp_image_name_idx += 1
+                    # input_images = input_images.cpu().numpy()
+                    # target_images = target_images.cpu().numpy()
+                    # for i in range(len(input_images)):
+                    #     input_image = input_images[i]
+                    #     target_image = target_images[i]
+                    #     input_image = np.transpose(input_image, (1, 2, 0)) * 255
+                    #     target_image = np.transpose(target_image, (1, 2, 0)) * 255
+                    #     input_image = Image.fromarray(input_image.astype(np.uint8))
+                    #     target_image = Image.fromarray(target_image.astype(np.uint8))
+                    #     os.makedirs(f"./{model_name}_test_input", exist_ok=True)
+                    #     os.makedirs(f"./{model_name}_test_target", exist_ok=True)
+                    #     input_image.save(
+                    #         f"./{model_name}_test_input/{temp_image_name_idx:05d}.png"
+                    #     )
+                    #     target_image.save(
+                    #         f"./{model_name}_test_target/{temp_image_name_idx:05d}.png"
+                    #     )
+                    #     temp_image_name_idx += 1
 
                     for i in range(len(outputs)):
                         rgb_output = outputs[i].cpu().numpy()

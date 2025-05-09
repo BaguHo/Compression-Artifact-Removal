@@ -29,7 +29,7 @@ epochs = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 num_classes = 100
-model_name = "PxT_32_32_improved_patch_size_8"
+model_name = "PxT_32_32_improved_ycbcr"
 
 transform = transforms.Compose(
     [
@@ -81,7 +81,6 @@ def laod_cifar100_train_dataset_and_dataloader():
             sorted_target_train_files = sorted(
                 os.listdir(target_train_path)
             )
-
             # 두 디렉토리의 파일명이 같은지 확인하며 로드
             for input_file, target_file in zip(
                 sorted_train_files, sorted_target_train_files
@@ -90,11 +89,13 @@ def laod_cifar100_train_dataset_and_dataloader():
                     # input 이미지 로드
                     train_image_path = os.path.join(train_path, input_file)
                     train_image = Image.open(train_image_path)
+                    train_image = train_image.convert("YCbCr")
                     train_input_dataset.append(train_image)
 
                     # target 이미지 로드
                     target_image_path = os.path.join(target_train_path, target_file)
                     target_image = Image.open(target_image_path)
+                    target_image = target_image.convert("YCbCr")
                     train_target_dataset.append(target_image)
                 else:
                     print(
@@ -132,11 +133,13 @@ def load_cifar100_test_dataset_and_dataloader(QF):
                 # input 이미지 로드
                 test_image_path = os.path.join(test_path, input_file)
                 test_image = Image.open(test_image_path)
+                test_image = test_image.convert("YCbCr")
                 test_input_dataset.append(test_image)
 
                 # target 이미지 로드
                 target_image_path = os.path.join(target_test_path, target_file)
                 target_image = Image.open(target_image_path)
+                target_image = target_image.convert("YCbCr")
                 test_target_dataset.append(target_image)
 
             else:
@@ -201,9 +204,9 @@ class Improved_PxT(nn.Module):
         img_size=32,
         patch_size=8,
         in_channels=3,
-        embed_dim=128,
-        num_heads=8,
-        num_layers=8,
+        embed_dim=384,
+        num_heads=16,
+        num_layers=16,
         mlp_dim=256,
         dropout=0.1,
     ):
@@ -325,43 +328,43 @@ if __name__ == "__main__":
     logging.info(f"Training started at {time.ctime(start_time)}")
     print(f"Training for {epochs} epochs")
 
-    # for epoch in range(epochs):
-    #     model.train()
-    #     running_loss = 0.0
-    #     for i, (input_images, target_images) in enumerate(
-    #         tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
-    #     ):
-    #         input_images = input_images.to(device)
-    #         target_images = target_images.to(device)
+    for epoch in range(epochs):
+        model.train()
+        running_loss = 0.0
+        for i, (input_images, target_images) in enumerate(
+            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+        ):
+            input_images = input_images.to(device)
+            target_images = target_images.to(device)
 
-    #         optimizer.zero_grad()
+            optimizer.zero_grad()
 
-    #         # Forward pass
-    #         outputs = model(input_images)
-    #         loss = criterion(outputs, target_images)
-    #         loss.backward()
-    #         optimizer.step()
-    #         running_loss += loss.item()
-    #     epoch_loss = running_loss / len(train_loader)
-    #     print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
-    #     logging.info(
-    #         f"{model_name} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
-    #     )
-    #     # Save the model
-    #     if (epoch + 1) % 5 == 0:
-    #         torch.save(
-    #             model.state_dict(),
-    #             os.path.join("models", f"{model_name}_{epoch+1}.pth"),
-    #         )
-    #         print(f"{model_name} Model saved at epoch {epoch+1}")
-    #         logging.info(f"{model_name} Model saved at epoch {epoch+1}")
+            # Forward pass
+            outputs = model(input_images)
+            loss = criterion(outputs, target_images)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        epoch_loss = running_loss / len(train_loader)
+        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+        logging.info(
+            f"{model_name} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+        )
+        # Save the model
+        if (epoch + 1) % 5 == 0:
+            torch.save(
+                model.state_dict(),
+                os.path.join("models", f"{model_name}_{epoch+1}.pth"),
+            )
+            print(f"{model_name} Model saved at epoch {epoch+1}")
+            logging.info(f"{model_name} Model saved at epoch {epoch+1}")
 
-    # end_time = time.time()
-    # print(f"Training finished at {time.ctime(end_time)}")
-    # elapsed_time = end_time - start_time
-    # print(f"Elapsed time: {elapsed_time:.2f} seconds")
-    # logging.info(f"Training finished at {time.ctime(end_time)}")
-    # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
+    end_time = time.time()
+    print(f"Training finished at {time.ctime(end_time)}")
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    logging.info(f"Training finished at {time.ctime(end_time)}")
+    logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
     # Test the model
     model.eval()
@@ -440,7 +443,9 @@ if __name__ == "__main__":
                             f"./datasets/{model_name}_output",
                             f"output{image_name_idx:03d}.png",
                         )
-                        cv2.imwrite(combined_image_path, combined_output.astype(np.uint8))
+                        img = Image.fromarray(combined_output.astype(np.uint8), 'YCbCr')
+                        img = img.convert('RGB')
+                        img.save(combined_image_path)   
                         image_name_idx += 1
 
                         # Clear patch lists for next image
