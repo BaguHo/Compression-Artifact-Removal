@@ -14,6 +14,7 @@ import load_dataset
 from models import PxT_32x32_y, PxT_32x32_y_improved
 import cv2
 from torchmetrics.functional import structural_similarity_index_measure
+from vit_base import vit_base
 
 if len(sys.argv) < 4:
     print("Usage: python script.py <epoch> <batch_size> <num_workers>")
@@ -32,17 +33,17 @@ epochs = int(sys.argv[1])
 batch_size = int(sys.argv[2])
 num_workers = int(sys.argv[3])
 num_classes = 100
-model_name = "PxT_32x32_y"
+model_name = "vit_base"
 
-def ssim_loss(output, target):
-    # SSIM 값이 1에 가까울수록 유사, 0에 가까울수록 다름
-    return 1 - structural_similarity_index_measure(output, target)
+# def ssim_loss(output, target):
+#     # SSIM 값이 1에 가까울수록 유사, 0에 가까울수록 다름
+#     return 1 - structural_similarity_index_measure(output, target)
 
 if __name__ == "__main__":
     # Load the dataset
     train_dataset, train_loader = load_dataset.load_train_dataset_and_dataloader_32x32_y_all_qf(batch_size, num_workers)
 
-    model = PxT_32x32_y()
+    model = vit_base()
     # print(model)
 
     device = torch.device(
@@ -60,52 +61,52 @@ if __name__ == "__main__":
     print(f"Model device: {device}")
 
     # ! models{model_name}_20.pth 불러오기
-    model.load_state_dict(torch.load(os.path.join("models", f"{model_name}_20.pth")))
+    # model.load_state_dict(torch.load(os.path.join("models", f"{model_name}_20.pth")))
 
     # train the model
-    criterion = ssim_loss
+    criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    # start_time = time.time()
-    # print(f"Training started at {time.ctime(start_time)}")
-    # logging.info(f"Training started at {time.ctime(start_time)}")
-    # print(f"Training for {epochs} epochs")
-    # for epoch in range(epochs):
-    #     model.train()
-    #     running_loss = 0.0
-    #     for i, (input_images, target_images) in enumerate(
-    #         tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
-    #     ):
-    #         input_images = input_images.to(device)
-    #         target_images = target_images.to(device)
+    start_time = time.time()
+    print(f"Training started at {time.ctime(start_time)}")
+    logging.info(f"Training started at {time.ctime(start_time)}")
+    print(f"Training for {epochs} epochs")
+    for epoch in range(epochs):
+        model.train()
+        running_loss = 0.0
+        for i, (input_images, target_images) in enumerate(
+            tqdm.tqdm(train_loader, desc=f"Train Epoch {epoch+1}/{epochs}")
+        ):
+            input_images = input_images.to(device)
+            target_images = target_images.to(device)
 
-    #         optimizer.zero_grad()
+            optimizer.zero_grad()
 
-    #         # Forward pass
-    #         outputs = model(input_images)
-    #         loss = criterion(outputs, target_images)
-    #         loss.backward()
-    #         optimizer.step()
-    #         running_loss += loss.item()
-    #     epoch_loss = running_loss / len(train_loader)
-    #     print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.6f}")
-    #     logging.info(
-    #         f"{model_name} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.6f}"
-    #     )
-    #     # Save the model
-    #     if (epoch + 1) % 10 == 0:
-    #         torch.save(
-    #             model.state_dict(),
-    #             os.path.join("models", f"{model_name}_{epoch+1:03d}.pth"),
-    #         )
-    #         print(f"{model_name} Model saved at epoch {epoch+1}")
-    #         logging.info(f"{model_name} Model saved at epoch {epoch+1}")
-    # end_time = time.time()
-    # print(f"Training finished at {time.ctime(end_time)}")
-    # elapsed_time = end_time - start_time
-    # print(f"Elapsed time: {elapsed_time:.2f} seconds")
-    # logging.info(f"Training finished at {time.ctime(end_time)}")
-    # logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
+            # Forward pass
+            outputs = model(input_images)
+            loss = criterion(outputs, target_images)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        epoch_loss = running_loss / len(train_loader)
+        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.6f}")
+        logging.info(
+            f"{model_name} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.6f}"
+        )
+        # Save the model
+        if (epoch + 1) % 10 == 0:
+            torch.save(
+                model.state_dict(),
+                os.path.join("models", f"{model_name}_{epoch+1:03d}.pth"),
+            )
+            print(f"{model_name} Model saved at epoch {epoch+1}")
+            logging.info(f"{model_name} Model saved at epoch {epoch+1}")
+    end_time = time.time()
+    print(f"Training finished at {time.ctime(end_time)}")
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time:.2f} seconds")
+    logging.info(f"Training finished at {time.ctime(end_time)}")
+    logging.info(f"Elapsed time: {elapsed_time:.2f} seconds")
 
     # Test the model
     model.eval()
@@ -144,7 +145,6 @@ if __name__ == "__main__":
                     y_target = target_images[i].cpu().numpy()
                     y_output = outputs[i].cpu().numpy()
                     y_input = input_images[i].cpu().numpy()
-                    # ycbcr 이미지를 rgb로 바꿔서 psnr, ssim, lpips 계산 후 저장 pil사용
                     # [c,h,w] --> [h,w,c] 
                     # print("before transpose", y_target.shape, y_output.shape, y_input.shape)
                     y_target = (y_target * 255).astype(np.uint8).transpose(1,2,0)
