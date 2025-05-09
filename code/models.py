@@ -69,7 +69,7 @@ class PxT_32x32_y_improved(nn.Module):
         self.refine = nn.Sequential(
             nn.Conv2d(in_channels, 32, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(32, in_channels, kernel_size=3, padding=1)
+            nn.Conv2d(32, in_channels, kernel_size=3, padding=1),
         )
 
     def forward(self, x):
@@ -113,6 +113,7 @@ class PxT_32x32_y_improved(nn.Module):
         x = x + inp
 
         return x
+
 
 class PxT_32x32_y(nn.Module):
     def __init__(
@@ -171,7 +172,7 @@ class PxT_32x32_y(nn.Module):
             self.patch_size,
         )
         x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
-        x = x.view(batch_size,  self.in_channels, self.img_size, self.img_size)
+        x = x.view(batch_size, self.in_channels, self.img_size, self.img_size)
         return x
 
 
@@ -182,6 +183,7 @@ class PxT_JPEGArtifactRemoval(nn.Module):
     - Conv head/tail로 국소적 아티팩트 보정
     - 트랜스포머로 전역 문맥 처리
     """
+
     def __init__(
         self,
         img_size=32,
@@ -218,9 +220,7 @@ class PxT_JPEGArtifactRemoval(nn.Module):
             [Encoder(embed_dim, num_heads, mlp_dim) for _ in range(num_layers)]
         )
 
-        self.decoder = nn.Sequential(
-            nn.Linear(embed_dim, self.patch_dim)
-        )
+        self.decoder = nn.Sequential(nn.Linear(embed_dim, self.patch_dim))
 
         # Y 채널 출력에 맞춘 컨볼루션 테일
         self.conv_tail = nn.Sequential(
@@ -267,3 +267,42 @@ class PxT_JPEGArtifactRemoval(nn.Module):
         # Conv tail: Y 채널 출력의 국소적 복원
         x = self.conv_tail(x)
         return x
+
+
+class autoencoder(nn.Module):
+    """
+    Autoencoder 기반 JPEG 압축 아티팩트 제거 모델 (32x32, Y채널 입력)
+    - 입력: (batch, 1, 32, 32)
+    - 8x8 블록 단위의 downsampling/upsampling 구조
+    - Encoder-Decoder 구조
+    """
+
+    def __init__(self, in_channels=1, base_dim=64):
+        super(autoencoder, self).__init__()
+        self.encoder = nn.Sequential(
+            # 8x8 블록 단위로 다운샘플링 (출력: 64채널, 4x4)
+            nn.Conv2d(in_channels, base_dim, kernel_size=8, stride=8),
+            nn.ReLU(inplace=True),
+            # 추가적인 feature 압축
+            nn.Conv2d(base_dim, base_dim * 2, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(base_dim * 2, base_dim * 2, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+        )
+        self.bottleneck = nn.Sequential(
+            nn.Conv2d(base_dim * 2, base_dim * 2, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+        )
+        self.decoder = nn.Sequential(
+            # feature 복원
+            nn.Conv2d(base_dim * 2, base_dim, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            # 8x8 블록 단위로 업샘플링 (출력: 1채널, 32x32)
+            nn.ConvTranspose2d(base_dim, in_channels, kernel_size=8, stride=8),
+        )
+
+    def forward(self, x):
+        z = self.encoder(x)
+        z = self.bottleneck(z)
+        out = self.decoder(z)
+        return out
