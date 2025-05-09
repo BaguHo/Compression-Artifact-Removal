@@ -51,8 +51,6 @@ class CustomDataset(Dataset):
         return input_image, target_image
 
 
-
-
 class Encoder(nn.Module):
     def __init__(self, embed_dim, num_heads, mlp_dim):
         super(Encoder, self).__init__()
@@ -75,14 +73,14 @@ class Encoder(nn.Module):
         x = x + y
         return x
 
-
+#  loss 값이 0.0001이 되도록 학습
 class PxT(nn.Module):
     def __init__(
         self,
         img_size=8,
         patch_size=1,
         in_channels=1,
-        embed_dim=192,
+        embed_dim=12, # 192,
         num_heads=12,
         num_layers=12,
         mlp_dim=384,
@@ -100,6 +98,7 @@ class PxT(nn.Module):
         self.position_embeddings = nn.Parameter(
             torch.zeros(1, self.num_patches, embed_dim)
         )
+        print('pos embedding:', self.position_embeddings)
 
         self.transformer = nn.ModuleList(
             [Encoder(embed_dim, num_heads, mlp_dim) for _ in range(num_layers)]
@@ -188,12 +187,13 @@ if __name__ == "__main__":
             optimizer.step()
             running_loss += loss.item()
         epoch_loss = running_loss / len(train_loader)
-        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}")
+        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.6f}")
+        # loss, PxT의 파라미터 logging
         logging.info(
-            f"{model_name} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}"
+            f"{model_name} Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss:.6f}, img_size: {model.img_size}, patch_size: {model.patch_size}, in_channels: {model.in_channels}, embed_dim: {model.embed_dim}, num_heads: {model.num_heads}, num_layers: {model.num_layers}, mlp_dim: {model.mlp_dim}"
         )
         # Save the model
-        if (epoch + 1) % 1 == 0:
+        if (epoch + 1) % 5 == 0:
             torch.save(
                 model.state_dict(),
                 os.path.join("models", f"{model_name}_{epoch+1}.pth"),

@@ -88,12 +88,12 @@ def calculate_psnr_ssim_lpips(QF, dataset_name):
 
                 # Calculate PSNR
                 psnr_value = psnr(
-                    target_image, output_image, data_range=255.0
+                    target_image, output_image, data_range=255
                 )
 
                 # Calculate SSIM
                 ssim_value = ssim(
-                    target_image, output_image, data_range=255.0, channel_axis=0
+                    target_image, output_image, data_range=255, channel_axis=0
                 )
 
                 psnr_values.append(psnr_value)

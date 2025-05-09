@@ -30,7 +30,8 @@ slack_webhook_url = (
 batch_size = int(sys.argv[1])
 num_workers = int(sys.argv[2])
 num_classes = 100
-QFs = [100, 80, 60, 40, 20]
+# QFs = [100, 80, 60, 40, 20]
+QFs =[60]
 model_name = "PxT_y"
 
 transform = transforms.Compose([
@@ -134,7 +135,7 @@ if __name__ == "__main__":
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # use multiple GPUs if available
+        # use multiple GPUs if available 
         if torch.cuda.device_count() > 1:
             model = nn.DataParallel(model)
             print(f"Using {torch.cuda.device_count()} GPUs")
@@ -250,17 +251,20 @@ if __name__ == "__main__":
             ):
                 input_images = input_images.to(device)
                 target_images = target_images.to(device)
-                # print(input_images.shape)
-                # print(target_images.shape)
-                # input()
 
                 # Forward pass
                 outputs = model(input_images)
-                # print("outputs shape: ", outputs.shape)
-                # input()
-                # Calculate MSE loss
                 loss = criterion(outputs, target_images)
                 test_loss += loss.item()
+
+                print("input_image:", np.array(input_images[46].cpu()*255).astype(np.uint8).transpose(1,2,0))
+                cv2.imwrite("input_image.png", np.array(input_images[46].cpu()*255).astype(np.uint8).transpose(1,2,0))
+                print("target_image:", np.array(target_images[46].cpu()*255).astype(np.uint8).transpose(1,2,0))
+                cv2.imwrite("target_image.png", np.array(target_images[46].cpu()*255).astype(np.uint8).transpose(1,2,0))
+                print("output_image:", np.array(outputs[46].cpu()*255).astype(np.uint8).transpose(1,2,0))
+                cv2.imwrite("output_image.png", np.array(outputs[46].cpu()*255).astype(np.uint8).transpose(1,2,0))
+                print("loss:", loss.item())
+                input()
 
                 # save input, target image
                 for i in range(len(outputs)):
