@@ -15,7 +15,7 @@ logging.basicConfig(
     filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s"
 )
 batch_size = 4096
-num_workers = 64
+num_workers = 24
 num_classes = 100
 
 def calculate_psnr_ssim_lpips(QF):
@@ -39,9 +39,9 @@ def calculate_psnr_ssim_lpips(QF):
 
                 target_image = target_images[i].cpu().numpy()
                 output_image = input_images[i].cpu().numpy()
-                
-                target_image = (target_image*255.0).astype(np.uint8)
-                output_image = (output_image*255.0).astype(np.uint8)
+                # [c,h,w] --> [h,w,c]
+                target_image = (target_image*255.0).astype(np.uint8).transpose(1,2,0)
+                output_image = (output_image*255.0).astype(np.uint8).transpose(1,2,0)
                 # Calculate PSNR
                 psnr_value = psnr(
                     target_image, output_image, data_range=255.0
@@ -49,7 +49,7 @@ def calculate_psnr_ssim_lpips(QF):
 
                 # Calculate SSIM
                 ssim_value = ssim(
-                    target_image, output_image, data_range=255.0, channel_axis=0
+                    target_image, output_image, data_range=255.0, channel_axis=2
                 )
 
                 psnr_values.append(psnr_value)

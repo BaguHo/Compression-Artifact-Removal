@@ -9,41 +9,14 @@ import tqdm
 import cv2
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
-
-
+from load_dataset import CustomDataset
 
 dataset_names = ["PxT_32_32_improved"]
-
-
-transform = transforms.Compose(
-    [
-        transforms.ToTensor(),
-    ]
-)
 
 batch_size = 1024
 num_workers = 64
 num_classes = 100
 
-class CustomDataset(Dataset):
-    def __init__(self, input_images, target_images, transform=transform):
-        self.input_images = input_images
-        self.target_images = target_images
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.input_images)
-
-    def __getitem__(self, idx):
-        input_image = self.input_images[idx]
-        target_image = self.target_images[idx]
-
-        if self.transform:
-            input_image = self.transform(input_image)
-            target_image = self.transform(target_image)
-
-        return input_image, target_image
-    
     
 def load_cifar100_test_dataset_and_dataloader(QF, dataset_name):
     cifar100_path = os.path.join(os.getcwd(), "datasets", "CIFAR100", "original_size")
