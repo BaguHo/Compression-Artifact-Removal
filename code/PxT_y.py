@@ -161,7 +161,6 @@ if __name__ == "__main__":
                                 ] = y_input_patches[idx]
                         y_input_patches.clear()
 
-
                         # Calculate PSNR and SSIM
                         psnr_value = psnr(
                             combined_target_image,

@@ -71,6 +71,11 @@ def load_images_from_dirctory(input_dir, target_dir, color_space=None):
                 elif color_space == "bgr":
                     input_image = cv2.imread(input_image_path, cv2.IMREAD_COLOR)    
                     target_image = cv2.imread(target_image_path, cv2.IMREAD_COLOR)
+                elif color_space == "rgb":
+                    input_image = cv2.imread(input_image_path, cv2.IMREAD_COLOR)    
+                    target_image = cv2.imread(target_image_path, cv2.IMREAD_COLOR)
+                    input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
+                    target_image = cv2.cvtColor(target_image, cv2.COLOR_BGR2RGB)
                 
                 if color_space == "y":
                     # [h,w] -> [1,h,w]
@@ -103,13 +108,15 @@ def load_dataset_and_dataloader_all_qf(is_train=None, color_space=None, size=Non
         if is_train:    
             input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
             target_dir = os.path.join(cifar100_path, "original", "train")
+            input_images_from_each_qf, target_images_from_each_qf = load_images_from_dirctory(input_dir, target_dir, color_space=color_space)
+            input_images.extend(input_images_from_each_qf)
+            target_images.extend(target_images_from_each_qf)
         else:
             input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
             target_dir = os.path.join(cifar100_path, "original", "test")
-
-        input_images_from_each_qf, target_images_from_each_qf = load_images_from_dirctory(input_dir, target_dir, color_space=color_space)
-        input_images.extend(input_images_from_each_qf)
-        target_images.extend(target_images_from_each_qf)
+            input_images_from_each_qf, target_images_from_each_qf = load_images_from_dirctory(input_dir, target_dir, color_space=color_space)
+            input_images.extend(input_images_from_each_qf)
+            target_images.extend(target_images_from_each_qf)
     
     # Dataset과 DataLoader 생성
     dataset = CustomDataset(input_images, target_images)
@@ -127,56 +134,157 @@ def load_dataset_and_dataloader_each_qf(QF, is_train=None, color_space=None, siz
     if is_train:    
         input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
         target_dir = os.path.join(cifar100_path, "original", "train")
+        input_images_from_each_qf, target_images_from_each_qf = load_images_from_dirctory(input_dir, target_dir, color_space=color_space)
+        dataset = CustomDataset(input_images_from_each_qf, target_images_from_each_qf)
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     else:
         input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
         target_dir = os.path.join(cifar100_path, "original", "test")
-
-    input_dataset, target_dataset = load_images_from_dirctory(input_dir, target_dir, color_space=color_space)
+        input_images_from_each_qf, target_images_from_each_qf = load_images_from_dirctory(input_dir, target_dir, color_space=color_space)
+        dataset = CustomDataset(input_images_from_each_qf, target_images_from_each_qf)
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     
-    # Dataset과 DataLoader 생성
-    dataset = CustomDataset(input_dataset, target_dataset)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-
     return dataset, loader
 
 # ==============================================================================================
 
-def load_train_dataset_and_dataloader_8x8_ycrcb_all_qf(batch_size, num_workers):
+def load_train_dataset_and_dataloader_8x8_ycrcb_all_qf(color_space, batch_size, num_workers):
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8")
 
-    train_input_dataset = []
-    train_target_dataset = []
+    input_dataset = []
+    target_dataset = []
 
     for QF in QFs:
         train_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "train")
         target_train_dataset_dir = os.path.join(cifar100_path, "original", "train")
 
-        train_input_images, train_target_images = load_images_from_dirctory(train_input_dir, target_train_dataset_dir, color_space="ycrcb")
-        train_input_dataset.extend(train_input_images)
-        train_target_dataset.extend(train_target_images)
+        if color_space is None:
+            raise ValueError("color_space must be specified")
     
-    train_dataset = CustomDataset(train_input_dataset, train_target_dataset)
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        input_images = []
+        target_images = []
+        
+        for i in range(num_classes):
+            input_path = os.path.join(train_input_dir, f"{i:03d}")
+            target_path = os.path.join(target_train_dataset_dir, f"{i:03d}")
+            
+            # input_path 내 파일을 정렬된 순서로 불러오기
+            sorted_input_files = sorted(os.listdir(input_path))
+            sorted_target_files = sorted(os.listdir(target_path))
+            
+            # 두 디렉토리의 파일명이 같은지 확인하며 로드
+            for input_file, target_file in zip(sorted_input_files, sorted_target_files):
+                if input_file.replace("jpeg", "png") == target_file:
+                    # input 이미지 로드
+                    input_image_path = os.path.join(input_path, input_file)
+                    target_image_path = os.path.join(target_path, target_file)
 
-    return train_dataset, train_loader
+                    if color_space == "y":
+                        input_image = cv2.imread(input_image_path, cv2.IMREAD_GRAYSCALE)
+                        target_image = cv2.imread(target_image_path, cv2.IMREAD_GRAYSCALE)
+                    elif color_space == "ycrcb":
+                        input_image = cv2.imread(input_image_path, cv2.IMREAD_COLOR)
+                        target_image = cv2.imread(target_image_path, cv2.IMREAD_COLOR)
+                        input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2YCrCb)
+                        target_image = cv2.cvtColor(target_image, cv2.COLOR_BGR2YCrCb)
+                    elif color_space == "bgr":
+                        input_image = cv2.imread(input_image_path, cv2.IMREAD_COLOR)    
+                        target_image = cv2.imread(target_image_path, cv2.IMREAD_COLOR)
+                    elif color_space == "rgb":
+                        input_image = cv2.imread(input_image_path, cv2.IMREAD_COLOR)    
+                        target_image = cv2.imread(target_image_path, cv2.IMREAD_COLOR)
+                        input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
+                        target_image = cv2.cvtColor(target_image, cv2.COLOR_BGR2RGB)
+                    
+                    if color_space == "y":
+                        # [h,w] -> [1,h,w]
+                        input_image = np.expand_dims(input_image, axis=0)
+                        target_image = np.expand_dims(target_image, axis=0)
+                        input_image = input_image.astype(np.float32)/255
+                        target_image = target_image.astype(np.float32)/255
+                    else:
+                        # [h,w,c] -> [c,h,w]
+                        input_image = input_image.transpose(2, 0, 1).astype(np.float32)/255
+                        target_image = target_image.transpose(2, 0, 1).astype(np.float32)/255
+                    
+                    input_images.append(input_image)
+                    target_images.append(target_image)
+                else:
+                    print(f"Warning: Mismatched files in training set: {input_file} and {target_file}")
 
-def load_test_dataset_and_dataloader_8x8_ycrcb_each_qf(QF, batch_size, num_workers):
+        input_dataset.extend(input_images)
+        target_dataset.extend(target_images)
+    
+    dataset = CustomDataset(input_dataset, target_dataset)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+
+    return dataset, loader
+
+def load_test_dataset_and_dataloader_8x8_ycrcb_each_qf(QF, color_space, batch_size, num_workers):
     dataset_name = "CIFAR100"
     cifar100_path = os.path.join(os.getcwd(), "datasets", dataset_name, "8x8")
     test_input_dataset = []
     test_target_dataset = []
 
-    # input images
-    test_input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
-    # target images (original)
-    target_test_dataset_dir = os.path.join(cifar100_path, "original", "test")
+    input_dir = os.path.join(cifar100_path, f"jpeg{QF}", "test")
+    target_dir = os.path.join(cifar100_path, "original", "test")
 
-    test_input_images, test_target_images = load_images_from_dirctory(test_input_dir, target_test_dataset_dir, color_space="ycrcb")
-    test_input_dataset.extend(test_input_images)
-    test_target_dataset.extend(test_target_images)
+    if color_space is None:
+        raise ValueError("color_space must be specified")
+    
+    input_images = []
+    target_images = []
+    
+    for i in range(num_classes):
+        input_path = os.path.join(input_dir, f"{i:03d}")
+        target_path = os.path.join(target_dir, f"{i:03d}")
+        
+        # input_path 내 파일을 정렬된 순서로 불러오기
+        sorted_input_files = sorted(os.listdir(input_path))
+        sorted_target_files = sorted(os.listdir(target_path))
+        
+        # 두 디렉토리의 파일명이 같은지 확인하며 로드
+        for input_file, target_file in zip(sorted_input_files, sorted_target_files):
+            if input_file.replace("jpeg", "png") == target_file:
+                # input 이미지 로드
+                input_image_path = os.path.join(input_path, input_file)
+                target_image_path = os.path.join(target_path, target_file)
 
-    test_dataset = CustomDataset(test_input_dataset, test_target_dataset)
+                if color_space == "y":
+                    input_image = cv2.imread(input_image_path, cv2.IMREAD_GRAYSCALE)
+                    target_image = cv2.imread(target_image_path, cv2.IMREAD_GRAYSCALE)
+                elif color_space == "ycrcb":
+                    input_image = cv2.imread(input_image_path, cv2.IMREAD_COLOR)
+                    target_image = cv2.imread(target_image_path, cv2.IMREAD_COLOR)
+                    input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2YCrCb)
+                    target_image = cv2.cvtColor(target_image, cv2.COLOR_BGR2YCrCb)
+                elif color_space == "bgr":
+                    input_image = cv2.imread(input_image_path, cv2.IMREAD_COLOR)    
+                    target_image = cv2.imread(target_image_path, cv2.IMREAD_COLOR)
+                elif color_space == "rgb":
+                    input_image = cv2.imread(input_image_path, cv2.IMREAD_COLOR)    
+                    target_image = cv2.imread(target_image_path, cv2.IMREAD_COLOR)
+                    input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
+                    target_image = cv2.cvtColor(target_image, cv2.COLOR_BGR2RGB)
+                
+                if color_space == "y":
+                    # [h,w] -> [1,h,w]
+                    input_image = np.expand_dims(input_image, axis=0)
+                    target_image = np.expand_dims(target_image, axis=0)
+                    input_image = input_image.astype(np.float32)/255
+                    target_image = target_image.astype(np.float32)/255
+                else:
+                    # [h,w,c] -> [c,h,w]
+                    input_image = input_image.transpose(2, 0, 1).astype(np.float32)/255
+                    target_image = target_image.transpose(2, 0, 1).astype(np.float32)/255
+                
+                input_images.append(input_image)
+                target_images.append(target_image)
+            else:
+                print(f"Warning: Mismatched files in training set: {input_file} and {target_file}")
+
+    test_dataset = CustomDataset(input_images, target_images)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     return test_dataset, test_loader

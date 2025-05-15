@@ -15,20 +15,23 @@ from load_dataset import load_dataset_and_dataloader_each_qf
 from models import PxT_8x8_ycrcb
 from utils import combine_8x8_patches_to_32x32, save_combined_images
 
-if len(sys.argv) < 4:
-    print("Usage: python script.py <model_path> <batch_size> <num_workers>")
+if len(sys.argv) < 3:
+    print("Usage: python script.py <batch_size> <num_workers>")
     sys.exit(1)
+
+# python code/make_removed_cifar100_PxT_ycbcr.py "./models/PxT_8x8_ycrcb_20_20250512.pth" 1024 64
 
 logging.basicConfig(filename="data.log", level=logging.INFO, format="%(asctime)s - %(message)s")
 
 seed = 42
 torch.manual_seed(seed)
 QFs = [100, 80, 60, 40, 20]
-model_path = sys.argv[1]
-batch_size = int(sys.argv[2])
-num_workers = int(sys.argv[3])
+# model_path = sys.argv[1]
+batch_size = int(sys.argv[1])
+num_workers = int(sys.argv[2])
 num_classes = 100
-model_name = "PxT_8x8_ycrcb"
+model_name = "PxT_8x8"
+today_date = time.strftime("%Y%m%d")
 
 if __name__ == "__main__":
     # Load the dataset
@@ -36,7 +39,7 @@ if __name__ == "__main__":
     # Initialize the model
     best_loss = float('inf')
     model = PxT_8x8_ycrcb()
-
+    color_space = "ycrcb"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # use multiple GPUs if available
@@ -52,7 +55,7 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     #! load model
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load("./models/PxT_8x8_ycrcb_3_best.pth", map_location=device))
 
     for QF in QFs:
         model.eval()
@@ -63,8 +66,8 @@ if __name__ == "__main__":
         test_loss = 0.0
         psnr_values = []
         ssim_values = []
-        train_dataset, train_loader = load_dataset_and_dataloader_each_qf(QF, is_train=True,color_space="ycrcb",size="8x8",batch_size=batch_size,num_workers=num_workers)
-        test_dataset, test_loader = load_dataset_and_dataloader_each_qf(QF, is_train=False,color_space="ycrcb",size="8x8",batch_size=batch_size,num_workers=num_workers)
+        train_dataset, train_loader = load_dataset_and_dataloader_each_qf(QF, is_train=True,color_space=color_space,size="8x8",batch_size=batch_size,num_workers=num_workers)
+        test_dataset, test_loader = load_dataset_and_dataloader_each_qf(QF, is_train=False,color_space=color_space,size="8x8",batch_size=batch_size,num_workers=num_workers)
 
         with torch.no_grad():
             y_target_patches = []
@@ -104,24 +107,25 @@ if __name__ == "__main__":
                     # 8x8 이미지들을 32x32로 합치기
                     if patch_idx % 16 == 0 and patch_idx > 0:
                         patch_idx = 0
-                        combined_target_image = combine_8x8_patches_to_32x32(y_target_patches)
+                        # combined_target_image = combine_8x8_patches_to_32x32(y_target_patches)
                         combined_output_image = combine_8x8_patches_to_32x32(y_output_patches)
-                        combined_input_image = combine_8x8_patches_to_32x32(y_input_patches)
+                        # combined_input_image = combine_8x8_patches_to_32x32(y_input_patches)
 
-                        y_input_patches.clear()
+                        # y_input_patches.clear()
                         y_output_patches.clear()
-                        y_target_patches.clear()
+                        # y_target_patches.clear()
                         
                         image_name_idx += 1
-                        combined_input_image =cv2.cvtColor(combined_input_image, cv2.COLOR_YCrCb2BGR)
+                        # combined_input_image =cv2.cvtColor(combined_input_image, cv2.COLOR_YCrCb2BGR)
                         combined_output_image =cv2.cvtColor(combined_output_image, cv2.COLOR_YCrCb2BGR)
-                        combined_target_image =cv2.cvtColor(combined_target_image, cv2.COLOR_YCrCb2BGR)
+                        # combined_target_image =cv2.cvtColor(combined_target_image, cv2.COLOR_YCrCb2BGR)
+                        output_dir = os.path.join("datasets",f"{model_name}_{color_space}_{today_date}",f"jpeg{QF}","train",f"{class_idx:03d}")
+                        os.makedirs(output_dir, exist_ok=True)
+                        # save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_input",f"jpeg{QF}","train",f"{class_idx:03d}"), combined_input_image)
+                        save_combined_images(QF, image_name_idx, output_dir, combined_output_image)
+                        # save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_target",f"train",f"{class_idx:03d}"), combined_target_image)
                         
-                        save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_input",f"jpeg{QF}","train",f"{class_idx:03d}"), combined_input_image)
-                        save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_output",f"jpeg{QF}","train",f"{class_idx:03d}"), combined_output_image)
-                        save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_target",f"train",f"{class_idx:03d}"), combined_target_image)
-                        
-                        if image_name_idx % 100 == 0 and image_name_idx > 0:
+                        if image_name_idx % 500 == 0 and image_name_idx > 0:
                             class_idx += 1
                             image_name_idx = 0
                             
@@ -195,9 +199,11 @@ if __name__ == "__main__":
                         combined_output_image =cv2.cvtColor(combined_output_image, cv2.COLOR_YCrCb2BGR)
                         combined_target_image =cv2.cvtColor(combined_target_image, cv2.COLOR_YCrCb2BGR)
                         
-                        save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_input",f"jpeg{QF}","test",f"{class_idx:03d}"), combined_input_image)
-                        save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_output",f"jpeg{QF}","test",f"{class_idx:03d}"), combined_output_image)
-                        save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_target",f"test",f"{class_idx:03d}"), combined_target_image)
+                        # save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_input",f"jpeg{QF}","test",f"{class_idx:03d}"), combined_input_image)
+                        image_output_dir = os.path.join("datasets",f"{model_name}_{color_space}_{today_date}",f"jpeg{QF}","test",f"{class_idx:03d}")
+                        os.makedirs(image_output_dir, exist_ok=True)
+                        save_combined_images(QF, image_name_idx, image_output_dir, combined_output_image)
+                        # save_combined_images(QF, class_idx, image_name_idx, os.path.join("datasets",f"{model_name}_target",f"test",f"{class_idx:03d}"), combined_target_image)
                         
                         if image_name_idx % 100 == 0 and image_name_idx > 0:
                             class_idx += 1
@@ -209,9 +215,5 @@ if __name__ == "__main__":
         avg_ssim = np.mean(ssim_values)
         avg_lpips_alex = np.mean(lpips_alex_loss_values)
 
-        print(
-            f"{model_name} QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
-        )
-        logging.info(
-            f"{model_name} QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}"
-        )
+        print(f"{model_name} QF: {QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}")
+        logging.info(f"{model_name} QF:{QF} | Test Loss: {avg_test_loss:.4f} | PSNR: {avg_psnr:.2f} dB | SSIM: {np.mean(ssim_values):.4f} | LPIPS Alex: {np.mean(lpips_alex_loss_values):.4f}")
